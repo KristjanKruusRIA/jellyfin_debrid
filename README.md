@@ -7,10 +7,10 @@ https://github.com/debridmediamanager
 
 (also includes zurg, a way better alternative to rclone_rd)
 
-# plex_debrid
-Plex/Emby/Jellyfin/Infuse torrent streaming through Debrid Services, using Plex Discover Watchlists, Trakt lists and Overseerr.
+# jellyfin_debrid
+Plex/Emby/Jellyfin/Infuse torrent streaming through Debrid Services, using Plex Discover Watchlists, Trakt lists and jellyseerr.
 
-Using content services like plex discover, trakt and overseerr, your personal media server users can add movies/shows to their watchlist and they become available to stream in seconds.
+Using content services like plex discover, trakt and jellyseerr, your personal media server users can add movies/shows to their watchlist and they become available to stream in seconds.
 
  
 ### In Action:
@@ -19,12 +19,12 @@ Using content services like plex discover, trakt and overseerr, your personal me
  
 ### Description:
 
-A plex_debrid setup consists of three parts.
+A jellyfin_debrid setup consists of three parts.
 - The first part is rclone (or rclone_rd), a program that tricks your OS into thinking you have your debrid service files locally. In reality they are streamed when you open them, which is why content is available almost instantly and why you have unlimited storage (depending on your debrid service). Nothing is ever actually downloaded to your servers harddrive.
 - The second part is a personal media server like Plex, which allows you to watch these files from anywhere on any device.
-- The third part is the plex_debrid script, which ties both things together and provides an easy way to add media content to your debrid service/s.
+- The third part is the jellyfin_debrid script, which ties both things together and provides an easy way to add media content to your debrid service/s.
 
-The plex_debrid script monitors the plex watchlists, trakt watchlists and overseer-requests of specified users for newly added movies/shows and newly released episodes of watchlisted shows. 
+The jellyfin_debrid script monitors the plex watchlists, trakt watchlists and overseer-requests of specified users for newly added movies/shows and newly released episodes of watchlisted shows. 
 Once new content is found, torrent indexers are scraped for the best, cached release on selected debrid services. 
 The torrent is then added to a suitable debrid service and a library refresh is performed to make the newly added content available. 
 
@@ -37,7 +37,7 @@ This is a work in progress, and im not a professional programmer. shits not read
 - Gathering new content **every 5s** from:
    - <img src="https://app.plex.tv/desktop/favicon.ico" height="16"> **[Plex Watchlists](https://plex.tv/)**
    - <img src="https://walter.trakt.tv/hotlink-ok/public/favicon.ico" height="16"> **[Trakt public lists, watchlists and collections](https://trakt.tv/)**
-   - <img src="https://hotio.dev/webhook-avatars/overseerr.png" height="16"> **[Overseerr Requests](https://overseerr.dev/)**
+   - <img src="https://hotio.dev/webhook-avatars/jellyseerr.png" height="16"> **[jellyseerr Requests](https://jellyseerr.dev/)**
    - <img src="https://raw.githubusercontent.com/Fallenbagel/jellyseerr/main/public/android-chrome-512x512.png" height="16"> **[Jellyseerr Requests](https://github.com/Fallenbagel/jellyseerr)**
 - Checking and maintaining your library for:
    - <img src="https://app.plex.tv/desktop/favicon.ico" height="16"> **[Plex Library](https://plex.tv/)**
@@ -65,11 +65,11 @@ This is a work in progress, and im not a professional programmer. shits not read
  
 ## Community
 
-- Feel free to ask any questions on github [discussions](https://github.com/itsToggle/plex_debrid/discussions) 
-- or create a new [issue](https://github.com/itsToggle/plex_debrid/issues) if you find a bug or have an idea for an improvement.
+- Feel free to ask any questions on github [discussions](https://github.com/itsToggle/jellyfin_debrid/discussions) 
+- or create a new [issue](https://github.com/itsToggle/jellyfin_debrid/issues) if you find a bug or have an idea for an improvement.
 
 If github is not your cup of tea; 
-- join the plex_debrid [discord server](https://discord.gg/jMpyFryfaj) 
+- join the jellyfin_debrid [discord server](https://discord.gg/jMpyFryfaj) 
 - or find me on [reddit](https://www.reddit.com/user/itsToggle)
 
  
@@ -77,17 +77,17 @@ If github is not your cup of tea;
 
 ### :pushpin: Step by Step and VPS Guides:
 
-*Aside from this general setup guide, here some step-by-step guides with specific examples for a few different operating systems. If you want to run plex_debrid on a VPS or Seedbox, please keep in mind that some debrid services block such IP addresses from accessing their servers.*
+*Aside from this general setup guide, here some step-by-step guides with specific examples for a few different operating systems. If you want to run jellyfin_debrid on a VPS or Seedbox, please keep in mind that some debrid services block such IP addresses from accessing their servers.*
 
 ><details>
 >  <summary><b><u>Step by Step for your OS:</u></b></summary>
 >  
->  - **[Docker (Wiki)](https://github.com/itsToggle/plex_debrid/wiki/Setup-Guides#docker-setup)**
->  - **[Windows (Wiki)](https://github.com/itsToggle/plex_debrid/wiki/Setup-Guides#windows-setup)**
->  - **[Linux Server (Wiki)](https://github.com/itsToggle/plex_debrid/wiki/Setup-Guides#linux-server-setup)**
->  - **[Linux ARM Server (Wiki)](https://github.com/itsToggle/plex_debrid/wiki/Setup-Guides#linux-arm64-server-setup)**
+>  - **[Docker (Wiki)](https://github.com/itsToggle/jellyfin_debrid/wiki/Setup-Guides#docker-setup)**
+>  - **[Windows (Wiki)](https://github.com/itsToggle/jellyfin_debrid/wiki/Setup-Guides#windows-setup)**
+>  - **[Linux Server (Wiki)](https://github.com/itsToggle/jellyfin_debrid/wiki/Setup-Guides#linux-server-setup)**
+>  - **[Linux ARM Server (Wiki)](https://github.com/itsToggle/jellyfin_debrid/wiki/Setup-Guides#linux-arm64-server-setup)**
 >  - **[FreeBSD (u/TheNicestRichtofen)](https://www.reddit.com/r/Piracy/comments/v5zpj7/comment/ibnikqh/?utm_source=share&utm_medium=web2x&context=3)**
->  - **[Android (Nvidia Shield)](https://github.com/itsToggle/plex_debrid/wiki/Setup-Guides#android-nvidia-shield-setup)**
+>  - **[Android (Nvidia Shield)](https://github.com/itsToggle/jellyfin_debrid/wiki/Setup-Guides#android-nvidia-shield-setup)**
 ></details>
 >
 ><details>
@@ -101,7 +101,7 @@ If github is not your cup of tea;
  
 ### 1) :open_file_folder: Mount your debrid services:
 
-*For this download automation to work, you need to mount at least one debrid service as a virtual drive. I highly recommend using RealDebrid, as this service will recieve updates and new features from plex_debrid first. Please keep in mind that most debrid services dont allow you to access their service from multiple IP addresses in parallel. This is not an issue if you have a Plex server running, since everything you stream through plex (from any location, no matter how many in parallel) is routed through your servers IP address. While you have your plex server running though, you should not download from your debrid service in any other way than through plex.*
+*For this download automation to work, you need to mount at least one debrid service as a virtual drive. I highly recommend using RealDebrid, as this service will recieve updates and new features from jellyfin_debrid first. Please keep in mind that most debrid services dont allow you to access their service from multiple IP addresses in parallel. This is not an issue if you have a Plex server running, since everything you stream through plex (from any location, no matter how many in parallel) is routed through your servers IP address. While you have your plex server running though, you should not download from your debrid service in any other way than through plex.*
 
 >
 ><details>
@@ -228,22 +228,22 @@ If github is not your cup of tea;
 >  </details>
 
  
-### 3) :page_facing_up: Setup plex_debrid:
+### 3) :page_facing_up: Setup jellyfin_debrid:
 
-*The plex_debrid script can be run as a docker container (dockerized version) or by simply executing it with python 3 (standard version).*
+*The jellyfin_debrid script can be run as a docker container (dockerized version) or by simply executing it with python 3 (standard version).*
 
 ><details>
 >  <summary><b><u>Standard Version:</u></b></summary>
 >  
 >  0. Clone this repository with git or click on "code" (top right) and then "download zip" 
->  1. Open a terminal inside the downloaded plex_debrid-main folder. Run `pip install -r requirements.txt` - if you dont have pip yet, install it from https://pypi.org/project/pip/
+>  1. Open a terminal inside the downloaded jellyfin_debrid-main folder. Run `pip install -r requirements.txt` - if you dont have pip yet, install it from https://pypi.org/project/pip/
 >  2. Start the script by running `python ./main.py`
->  3. The script will guide you through the initial setup and the next steps. When setting up plex_debrid, you will be prompted to choose the 5 main services that this script connects:
->  4. Pick and setup at least one [**content service**](https://github.com/itsToggle/plex_debrid#tv-content-services) which plex_debrid should monitor for new content
->  5. Pick and setup a [**library collection service**](https://github.com/itsToggle/plex_debrid#open_file_folder-library-collection-service), which plex_debrid will use to determine your current media collection. If you intend to run a plex server, choose "Plex Libraries".
->  6. Pick and setup a [**library update service**](https://github.com/itsToggle/plex_debrid#-library-update-services), which plex_debrid will update/refresh after a successful download. If you intent to run a plex server, choose "Plex Libraries".
->  7. Pick and setup a [**library ignore service**](https://github.com/itsToggle/plex_debrid#eyes-library-ignore-services), which plex_debrid will use to ignore content. If you intent to run a plex server, choose "Plex Discover Watch Status".
->  8. Pick and setup at least one [**debrid service**](https://github.com/itsToggle/plex_debrid#arrow_down_small-debrid-services), which plex_debrid will use to download content.
+>  3. The script will guide you through the initial setup and the next steps. When setting up jellyfin_debrid, you will be prompted to choose the 5 main services that this script connects:
+>  4. Pick and setup at least one [**content service**](https://github.com/itsToggle/jellyfin_debrid#tv-content-services) which jellyfin_debrid should monitor for new content
+>  5. Pick and setup a [**library collection service**](https://github.com/itsToggle/jellyfin_debrid#open_file_folder-library-collection-service), which jellyfin_debrid will use to determine your current media collection. If you intend to run a plex server, choose "Plex Libraries".
+>  6. Pick and setup a [**library update service**](https://github.com/itsToggle/jellyfin_debrid#-library-update-services), which jellyfin_debrid will update/refresh after a successful download. If you intent to run a plex server, choose "Plex Libraries".
+>  7. Pick and setup a [**library ignore service**](https://github.com/itsToggle/jellyfin_debrid#eyes-library-ignore-services), which jellyfin_debrid will use to ignore content. If you intent to run a plex server, choose "Plex Discover Watch Status".
+>  8. Pick and setup at least one [**debrid service**](https://github.com/itsToggle/jellyfin_debrid#arrow_down_small-debrid-services), which jellyfin_debrid will use to download content.
 >  9. You're done!
 >  10. Choose option '1' to run the download automation. Choose option '2' to explore or edit the Settings or open the "settings.json" file the script creates after the first run. 
 >  11. If you dont want the main menu to show when starting the script (for an auto-run setup), navigate to "/Settings/UI Settings/show menu on startup" and set the value to "false".
@@ -254,14 +254,14 @@ If github is not your cup of tea;
 ><details>
 >  <summary><b><u>Dockerized Version:</u></b></summary>
 >   
->  1. Run `docker pull itstoggle/plex_debrid`or visit https://hub.docker.com/repository/docker/itstoggle/plex_debrid.
->  2. Run `docker run -v /path/to/config:/config --net host -ti itstoggle/plex_debrid` . Where `/path/to/config` is the directory path where you want to save your plex_debrid config data.
->  3. The script will guide you through the initial setup and the next steps. When setting up plex_debrid, you will be prompted to choose the 5 main services that this script connects:
->  4. Pick and setup at least one [**content service**](https://github.com/itsToggle/plex_debrid#tv-content-services) which plex_debrid should monitor for new content
->  5. Pick and setup a [**library collection service**](https://github.com/itsToggle/plex_debrid#open_file_folder-library-collection-service), which plex_debrid will use to determine your current media collection. If you intend to run a plex server, choose "Plex Libraries".
->  6. Pick and setup a [**library update service**](https://github.com/itsToggle/plex_debrid#-library-update-services), which plex_debrid will update/refresh after a successful download. If you intent to run a plex server, choose "Plex Libraries".
->  7. Pick and setup a [**library ignore service**](https://github.com/itsToggle/plex_debrid#eyes-library-ignore-services), which plex_debrid will use to ignore content. If you intent to run a plex server, choose "Plex Discover Watch Status".
->  8. Pick and setup at least one [**debrid service**](https://github.com/itsToggle/plex_debrid#arrow_down_small-debrid-services), which plex_debrid will use to download content.
+>  1. Run `docker pull itstoggle/jellyfin_debrid`or visit https://hub.docker.com/repository/docker/itstoggle/jellyfin_debrid.
+>  2. Run `docker run -v /path/to/config:/config --net host -ti itstoggle/jellyfin_debrid` . Where `/path/to/config` is the directory path where you want to save your jellyfin_debrid config data.
+>  3. The script will guide you through the initial setup and the next steps. When setting up jellyfin_debrid, you will be prompted to choose the 5 main services that this script connects:
+>  4. Pick and setup at least one [**content service**](https://github.com/itsToggle/jellyfin_debrid#tv-content-services) which jellyfin_debrid should monitor for new content
+>  5. Pick and setup a [**library collection service**](https://github.com/itsToggle/jellyfin_debrid#open_file_folder-library-collection-service), which jellyfin_debrid will use to determine your current media collection. If you intend to run a plex server, choose "Plex Libraries".
+>  6. Pick and setup a [**library update service**](https://github.com/itsToggle/jellyfin_debrid#-library-update-services), which jellyfin_debrid will update/refresh after a successful download. If you intent to run a plex server, choose "Plex Libraries".
+>  7. Pick and setup a [**library ignore service**](https://github.com/itsToggle/jellyfin_debrid#eyes-library-ignore-services), which jellyfin_debrid will use to ignore content. If you intent to run a plex server, choose "Plex Discover Watch Status".
+>  8. Pick and setup at least one [**debrid service**](https://github.com/itsToggle/jellyfin_debrid#arrow_down_small-debrid-services), which jellyfin_debrid will use to download content.
 >  9. You're done!
 >  10. Choose option '1' to run the download automation. Choose option '2' to explore or edit the Settings or open the "settings.json" file the script creates after the first run.
 >  11. If you dont want the main menu to show when starting the script (for an auto-run setup), navigate to "/Settings/UI Settings/show menu on startup" and set the value to "false".
@@ -271,7 +271,7 @@ If github is not your cup of tea;
  
 ## Usage:
 
-*plex_debrid can be setup in a bunch of different ways, which this readme wont be able to cover. Feel free to ask any questions in the "discussions" section of this respository or join our discord server.*
+*jellyfin_debrid can be setup in a bunch of different ways, which this readme wont be able to cover. Feel free to ask any questions in the "discussions" section of this respository or join our discord server.*
  
 ### :cloud: Rclone Usage
 
@@ -298,7 +298,7 @@ If github is not your cup of tea;
  
 ### :tv: Content Services:
 
-*The services that plex_debrid can monitor for new content. You can pick any combination of services.*
+*The services that jellyfin_debrid can monitor for new content. You can pick any combination of services.*
 
 ><details>
 >  <summary><b><u><img src="https://app.plex.tv/desktop/favicon.ico" height="16"> Plex watchlists:</u></b></summary>
@@ -311,7 +311,7 @@ If github is not your cup of tea;
 >  - The script tries its best to avoid downloading unwanted (e.g. sample) files. If samples still show up on plex, you can create a .plexignore file and add it to the mounts parent directory (more info [here](https://support.plex.tv/articles/201381883-special-keyword-file-folder-exclusion/)).
 >  - The Plex Watchlist of your specified users will polled for changes every 5 seconds, which is when it will try to find newly added content. 
 >  - The Plex Watchlist will be updated entirely every 30 minutes, which is when it will try to find newly released episodes from watchlisted series. This is only done every 30 minutes, because building the whole watchlist can take more than a minute, depending on the amount of shows you have in there.
->  - You can connect plex_debrid to trakt.tv to get more accurate release dates and times for your content, without needing to actually monitor any of your trakt content.
+>  - You can connect jellyfin_debrid to trakt.tv to get more accurate release dates and times for your content, without needing to actually monitor any of your trakt content.
 >
 ></details>
 >
@@ -328,27 +328,27 @@ If github is not your cup of tea;
 ></details>
 >
 ><details>
->  <summary><b><u><img src="https://hotio.dev/webhook-avatars/overseerr.png" height="16"> Overseerr requests:</u></b></summary>
+>  <summary><b><u><img src="https://hotio.dev/webhook-avatars/jellyseerr.png" height="16"> jellyseerr requests:</u></b></summary>
 > 
->  - You can connect plex_debrid to overseerr to instantly and automatically download approved requests from selected users. For this to work, you need to connect plex_debrid to either Plex or Trakt, since these services can be used to gather more information on the requested media items.
->  - To connect the script to overseerr, navigate to '/Settings/Content Services/Overseerr'. 
->  - By default, all approved requests from all overseerr users are downloaded by plex_debrid. To limit this feature to specific users, navigate to '/Settings/Content Services/Overseerr/Overseerr users'
+>  - You can connect jellyfin_debrid to jellyseerr to instantly and automatically download approved requests from selected users. For this to work, you need to connect jellyfin_debrid to either Plex or Trakt, since these services can be used to gather more information on the requested media items.
+>  - To connect the script to jellyseerr, navigate to '/Settings/Content Services/jellyseerr'. 
+>  - By default, all approved requests from all jellyseerr users are downloaded by jellyfin_debrid. To limit this feature to specific users, navigate to '/Settings/Content Services/jellyseerr/jellyseerr users'
 >
 ></details>
 >
 ><details>
 >  <summary><b><u><img src="https://raw.githubusercontent.com/Fallenbagel/jellyseerr/main/public/android-chrome-512x512.png" height="16"> Jellyseerr requests:</u></b></summary>
 > 
->  - You can connect plex_debrid to jellyseerr to instantly and automatically download approved requests from selected users. For this to work, you need to connect plex_debrid to either Plex or Trakt, since these services can be used to gather more information on the requested media items. Since jellyseer and overseerr use the exact same api endpoints, simply set up jellyseer in the plex_debrid overseerr menu:
->  - To connect the script to jellyseerr, navigate to '/Settings/Content Services/Overseerr'. 
->  - By default, all approved requests from all jellyseerr users are downloaded by plex_debrid. To limit this feature to specific users, navigate to '/Settings/Content Services/Overseerr/Overseerr users'
+>  - You can connect jellyfin_debrid to jellyseerr to instantly and automatically download approved requests from selected users. For this to work, you need to connect jellyfin_debrid to either Plex or Trakt, since these services can be used to gather more information on the requested media items. Since jellyseer and jellyseerr use the exact same api endpoints, simply set up jellyseer in the jellyfin_debrid jellyseerr menu:
+>  - To connect the script to jellyseerr, navigate to '/Settings/Content Services/jellyseerr'. 
+>  - By default, all approved requests from all jellyseerr users are downloaded by jellyfin_debrid. To limit this feature to specific users, navigate to '/Settings/Content Services/jellyseerr/jellyseerr users'
 >
 ></details>
  
  
 ### :open_file_folder: Library Collection Service
 
-*The services that plex_debrid can use to determine your current media collection.*
+*The services that jellyfin_debrid can use to determine your current media collection.*
 
 ><details>
 >  <summary><b><u><img src="https://app.plex.tv/desktop/favicon.ico" height="16"> Plex library:</u></b></summary>
@@ -369,14 +369,14 @@ If github is not your cup of tea;
  
 ### 🔁 Library Update Services
 
-*The services that plex_debrid can update/refresh after a successful download. You can add any combination of services.*
+*The services that jellyfin_debrid can update/refresh after a successful download. You can add any combination of services.*
 
 ><details>
 >  <summary><b><u><img src="https://app.plex.tv/desktop/favicon.ico" height="16"> Plex library:</u></b></summary>
 >  
 >  - To refresh your plex libraries after a succesful download, navigate to '/Settings/Library Service/Library update service/Edit/'
 >  - You can add an unlimited amount of libraries to be refreshed
->  - plex_debrid is now capable of only partially scanning your libraries. This feature is currently only available for content that's downloaded through realdebrid.
+>  - jellyfin_debrid is now capable of only partially scanning your libraries. This feature is currently only available for content that's downloaded through realdebrid.
 >
 ></details>
 >
@@ -393,7 +393,7 @@ If github is not your cup of tea;
 >  <summary><b><u><img src="https://walter.trakt.tv/hotlink-ok/public/favicon.ico" height="16"> Trakt collection:</u></b></summary>
 >  
 >  - To mark content as collected on Trakt after it has been successfully downloaded, navigate to '/Settings/Library Service/Library update service/Edit/'
->  - plex_debrid will automatically add the downloaded resolution and other properties of the downloaded media to your trakt collection
+>  - jellyfin_debrid will automatically add the downloaded resolution and other properties of the downloaded media to your trakt collection
 >
 ></details>
 >
@@ -401,12 +401,12 @@ If github is not your cup of tea;
 >  <summary><b><u><img src="https://jellyfin.org/images/favicon.ico" height="16"> Jellyfin Libraries:</u></b></summary>
 >  
 >  - To refresh your jellyfin libraries after a succesful download, navigate to '/Settings/Library Service/Library update service/Edit/'
->  - plex_debrid is currently only able to refresh your entire jellyfinlibrary. Partial library scans to come shortly!
+>  - jellyfin_debrid is currently only able to refresh your entire jellyfinlibrary. Partial library scans to come shortly!
 >
 ></details>
 >
 ><details>
->  <summary><b><u><img src="https://hotio.dev/webhook-avatars/overseerr.png" height="16"> Overseerr requests:</u></b></summary>
+>  <summary><b><u><img src="https://hotio.dev/webhook-avatars/jellyseerr.png" height="16"> jellyseerr requests:</u></b></summary>
 > 
 >  - To mark your overserr requests as available after a succesful download, navigate to '/Settings/Library Service/Library update service/Edit/'
 >
@@ -421,7 +421,7 @@ If github is not your cup of tea;
  
 ### :eyes: Library Ignore Services
 
-*The services that plex_debrid will use to ignore content. You can add any combination of services. You can explore the media thats currently ignored from the main plex_debrid menu.*
+*The services that jellyfin_debrid will use to ignore content. You can add any combination of services. You can explore the media thats currently ignored from the main jellyfin_debrid menu.*
 
 ><details>
 >  <summary><b><u><img src="https://app.plex.tv/desktop/favicon.ico" height="16"> Plex Discover Watch Status:</u></b></summary>
@@ -441,15 +441,15 @@ If github is not your cup of tea;
 >  <summary><u><b>:clipboard: Local Ignore List:</u></b></summary>
 >  
 >  - To use a local text file of queries to ignore content, navigate to '/Settings/Library Service/Library ignore services/Edit/'
->  - You will be prompted to provide a path to a directory (not a file), in which plex_debrid will save a file named `ignored.txt` after content is ignored.
->  - If you want to create that file yourself and dont want to wait for plex_debrid to create it, make sure to save it in your specified path and under the correct name `ignored.txt`
->  - If you want to use the ignore file with the plex_debrid docker version, make sure to pick the path `./config/`, so that the file is saved outside of your container.
+>  - You will be prompted to provide a path to a directory (not a file), in which jellyfin_debrid will save a file named `ignored.txt` after content is ignored.
+>  - If you want to create that file yourself and dont want to wait for jellyfin_debrid to create it, make sure to save it in your specified path and under the correct name `ignored.txt`
+>  - If you want to use the ignore file with the jellyfin_debrid docker version, make sure to pick the path `./config/`, so that the file is saved outside of your container.
 >
 ></details>
  
 ### :magnet: Scraping Services:
 
-*The services that plex_debrid can use to find torrents. You can add any combination of services. By default, torrentio is the only service enabled. You can connect more scraping services to make sure you find high quality, cached releases.*
+*The services that jellyfin_debrid can use to find torrents. You can add any combination of services. By default, torrentio is the only service enabled. You can connect more scraping services to make sure you find high quality, cached releases.*
 
 >
 ><details>
@@ -457,7 +457,7 @@ If github is not your cup of tea;
 >  
 >  - The torrentio implementation uses the torrentio API to instantaniously get releases from torrentions gigantic release database. No actual scraping is done, which is why this service is so fast.
 >  - You can enable torrentio by navigating to '/Settings/Scraper/Sources/Add/'. There are no other steps needed.
->  - You can edit the torrentio settings by navigating to '/Settings/Scraper/Sources/Edit/'. The settings menu will prompt you to visit 'https://torrentio.strem.fun/configure', where you can edit your settings. Your configuration "manifest url" will be copied to your clipboard after every change you make. You can paste that url into the plex_debrid setting to update your configuration. Dont enter your Debrid information, its not needed.
+>  - You can edit the torrentio settings by navigating to '/Settings/Scraper/Sources/Edit/'. The settings menu will prompt you to visit 'https://torrentio.strem.fun/configure', where you can edit your settings. Your configuration "manifest url" will be copied to your clipboard after every change you make. You can paste that url into the jellyfin_debrid setting to update your configuration. Dont enter your Debrid information, its not needed.
 >
 ></details>
 >
@@ -471,7 +471,7 @@ If github is not your cup of tea;
 ><details>
 >  <summary><b><u><img src="https://user-images.githubusercontent.com/27040483/28728094-99f3e3f6-73c7-11e7-8f8d-28912dc6ac0d.png" height="16"> jackett:</u></b></summary>
 >  
->  - Its recommended to install "jackett", a program that wraps a huge amount of torrent indexers (https://github.com/Jackett/Jackett). Once installed, go to http://localhost:9117 and add a few of your favorite indexers. Enable the jackett server setting "CORS". Once the jackett setup is complete, you can enable jackett inside plex_debrid by navigating to '/Settings/Scraper/Sources/Edit/Add source/jackett'.
+>  - Its recommended to install "jackett", a program that wraps a huge amount of torrent indexers (https://github.com/Jackett/Jackett). Once installed, go to http://localhost:9117 and add a few of your favorite indexers. Enable the jackett server setting "CORS". Once the jackett setup is complete, you can enable jackett inside jellyfin_debrid by navigating to '/Settings/Scraper/Sources/Edit/Add source/jackett'.
 >  - You can now choose to use a specific debrid service for a specific torrent tracker by navigating to "/Settings/Debrid Services/Tracker specific Debrid Services". This comes in handy if you are using a private tracker that forces you to use a debrid service that will seed your torrents (e.g. debridlink,put.io).
 >
 ></details>
@@ -479,7 +479,7 @@ If github is not your cup of tea;
 ><details>
 >  <summary><b><u><img src="https://prowlarr.com/img/favicon-32x32.png" height="16"> prowlarr:</u></b></summary>
 >  
->  - If you prefer Prowlarr over Jackett, you can integrate prowlarr into plex_debrid by navigating to '/Settings/Scraper/Sources/Edit/Add source/prowlarr'. Prowlarr has stricted rate limits than jackett for some indexers (e.g. 1337x), which could cause plex_debrid to timeout the request to prowlarr and therefore find less releases than jackett.
+>  - If you prefer Prowlarr over Jackett, you can integrate prowlarr into jellyfin_debrid by navigating to '/Settings/Scraper/Sources/Edit/Add source/prowlarr'. Prowlarr has stricted rate limits than jackett for some indexers (e.g. 1337x), which could cause jellyfin_debrid to timeout the request to prowlarr and therefore find less releases than jackett.
 >  - You can now choose to use a specific debrid service for a specific torrent tracker by navigating to "/Settings/Debrid Services/Tracker specific Debrid Services". This comes in handy if you are using a private tracker that forces you to use a debrid service that will seed your torrents (e.g. debridlink,put.io).
 >
 ></details>
@@ -487,7 +487,7 @@ If github is not your cup of tea;
 ><details>
 >  <summary><b><u><img src="https://orionoid.com/web/images/logo/logo256.png" height="16"> orionoid:</u></b></summary>
 >  
->  - You can integrate the orionoid scrapers into plex_debrid by navigating to '/Settings/Scraper/Sources/Edit/Add source/orionoid'.
+>  - You can integrate the orionoid scrapers into jellyfin_debrid by navigating to '/Settings/Scraper/Sources/Edit/Add source/orionoid'.
 >  - By default, only the top 5 links are fetched per scraping attempt and the links are sorted by "popularity", not the premium-only "best" attribute. This is done to be "free" account friendly, you can change these parameters in the orionoid source settings '/Settings/Scraper/Sources/Edit/Edit sources/orionoid'.
 >  - You can find a full list of all possible parameters and their respective values at "https://panel.orionoid.com/" in the "Developers" menu, section "API Docs" under "Stream API".
 >
@@ -495,7 +495,7 @@ If github is not your cup of tea;
  
 ### :arrow_down_small: Debrid Services:
 
-*The services that plex_debrid can use to download torrents. You can add any combination of services.* 
+*The services that jellyfin_debrid can use to download torrents. You can add any combination of services.* 
 
 ><details>
 >  <summary><b><u>Debrid services:</u></b></summary>
@@ -510,8 +510,8 @@ If github is not your cup of tea;
 ><details>
 >  <summary><b><u>Defining versions to download:</u></b></summary>
 >  
->  - Check out the Wiki for a complete documentation of the version settings: https://github.com/itsToggle/plex_debrid/wiki/Version-Guides
->  - You can define what release qualities plex_debrid should download by defining a "version". You can add an unlimited amount of versions by navigating to '/Settings/Scraper Settings/versions'. By default, plex_debrid only comes with 1 version definiton ([1080p SDR])
+>  - Check out the Wiki for a complete documentation of the version settings: https://github.com/itsToggle/jellyfin_debrid/wiki/Version-Guides
+>  - You can define what release qualities jellyfin_debrid should download by defining a "version". You can add an unlimited amount of versions by navigating to '/Settings/Scraper Settings/versions'. By default, jellyfin_debrid only comes with 1 version definiton ([1080p SDR])
 >  - versions consist of an unlimited amount of completely customizable "rules" and "triggers". 
 >  - "Rules" define the quality requirements of your versions. The rules can be either formulated as a requirement or as a preference. The first rule has the highest priority, the last one the lowest. To give some examples, here are the rules that make up the default [1080p SDR] version:
 >      
@@ -527,7 +527,7 @@ If github is not your cup of tea;
 >        10) seeders       preference  :  highest
 >        11) size          requirement :       >=  0.1
 >      
->  - "Triggers" define when plex_debrid should look for a version. You can add triggers that limit a version to a specific media type, or to specific movies/shows. You can define how many times plex_debrid should attempt to download a version and how many attempts should be made with other versions, before a version is attempted to be downloaded. Other triggers can limit a version to a specific genre or can limit a version to a specific user that requested the movie/show. Here are some of the possible triggers, given in an example of a 720p version that should only be looked for, if the media items in question are "shows" that have been released "before 2010", are not "Family Guy" or "Last week tonight", and no other version has been found for "5 attempts":
+>  - "Triggers" define when jellyfin_debrid should look for a version. You can add triggers that limit a version to a specific media type, or to specific movies/shows. You can define how many times jellyfin_debrid should attempt to download a version and how many attempts should be made with other versions, before a version is attempted to be downloaded. Other triggers can limit a version to a specific genre or can limit a version to a specific user that requested the movie/show. Here are some of the possible triggers, given in an example of a 720p version that should only be looked for, if the media items in question are "shows" that have been released "before 2010", are not "Family Guy" or "Last week tonight", and no other version has been found for "5 attempts":
 >      
 >        A) media type    requirement :   shows
 >        B) retries       requirement :       >=  5
@@ -543,8 +543,8 @@ If github is not your cup of tea;
 ><details>
 >  <summary><b><u>Plex Limitations:</u></b></summary>
 >  
->  - If plex is chosen as the library collection service, trakt and overseerr content needs to be matched to the plex media type. In order to accurate match content from Overseerr and Trakt to Plex, its neccessary to have at least one movie and one show inside a library thats visible by plex_debrid. Thats because in order to accurately match content, a search by imdb/tmdb/tvdb ID is necessary - which currently only works by requesting a "Fix Match" call to an existing library item. Until Plex allows a universal search by ID, this is the best I can do.
->  - plex_debrid cannot destinguish between a truly empty library and a library that couldnt be reached because its offline (or not reachable for any other reason). In order to avoid unwanted behaviour, the script simply stops running whenever an empty library is encountered. You will need to manually add at least one media item to the libraries visible by plex_debrid, before the download automation can run savely.
->  - The plex discover api only provides release dates, not precise release times. Its recommended to connect the script to trakt.tv, which enables plex_debrid to find more accurate release dates and even find out if movies can be downloaded before their actual release date.
+>  - If plex is chosen as the library collection service, trakt and jellyseerr content needs to be matched to the plex media type. In order to accurate match content from jellyseerr and Trakt to Plex, its neccessary to have at least one movie and one show inside a library thats visible by jellyfin_debrid. Thats because in order to accurately match content, a search by imdb/tmdb/tvdb ID is necessary - which currently only works by requesting a "Fix Match" call to an existing library item. Until Plex allows a universal search by ID, this is the best I can do.
+>  - jellyfin_debrid cannot destinguish between a truly empty library and a library that couldnt be reached because its offline (or not reachable for any other reason). In order to avoid unwanted behaviour, the script simply stops running whenever an empty library is encountered. You will need to manually add at least one media item to the libraries visible by jellyfin_debrid, before the download automation can run savely.
+>  - The plex discover api only provides release dates, not precise release times. Its recommended to connect the script to trakt.tv, which enables jellyfin_debrid to find more accurate release dates and even find out if movies can be downloaded before their actual release date.
 >
 ></details>

@@ -1,0 +1,167 @@
+{
+    "Content Services": [
+        "jellyseerr"
+    ],
+    "jellyseerr users": ["${JELLYSEERR_USERS}"],
+    "jellyseerr API Key": "${JELLYSEERR_API_KEY}",
+    "jellyseerr Base URL": "${JELLYSEERR_BASE_URL}",
+    "Library collection service": "jellyseerr Library",
+    "Library update services": [
+        "Jellyseerr Requests"
+    ],
+    "Library ignore services": ["jellyseerr ignore status"],
+    "Local ignore list path": "",
+    "Jellyfin API Key": "${JELLYFIN_API_KEY}",
+    "Jellyfin server address": "${JELLYFIN_BASE_URL}",
+    "Sources": [
+        "torrentio"
+    ],
+    "Versions": {
+        "4k": {
+            "enabled": true,
+            "profile": "4k",
+            "languages": [
+                "en"
+            ],
+            "fetch": 5
+        },
+        "1080p": {
+            "enabled": true,
+            "profile": "1080p",
+            "languages": [
+                "en"
+            ],
+            "fetch": 5
+        }
+    },
+    "Special character renaming": [
+        [
+            "&",
+            "and"
+        ],
+        [
+            "\u00fc",
+            "ue"
+        ],
+        [
+            "\u00e4",
+            "ae"
+        ],
+        [
+            "\u00e2",
+            "a"
+        ],
+        [
+            "\u00e1",
+            "a"
+        ],
+        [
+            "\u00e0",
+            "a"
+        ],
+        [
+            "\u00f6",
+            "oe"
+        ],
+        [
+            "\u00f4",
+            "o"
+        ],
+        [
+            "\u00df",
+            "ss"
+        ],
+        [
+            "\u00e9",
+            "e"
+        ],
+        [
+            "\u00e8",
+            "e"
+        ],
+        [
+            "\u00ee",
+            "i"
+        ],
+        [
+            "sh!t",
+            "shit"
+        ],
+        [
+            "f**k",
+            "fuck"
+        ],
+        [
+            "f**king",
+            "fucking"
+        ],
+        [
+            ":",
+            ""
+        ],
+        [
+            "(",
+            ""
+        ],
+        [
+            ")",
+            ""
+        ],
+        [
+            "`",
+            ""
+        ],
+        [
+            "\u00b4",
+            ""
+        ],
+        [
+            ",",
+            ""
+        ],
+        [
+            "!",
+            ""
+        ],
+        [
+            "?",
+            ""
+        ],
+        [
+            " - ",
+            " "
+        ],
+        [
+            "'",
+            ""
+        ],
+        [
+            "\u200b",
+            ""
+        ],
+        [
+            "*",
+            ""
+        ],
+        [
+            " ",
+            "."
+        ]
+    ],
+    "Torrentio Scraper Parameters": "https://torrentio.strem.fun/qualityfilter=threed,720p,480p,scr,cam|limit=5|debridoptions=nodownloadlinks/manifest.json",
+    "Debrid Services": ["Real Debrid"],
+    "Tracker specific Debrid Services": [],
+    "Real Debrid API Key": "${REALDEBRID_API_KEY}",
+    "All Debrid API Key": "",
+    "Premiumize API Key": "",
+    "Debrid Link API Key": "",
+    "Put.io API Key": "",
+    "Show Menu on Startup": "true",
+    "Debug printing": "true",
+    "Log to file": "true",
+    "version": [
+        "2.95",
+        "Settings compatible update",
+        []
+    ]
+}

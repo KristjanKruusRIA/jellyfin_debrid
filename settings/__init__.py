@@ -223,7 +223,7 @@ class setting:
                     indices = []
                     index = 0
                     for service in self.cls.__subclasses__():
-                        if not '(NOT FUNCTIONAL)' in service.name and not service.name == 'Overseerr':
+                        if not '(NOT FUNCTIONAL)' in service.name and not service.name == 'jellyseerr':
                             print(str(index + 1) + ') ' + service.name)
                             indices += [str(index + 1)]
                             services += [service]
@@ -263,18 +263,10 @@ class setting:
                             edit += [input(prompt)]
                         lists = [edit, ]
                         setattr(self.cls, self.key, lists)
-                    if self.name == 'Plex users':
-                        url = 'https://metadata.provider.plex.tv/library/sections/watchlist/all?X-Plex-Token=' + \
-                                content.services.plex.users[0][1]
-                        response = content.services.plex.session.get(url, headers=content.services.plex.headers)
-                        if response.status_code == 200:
-                            working = True
-                        else:
-                            print()
-                            print("Looks like this plex token does not work. Please enter a valid token.")
-                            print()
-                    else:
-                        working = True
+                    # REMOVED: Plex token validation - not using Plex
+                    # if self.name == 'Plex users':
+                    #     ... (validation code removed)
+                    working = True
         else:
             working = False
             while not working:
@@ -301,6 +293,29 @@ class setting:
                     working = True
 
     def set(self, value):
+        # Convert legacy or dict-form 'Versions' setting into internal list format
+        if self.key == 'versions' and isinstance(value, dict):
+            new_versions = []
+            for name, props in value.items():
+                # Determine language
+                lang = 'true'
+                if isinstance(props, dict) and 'languages' in props and isinstance(props['languages'], list) and len(props['languages']) > 0:
+                    lang = props['languages'][0]
+                # Determine profile/name
+                profile = props.get('profile', name) if isinstance(props, dict) else name
+                # Default triggers to 'both' which expands to default_triggers
+                triggers = 'both'
+                # Create simple rules based on profile (detect common profiles)
+                rules = []
+                p_lower = str(profile).lower()
+                if '4k' in p_lower or '2160' in p_lower:
+                    rules = [["resolution", "requirement", ">=", "2160"]]
+                elif '1080' in p_lower or 'fullhd' in p_lower:
+                    rules = [["resolution", "requirement", "<=", "1080"]]
+                # Append as [name, triggers, lang, rules]
+                new_versions += [[profile, triggers, lang, rules]]
+            setattr(self.cls, self.key, new_versions)
+            return
         setattr(self.cls, self.key, value)
 
     def get(self):
@@ -310,28 +325,18 @@ settings_list = [
     ['Content Services', [
         setting('Content Services', [''], content.services, 'active', entry="content service", subclass=True,
                 moveable=False, required=True, preflight=True,
-                help='Please choose at least one content service that plex_debrid should monitor for new content.'),
-        setting('Plex users', ['Please provide a name for this Plex user: ',
-                                'Please provide the Plex token for this Plex user: '], content.services.plex, 'users', entry="user",
-                help="Please create a plex user by providing a name and a token. To find the plex token for this user, open your favorite browser, log in to this plex account on 'https://plex.tv' and then visit 'https://plex.tv/devices.xml'. Pick a 'token' from one of the listed devices.",
-                hidden=True),
-        setting('Plex auto remove',
-                'Please choose which media type/s should be removed from your watchlist after successful download ("movie","show","both" or "none"): ',
-                content.services.plex.watchlist, 'autoremove', hidden=True,
-                help='By default, movies are removed from your watchlist after a successful download. In this setting you can choose to automatically remove shows, shows and movies or nothing.'),
-        setting('Trakt users', ['Please provide a name for this Trakt user: ',
-                                'Please open your favorite browser, log into this Trakt user and open "https://trakt.tv/activate". Enter this code: '],
-                content.services.trakt, 'users', entry="user", oauth=True, hidden=True),
-        setting('Trakt lists', [''], content.services.trakt, 'lists', hidden=True),
-        setting('Trakt auto remove',
-                'Please choose which media type/s should be removed from your watchlist after successful download ("movie","show","both" or "none"): ',
-                content.services.trakt.watchlist, 'autoremove', hidden=True,
-                help='By default, movies are removed from your watchlist after a successful download. In this setting you can choose to automatically remove shows, shows and movies or nothing.'),
-        setting('Trakt early movie releases', 'Please enter "true" or "false": ', content.services.trakt, 'early_releases', help="plex_debrid can check for early releases of movies by checking trakt for 'latest releases' lists. You can turn this feature on or off.",hidden=True),
-        setting('Overseerr users', ['Please choose a user: '], content.services.overseerr, 'users', entry="user",
-                help="Please specify which users requests should be downloaded by plex_debrid.", hidden=True),
-        setting('Overseerr API Key', 'Please specify your Overseerr API Key: ', content.services.overseerr, 'api_key', hidden=True),
-        setting('Overseerr Base URL', 'Please specify your Overseerr base URL: ', content.services.overseerr, 'base_url',
+                help='Please choose at least one content service that jellyfin_debrid should monitor for new content.'),
+        # REMOVED: Plex/Trakt settings - using Jellyseerr only
+        # setting('Plex users', ...),
+        # setting('Plex auto remove', ...),
+        # setting('Trakt users', ...),
+        # setting('Trakt lists', ...),
+        # setting('Trakt auto remove', ...),
+        # setting('Trakt early movie releases', ...),
+        setting('jellyseerr users', ['Please choose a user: '], content.services.jellyseerr, 'users', entry="user",
+                help="Please specify which users requests should be downloaded by jellyfin_debrid.", hidden=True),
+        setting('jellyseerr API Key', 'Please specify your jellyseerr API Key: ', content.services.jellyseerr, 'api_key', hidden=True),
+        setting('jellyseerr Base URL', 'Please specify your jellyseerr base URL: ', content.services.jellyseerr, 'base_url',
                 hidden=True),
     ]
         ],
@@ -345,19 +350,17 @@ settings_list = [
         setting('Library ignore services', [''], content.classes.ignore, 'active', entry="libary ignore service", subclass=True,
                 radio=False, required=True, preflight=True,
                 help='Please choose at least one libary ignore service that plex debrid should use to ignore content that could repeatedly not be found.'),
-        setting('Trakt library user', [''], content.services.trakt.library, 'user', hidden=True),
-        setting('Trakt refresh user', [''], content.services.trakt.library.refresh, 'user', hidden=True),
-        setting('Plex library refresh', [''], content.services.plex.library.refresh, 'sections', hidden=True,moveable=False),
-        setting('Plex library partial scan', 'Please enter "true" or "false": ', content.services.plex.library.refresh, 'partial', hidden=True, help="Specify wether or not plex_debrid should attempt to partially scan your plex libraries."),
-        setting('Plex library refresh delay', 'Please enter a number (e.g 420 or 69.69): ', content.services.plex.library.refresh, 'delay', hidden=True, help="Specify the amount of seconds plex_debrid should wait between adding a torrent and scanning your plex libraries."),
-        setting('Plex server address', 'Please enter your Plex server address: ', content.services.plex.library, 'url', hidden=True),
-        setting('Plex library check', [
-            'Please specify a library section number that should be checked for existing content before download: '],
-                content.services.plex.library, 'check', hidden=True, entry="section",
-                help='By default, your entire library (including plex shares) is checked for existing content before a download is started. This setting allows you limit this check to specific library sections. To find a section number, go to "https://app.plex.tv", open your the library you want to include in the check and look for the "source=" parameter in the url.'),
-        setting('Plex ignore user', '', content.services.plex.library.ignore, 'user', hidden=True),
-        setting('Trakt ignore user', '', content.services.trakt.library.ignore, 'user', hidden=True),
-        setting('Local ignore list path', 'Please provide a path where the list ignored media items should be saved: ', content.services.textfile.library.ignore, 'path', hidden=True),
+        # REMOVED: Plex/Trakt library settings - using Jellyseerr/Jellyfin only
+        # setting('Trakt library user', ...),
+        # setting('Trakt refresh user', ...),
+        # setting('Plex library refresh', ...),
+        # setting('Plex library partial scan', ...),
+        # setting('Plex library refresh delay', ...),
+        # setting('Plex server address', ...),
+        # setting('Plex library check', ...),
+        # setting('Plex ignore user', ...),
+        # setting('Trakt ignore user', ...),
+        # setting('Local ignore list path', ...), # textfile doesn't exist
         setting('Jellyfin API Key', 'Please specify your Jellyfin API Key: ', content.services.jellyfin, 'api_key', hidden=True),
         setting('Jellyfin server address', 'Please enter your Jellyfin server address: ', content.services.jellyfin.library, 'url', hidden=True),
     
@@ -367,18 +370,19 @@ settings_list = [
         setting('Sources', [''], scraper.services, 'active', entry="source", subclass=True, preflight=True),
         setting('Versions', [], releases.sort, 'versions', special=True, entry="version"),
         setting('Special character renaming', ['Please specify a character or string that should be replaced, or provide a regex using {{regex}}: ','Please specify with what character or string it should be replaced: '],releases.rename, 'replaceChars', entry="rule",help='In this setting you can specify a character or a string that should be replaced by nothing, some other character or a string. You can enter regular expressions using {{regex}}.'),
-        setting('Rarbg API Key', 'The Rarbg API Key gets refreshed automatically, enter the default value: ',scraper.services.rarbg, 'token', hidden=True),
-        setting('Jackett Base URL', 'Please specify your Jackett base URL: ', scraper.services.jackett, 'base_url',hidden=True),
-        setting('Jackett API Key', 'Please specify your Jackett API Key: ', scraper.services.jackett, 'api_key',hidden=True),
-        setting('Jackett resolver timeout', 'Please enter the resolver timeout in seconds: ', scraper.services.jackett, 'resolver_timeout',hidden=True),
-        setting('Jackett indexer filter', 'Please enter the jackett indexer filters that should be used, seperated by a "," character. Enter "all" to not filter your indexers: ', scraper.services.jackett, 'filter', hidden=True),
-        setting('Prowlarr Base URL', 'Please specify your Prowlarr base URL: ', scraper.services.prowlarr, 'base_url',hidden=True),
-        setting('Prowlarr API Key', 'Please specify your Prowlarr API Key: ', scraper.services.prowlarr, 'api_key',hidden=True),
-        setting('Orionoid API Key','Please open your favorite browser, log into your orionoid account and open "https://auth.orionoid.com". Enter this code: ',scraper.services.orionoid, 'token', hidden=True, oauth=True),
-        setting('Orionoid Scraper Parameters',['Please enter a valid orionoid parameter: ','Please enter a valid value: '],scraper.services.orionoid, 'default_opts', entry="parameter", help='This settings lets you control the orionoid scraping parameters. Check out the possible parameters and their values at "https://panel.orionoid.com/" in the "Developers" menu, section "API Docs" under "Stream API".', hidden=True),
-        setting('Nyaa parameters', 'Enter custom url parameters. Categories: anime "&c=1_0", anime raw "&c=1_4", anime EN subs "&c=1_2", anime non-EN subs "&c=1_3". Enter your parameters (default: "&c=1_0&s=seeders&o=desc"): ',scraper.services.nyaa, 'params', hidden=True),
-        setting('Nyaa sleep time', 'Enter a time in seconds to sleep between requests (default: "5"): ',scraper.services.nyaa, 'sleep', hidden=True),
-        setting('Nyaa proxy', 'Enter a proxy to use for nyaa (default: "nyaa.si"): ',scraper.services.nyaa, 'proxy', hidden=True),
+        # REMOVED: Missing scraper services (only torrentio exists)
+        # setting('Rarbg API Key', ...),
+        # setting('Jackett Base URL', ...),
+        # setting('Jackett API Key', ...),
+        # setting('Jackett resolver timeout', ...),
+        # setting('Jackett indexer filter', ...),
+        # setting('Prowlarr Base URL', ...),
+        # setting('Prowlarr API Key', ...),
+        # setting('Orionoid API Key', ...),
+        # setting('Orionoid Scraper Parameters', ...),
+        # setting('Nyaa parameters', ...),
+        # setting('Nyaa sleep time', ...),
+        # setting('Nyaa proxy', ...),
         setting('Torrentio Scraper Parameters','Please enter a valid torrentio manifest url: ',scraper.services.torrentio, 'default_opts', entry="parameter", help='This settings lets you control the torrentio scraping parameters. Visit "https://torrentio.strem.fun/configure" and configure your settings. Dont choose a debrid service. The "manifest url" will be copied to your clipboard.', hidden=True),
     ]
         ],

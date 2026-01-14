@@ -28,14 +28,17 @@ def ignored():
     while not back:
         ui_cls('Options/Ignored Media/')
         if len(content.classes.ignore.ignored) == 0:
-            library = content.classes.library()[0]()
+            library_services = content.classes.library()
+            if len(library_services) == 0:
+                print('No library collection service configured. Please configure a library service first.')
+                time.sleep(3)
+                return
+            library = library_services[0]()
             if len(library) > 0:
-                # get entire plex_watchlist
-                plex_watchlist = content.services.plex.watchlist()
-                # get entire trakt_watchlist
-                trakt_watchlist = content.services.trakt.watchlist()
+                # REMOVED: Plex/Trakt watchlists - using Jellyseerr only
+                jellyseerr_requests = content.services.jellyseerr.requests()
                 print('checking new content ...')
-                for iterator in itertools.zip_longest(plex_watchlist, trakt_watchlist):
+                for iterator in itertools.zip_longest([jellyseerr_requests]):
                     for element in iterator:
                         if hasattr(element, 'uncollected') and hasattr(element, 'watched'):
                             element.watched()
@@ -278,7 +281,7 @@ def save(doprint=True):
             time.sleep(2)
     except:
         print()
-        print("Error: It looks like plex_debrid can not write your settings into a config file. Make sure you are running the script with write or administator privilege.")
+        print("Error: It looks like jellyfin_debrid can not write your settings into a config file. Make sure you are running the script with write or administator privilege.")
         print()
         input("Press enter to exit: ")
         exit()
@@ -353,7 +356,7 @@ def run(cdir = "", smode = False):
 
 def update_available():
     try:
-        response = requests.get('https://raw.githubusercontent.com/itsToggle/plex_debrid/main/ui/ui_settings.py',timeout=0.25)
+        response = requests.get('https://raw.githubusercontent.com/itsToggle/jellyfin_debrid/main/ui/ui_settings.py',timeout=0.25)
         response = response.content.decode()
         if regex.search("(?<=')([0-9]+\.[0-9]+)(?=')",response):
             v = regex.search("(?<=')([0-9]+\.[0-9]+)(?=')",response).group()
@@ -366,7 +369,7 @@ def update_available():
 
 def update(settings, version):
     ui_cls('/Update ' + version[0] + '/')
-    print('There has been an update to plex_debrid, which is not compatible with your current settings:')
+    print('There has been an update to jellyfin_debrid, which is not compatible with your current settings:')
     print()
     print(version[1])
     print()
@@ -405,15 +408,16 @@ def threaded(stop):
     timeout = 5
     regular_check = 1800
     timeout_counter = 0
-    library = content.classes.library()[0]()
-    # get entire plex_watchlist
-    plex_watchlist = content.services.plex.watchlist()
-    # get entire trakt_watchlist
-    trakt_watchlist = content.services.trakt.watchlist()
-    # get all overseerr request
-    overseerr_requests = content.services.overseerr.requests()
-    # combine all content, sort by newest
-    watchlists = plex_watchlist + trakt_watchlist + overseerr_requests
+    library_services = content.classes.library()
+    if len(library_services) == 0:
+        ui_print('No library collection service configured. Exiting.', ui_settings.debug)
+        return
+    library = library_services[0]()
+    # REMOVED: Plex/Trakt watchlists - using Jellyseerr only
+    # get all jellyseerr request
+    jellyseerr_requests = content.services.jellyseerr.requests()
+    # use only jellyseerr requests
+    watchlists = jellyseerr_requests
     try:
         watchlists.data.sort(key=lambda s: s.watchlistedAt,reverse=True)
     except:
@@ -427,11 +431,11 @@ def threaded(stop):
                 t1 = time.time()
                 #if more than 5 seconds have passed, check for newly watchlisted content
                 if t1-t0 >= 5:
-                    if plex_watchlist.update() or overseerr_requests.update() or trakt_watchlist.update():
+                    if jellyseerr_requests.update():
                         library = content.classes.library()[0]()
                         if len(library) == 0:
                             continue
-                        new_watchlists = plex_watchlist + trakt_watchlist + overseerr_requests
+                        new_watchlists = jellyseerr_requests
                         try:
                             new_watchlists.data.sort(key=lambda s: s.watchlistedAt,reverse=True)
                         except:
@@ -448,11 +452,11 @@ def threaded(stop):
                     t0 = time.time()
         ui_print('done')
     while not stop():
-        if plex_watchlist.update() or overseerr_requests.update() or trakt_watchlist.update():
+        if jellyseerr_requests.update():
             library = content.classes.library()[0]()
             if len(library) == 0:
                 continue
-            watchlists = plex_watchlist + trakt_watchlist + overseerr_requests
+            watchlists = jellyseerr_requests
             try:
                 watchlists.data.sort(key=lambda s: s.watchlistedAt,reverse=True)
             except:
@@ -474,14 +478,11 @@ def threaded(stop):
                         element.download(library=library)
             ui_print('done')
         elif timeout_counter >= regular_check:
-            # get entire plex_watchlist
-            plex_watchlist = content.services.plex.watchlist()
-            # get entire trakt_watchlist
-            trakt_watchlist = content.services.trakt.watchlist()
-            # get all overseerr request, match content to plex media type and add to monitored list
-            overseerr_requests = content.services.overseerr.requests()
-            # combine all content, sort by newest
-            watchlists = plex_watchlist + trakt_watchlist + overseerr_requests
+            # REMOVED: Plex/Trakt watchlists - using Jellyseerr only
+            # get all jellyseerr request
+            jellyseerr_requests = content.services.jellyseerr.requests()
+            # use only jellyseerr requests
+            watchlists = jellyseerr_requests
             try:
                 watchlists.data.sort(key=lambda s: s.watchlistedAt,reverse=True)
             except:
@@ -498,11 +499,11 @@ def threaded(stop):
                     t1 = time.time()
                     #if more than 5 seconds have passed, check for newly watchlisted content
                     if t1-t0 >= 5:
-                        if plex_watchlist.update() or overseerr_requests.update() or trakt_watchlist.update():
+                        if jellyseerr_requests.update():
                             library = content.classes.library()[0]()
                             if len(library) == 0:
                                 continue
-                            new_watchlists = plex_watchlist + trakt_watchlist + overseerr_requests
+                            new_watchlists = jellyseerr_requests
                             try:
                                 new_watchlists.data.sort(key=lambda s: s.watchlistedAt,reverse=True)
                             except:

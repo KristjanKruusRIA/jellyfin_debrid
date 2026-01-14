@@ -1,17 +1,15 @@
 
 from base import *
 #import child modules
-from content.services import plex
-from content.services import trakt
-from content.services import overseerr
-from content.services import textfile
+from content.services import jellyseerr
+# REMOVED: Missing service files (plex, trakt, textfile)
 from content.services import jellyfin
 
 #define subclass method
 def __subclasses__():
-    return [plex,trakt,overseerr]
+    return [jellyseerr]
 
-active = ['Plex', 'Trakt', 'Overseerr']
+active = ['jellyseerr']
 
 def setup(cls, new=False):
     from settings import settings_list

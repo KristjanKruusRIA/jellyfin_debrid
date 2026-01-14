@@ -1,0 +1,14 @@
+services:
+  jellyfin_debrid:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: jellyfin_debrid
+    network_mode: host
+    stdin_open: true
+    tty: true
+    volumes:
+      - ./config:/config
+    restart: unless-stopped
+    env_file:
+      - .env

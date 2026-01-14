@@ -22,26 +22,27 @@ def setup(cls, new=False):
     setup(cls,new)
 
 # Error Log
-def logerror(response):
+def logerror(response, context=None):
     if not response.status_code in [200,201,204]:
         desc = ""
         for error in errors:
             if response.status_code == error[0]:
                 desc = error[1]
-        ui_print("[realdebrid] error: (" + str(response.status_code) + desc + ") " + str(response.content), debug=ui_settings.debug)
+        extra = (" Context: " + str(context)) if context else ""
+        ui_print("[realdebrid] error: (" + str(response.status_code) + desc + ") " + str(response.content) + extra, debug=ui_settings.debug)
     if response.status_code == 401:
-        ui_print("[realdebrid] error: (401 unauthorized): realdebrid api key does not seem to work. check your realdebrid settings.")
+        ui_print("[realdebrid] error: (401 unauthorized): realdebrid api key does not seem to work. check your realdebrid settings." + (" Context: " + str(context) if context else ""))
     if response.status_code == 403:
-        ui_print("[realdebrid] error: (403 unauthorized): You may have attempted to add an infringing torrent or your realdebrid account is locked or you dont have premium.")
+        ui_print("[realdebrid] error: (403 unauthorized): You may have attempted to add an infringing torrent or your realdebrid account is locked or you dont have premium." + (" Context: " + str(context) if context else ""))
 
 # Get Function
-def get(url):
+def get(url, context=None):
     headers = {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36','authorization': 'Bearer ' + api_key}
     response = None
     try:
         response = session.get(url, headers=headers)
-        logerror(response)
+        logerror(response, context)
         response = json.loads(response.content, object_hook=lambda d: SimpleNamespace(**d))
     except Exception as e:
         ui_print("[realdebrid] error: (json exception): " + str(e), debug=ui_settings.debug)
@@ -49,31 +50,33 @@ def get(url):
     return response
 
 # Post Function
-def post(url, data):
+def post(url, data, context=None):
     headers = {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36','authorization': 'Bearer ' + api_key}
     response = None
     try:
         response = session.post(url, headers=headers, data=data)
-        logerror(response)
+        logerror(response, context)
         response = json.loads(response.content, object_hook=lambda d: SimpleNamespace(**d))
     except Exception as e:
         if hasattr(response,"status_code"):
             if response.status_code >= 300:
-                ui_print("[realdebrid] error: (json exception): " + str(e), debug=ui_settings.debug)
+                ui_print("[realdebrid] error: (json exception): " + str(e) + (" Context: " + str(context) if context else ""), debug=ui_settings.debug)
         else:
-            ui_print("[realdebrid] error: (json exception): " + str(e), debug=ui_settings.debug)
+            ui_print("[realdebrid] error: (json exception): " + str(e) + (" Context: " + str(context) if context else ""), debug=ui_settings.debug)
         response = None
     return response
 
 # Delete Function
-def delete(url):
+def delete(url, context=None):
     headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36','authorization': 'Bearer ' + api_key}
     try:
-        requests.delete(url, headers=headers)
+        resp = requests.delete(url, headers=headers)
+        if resp.status_code >= 300:
+            logerror(resp, context)
         # time.sleep(1)
     except Exception as e:
-        ui_print("[realdebrid] error: (delete exception): " + str(e), debug=ui_settings.debug)
+        ui_print("[realdebrid] error: (delete exception): " + str(e) + (" Context: " + str(context) if context else ""), debug=ui_settings.debug)
         None
     return None
 
@@ -139,13 +142,14 @@ def download(element, stream=True, query='', force=False):
                                 cached_ids += [file.id]
                             # post magnet to real debrid
                             try:
-                                response = post('https://api.real-debrid.com/rest/1.0/torrents/addMagnet',{'magnet': str(release.download[0])})
+                                context = "release: '" + str(release.title) + "' | item: '" + str(element.query()) + "'"
+                                response = post('https://api.real-debrid.com/rest/1.0/torrents/addMagnet',{'magnet': str(release.download[0])}, context=context)
                                 torrent_id = str(response.id)
                             except:
                                 ui_print('[realdebrid] error: could not add magnet for release: ' + release.title, ui_settings.debug)
                                 continue
-                            response = post('https://api.real-debrid.com/rest/1.0/torrents/selectFiles/' + torrent_id,{'files': str(','.join(cached_ids))})
-                            response = get('https://api.real-debrid.com/rest/1.0/torrents/info/' + torrent_id)
+                            response = post('https://api.real-debrid.com/rest/1.0/torrents/selectFiles/' + torrent_id,{'files': str(','.join(cached_ids))}, context=context)
+                            response = get('https://api.real-debrid.com/rest/1.0/torrents/info/' + torrent_id, context=context)
                             actual_title = ""
                             if len(response.links) == len(cached_ids):
                                 actual_title = response.filename
@@ -165,12 +169,12 @@ def download(element, stream=True, query='', force=False):
                                             return True
                                 else:
                                     ui_print('[realdebrid] error: selecting this cached file combination returned a .rar archive - trying a different file combination.', ui_settings.debug)
-                                    delete('https://api.real-debrid.com/rest/1.0/torrents/delete/' + torrent_id)
+                                    delete('https://api.real-debrid.com/rest/1.0/torrents/delete/' + torrent_id, context=context)
                                     continue
                             if len(release.download) > 0:
                                 for link in release.download:
                                     try:
-                                        response = post('https://api.real-debrid.com/rest/1.0/unrestrict/link',{'link': link})
+                                        response = post('https://api.real-debrid.com/rest/1.0/unrestrict/link',{'link': link}, context=context)
                                     except:
                                         break
                                 release.files = version.files
@@ -182,9 +186,10 @@ def download(element, stream=True, query='', force=False):
                 return False
             else:
                 try:
-                    response = post('https://api.real-debrid.com/rest/1.0/torrents/addMagnet',{'magnet': release.download[0]})
+                    context = "release: '" + str(release.title) + "' | item: '" + str(element.query()) + "'"
+                    response = post('https://api.real-debrid.com/rest/1.0/torrents/addMagnet',{'magnet': release.download[0]}, context=context)
                     time.sleep(0.1)
-                    post('https://api.real-debrid.com/rest/1.0/torrents/selectFiles/' + str(response.id),{'files': 'all'})
+                    post('https://api.real-debrid.com/rest/1.0/torrents/selectFiles/' + str(response.id),{'files': 'all'}, context=context)
                     ui_print('[realdebrid] adding uncached release: ' + release.title)
                     return True
                 except:
@@ -211,7 +216,7 @@ def check(element, force=False):
             ui_print("[realdebrid] error (missing torrent hash): ignoring release '" + release.title + "' ",ui_settings.debug)
             element.Releases.remove(release)
     if len(hashes) > 0:
-        response = get('https://api.real-debrid.com/rest/1.0/torrents/instantAvailability/' + '/'.join(hashes))
+        response = get('https://api.real-debrid.com/rest/1.0/torrents/instantAvailability/' + '/'.join(hashes), context=element.query())
         ui_print("[realdebrid] checking and sorting all release files ...", ui_settings.debug)
         for release in element.Releases:
             release.files = []
@@ -238,3 +243,34 @@ def check(element, force=False):
                         release.cached += ['RD']
                         continue
         ui_print("done",ui_settings.debug)
+
+# Diagnostic: get basic account info (useful to debug 403 permissions)
+def account_info():
+    try:
+        response = get('https://api.real-debrid.com/rest/1.0/user')
+        if response is None:
+            ui_print('[realdebrid] error: unable to fetch account info', ui_settings.debug)
+            return None
+        ui_print('[realdebrid] account info: ' + str(response.__dict__), ui_settings.debug)
+        return response
+    except Exception as e:
+        ui_print('[realdebrid] error: fetching account info: ' + str(e), ui_settings.debug)
+        return None
+
+# Diagnostic: list torrents (helps verify that RD accepted an uncached torrent and its download status)
+def torrents_list(limit=50):
+    try:
+        response = get('https://api.real-debrid.com/rest/1.0/torrents?limit=' + str(limit), context='torrents_list')
+        if response is None:
+            ui_print('[realdebrid] error: unable to fetch torrents list', ui_settings.debug)
+            return None
+        # Response is a list of torrent objects
+        try:
+            summary = [{'id': t.id, 'status': t.status, 'filename': getattr(t, 'filename', None), 'files': len(getattr(t, 'files', [])) if hasattr(t, 'files') else None} for t in response]
+        except Exception:
+            summary = str(response)
+        ui_print('[realdebrid] torrents: ' + str(summary), ui_settings.debug)
+        return response
+    except Exception as e:
+        ui_print('[realdebrid] error: fetching torrents list: ' + str(e), ui_settings.debug)
+        return None

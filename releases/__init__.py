@@ -1,5 +1,11 @@
 from base import *
 from ui.ui_print import *
+import hashlib
+import time
+
+# Cache last printed sort and releases to avoid duplicate logging when functions are called multiple times in quick succession
+_last_sort_print = {}
+_last_releases_print = {'fingerprint': None, 'time': 0.0}
 
 def strike(text):
     result = ''
@@ -1355,12 +1361,16 @@ class sort:
             return self.name == __o.name
 
         def applies(self,element):
-            for trigger in self.triggers:
+            for trigger_data in self.triggers:
+                trigger_obj = None
                 for subtrigger in sort.version.trigger.__subclasses__():
-                    if subtrigger.name == trigger[0]:
-                        trigger = subtrigger(trigger[0], trigger[1], trigger[2])
+                    if subtrigger.name == trigger_data[0]:
+                        trigger_obj = subtrigger(trigger_data[0], trigger_data[1], trigger_data[2])
                         break
-                if not trigger.apply(element):
+                # Skip if trigger type not found
+                if trigger_obj is None:
+                    continue
+                if not trigger_obj.apply(element):
                     return False
             return True
 
@@ -1405,7 +1415,17 @@ class sort:
                     ui_print('error: there seems to be an undefined rule in your version settings. skipping this rule.')
                     continue
             if doprint:
-                ui_print('sorting releases for version [' + version.name + '] ... done - found ' + str(len(scraped_releases)) + ' releases')
+                # Avoid duplicate sort logs for the same version and identical release set within a short window
+                try:
+                    titles = '|'.join([r.title for r in scraped_releases])
+                    key = version.name + ':' + hashlib.md5(titles.encode('utf-8')).hexdigest()
+                    now = time.time()
+                    last = _last_sort_print.get(key, 0)
+                    if now - last > 1.0:
+                        ui_print('sorting releases for version [' + version.name + '] ... done - found ' + str(len(scraped_releases)) + ' releases')
+                        _last_sort_print[key] = now
+                except Exception:
+                    ui_print('sorting releases for version [' + version.name + '] ... done - found ' + str(len(scraped_releases)) + ' releases')
         return scraped_releases
 
 class torrent2magnet:
@@ -1521,6 +1541,17 @@ class torrent2magnet:
                 + '&tr=' + metadata[b'announce'].decode() 
 
 def print_releases(scraped_releases,uiprint=False):
+    # Avoid duplicate printing of identical release lists within short time window
+    try:
+        titles = '|'.join([r.title for r in scraped_releases])
+        fingerprint = hashlib.md5(titles.encode('utf-8')).hexdigest()
+        now = time.time()
+        if _last_releases_print['fingerprint'] == fingerprint and (now - _last_releases_print['time']) < 1.0:
+            return
+        _last_releases_print['fingerprint'] = fingerprint
+        _last_releases_print['time'] = now
+    except Exception:
+        pass
     longest_file = 0
     longest_cached = 0
     longest_title = 0

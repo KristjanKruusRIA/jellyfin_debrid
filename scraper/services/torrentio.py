@@ -5,9 +5,15 @@ import releases
 
 name = "torrentio"
 
-default_opts = "https://torrentio.strem.fun/sort=qualitysize|qualityfilter=480p,scr,cam/manifest.json"
+# Default options — includes quality filters and client-side limit and debrid options
+default_opts = "https://torrentio.strem.fun/qualityfilter=threed,720p,480p,scr,cam|limit=5|debridoptions=nodownloadlinks/manifest.json"
 
 session = custom_session()
+# Use a browser-like User-Agent and accept JSON to avoid remote server blocking Python requests
+session.headers.update({
+    'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Accept': 'application/json, text/plain, */*'
+})
 
 
 def get(url):
@@ -69,6 +75,23 @@ def scrape(query, altquery):
         r'(S[0-9]|complete|S\?[0-9])', altquery, regex.I) else "movie")
     opts = default_opts.split(
         "/")[-2] if default_opts.endswith("manifest.json") else ""
+    # Parse optional limit from opts (e.g., '...|limit=5') and enforce client-side
+    limit = None
+    try:
+        m = regex.search(r'limit=([0-9]+)', opts)
+        if m:
+            limit = int(m.group(1))
+    except:
+        limit = None
+    # Parse debrid options (e.g., 'debridoptions=nodownloadlinks')
+    nodownloadlinks = False
+    try:
+        m = regex.search(r'debridoptions=([^|]+)', opts)
+        if m and 'nodownloadlinks' in m.group(1).split(','):
+            nodownloadlinks = True
+            ui_print('[torrentio] using debridoptions=nodownloadlinks', ui_settings.debug)
+    except:
+        nodownloadlinks = False
     if type == "show":
         s = (regex.search(r'(?<=S)([0-9]+)', altquery, regex.I).group()
              if regex.search(r'(?<=S)([0-9]+)', altquery, regex.I) else None)
@@ -139,7 +162,10 @@ def scrape(query, altquery):
         ui_print('[torrentio] error: "' + response.streams[0].name.replace('\n',
                  ' ') + '" - ' + response.streams[0].title.replace('\n', ' '))
         return scraped_releases
+    count = 0
     for result in response.streams:
+        if limit and count >= limit:
+            break
         try:
             title = result.title.split('\n')[0].replace(' ', '.')
             size = (float(regex.search(r'(?<=💾 )([0-9]+.?[0-9]+)(?= GB)', result.title).group()) if regex.search(r'(?<=💾 )([0-9]+.?[0-9]+)(?= GB)', result.title) else float(
@@ -151,6 +177,7 @@ def scrape(query, altquery):
                       if regex.search(r'(?<=⚙️ )(.*)(?=\n|$)', result.title) else "unknown")
             scraped_releases += [releases.release(
                 '[torrentio: '+source+']', 'torrent', title, [], size, links, seeds)]
+            count += 1
         except:
             continue
     return scraped_releases

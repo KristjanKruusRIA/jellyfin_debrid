@@ -34,7 +34,7 @@ def ui_print(string: str, debug="true"):
         #log
         if ui_settings.log == "true":
             try:
-                with open(config_dir + '/plex_debrid.log', 'a') as f:
+                with open(config_dir + '/jellyfin_debrid.log', 'a') as f:
                     if string == 'done' and sameline_log:
                         f.write('done' + '\n')
                         sameline_log = False
@@ -56,7 +56,7 @@ def ui_print(string: str, debug="true"):
                         f.write('[' + str(datetime.datetime.now().strftime("%d/%m/%y %H:%M:%S")) + '] ' + string + '\n')
                         sameline_log = False
             except:
-                print('[' + str(datetime.datetime.now().strftime("%d/%m/%y %H:%M:%S")) + '] logging error: couldnt write into log file at: ' + config_dir + '/plex_debrid.log')
+                print('[' + str(datetime.datetime.now().strftime("%d/%m/%y %H:%M:%S")) + '] logging error: couldnt write into log file at: ' + config_dir + '/jellyfin_debrid.log')
         #ui
         if debug == "true":
             if string == 'done' and sameline:

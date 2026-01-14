@@ -1,16 +1,17 @@
 from base import *
 #import child modules
-from scraper.services import rarbg
-from scraper.services import x1337
-from scraper.services import jackett
-from scraper.services import prowlarr
-from scraper.services import orionoid
-from scraper.services import nyaa
+# FIXED: Only import scrapers that exist
 from scraper.services import torrentio
+# from scraper.services import rarbg
+# from scraper.services import x1337
+# from scraper.services import jackett
+# from scraper.services import prowlarr
+# from scraper.services import orionoid
+# from scraper.services import nyaa
 
 #define subclass method
 def __subclasses__():
-    return [rarbg,x1337,jackett,prowlarr,orionoid,nyaa,torrentio]
+    return [torrentio]
 
 active = ['torrentio']
 overwrite = []

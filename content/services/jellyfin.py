@@ -36,7 +36,7 @@ def post(url, data):
         ui_print("jellyfin error: (json exception): " + str(e), debug=ui_settings.debug)
         return None
 
-class library():
+class library(classes.library):
     name = 'Jellyfin Library'
     url = 'http://localhost:8096'
 
@@ -139,26 +139,45 @@ class library():
                 print("[jellyfin] error: couldnt refresh libraries")
 
     def __new__(self):
-        #not implemented yet
         list = []
         ui_print('[jellyfin] getting entire jellyfin library ...')
         url = library.url + '/users'
-        response = get(url)
-        for user in response:
-            url = library.url + '/users/' + user.Id + '/Items?Recursive=true&fields=AirTime,CanDelete,CanDownload,ChannelInfo,Chapters,ChildCount,CumulativeRunTimeTicks,CustomRating,DateCreated,DateLastMediaAdded,DisplayPreferencesId,Etag,ExternalUrls,Genres,HomePageUrl,ItemCounts,MediaSourceCount,MediaSources,OriginalTitle,Overview,ParentId,Path,People,PlayAccess,ProductionLocations,ProviderIds,PrimaryImageAspectRatio,RecursiveItemCount,Settings,ScreenshotImageTags,SeriesPrimaryImage,SeriesStudio,SortName,SpecialEpisodeNumbers,Studios,BasicSyncInfo,SyncInfo,Taglines,Tags,RemoteTrailers,MediaStreams,SeasonUserData,ServiceName,ThemeSongIds,ThemeVideoIds,ExternalEtag,PresentationUniqueKey,InheritedParentalRatingValue,ExternalSeriesId,SeriesPresentationUniqueKey,DateLastRefreshed,DateLastSaved,RefreshState,ChannelImage,EnableMediaSourceDisplay,Width,Height,ExtraIds,LocalTrailerCount,IsHD,SpecialFeatureCount'
-            response = get(url)
-            response
+        users_response = get(url)
+        if not users_response:
+            ui_print("[jellyfin error]: couldnt reach local jellyfin server at server address: " + library.url)
+            return list
+        
+        # Get items from first user only
+        try:
+            # users_response should be a list, get first user
+            user = users_response[0]
+        except (TypeError, IndexError, KeyError):
+            # If it's not indexable or is empty, use it directly
+            user = users_response
+        # Request movies and series with minimal fields for better performance
+        url = library.url + '/users/' + user.Id + '/Items?Recursive=true&IncludeItemTypes=Movie,Series&Fields=ProviderIds,Path,PremiereDate'
+        items_response = get(url, timeout=60)
         ui_print('done')
-        if hasattr(response, 'MediaContainer'):
-            if hasattr(response.MediaContainer, 'Metadata'):
-                for element in response.MediaContainer.Metadata:
-                    list += [classes.media(element)]
+        
+        if not items_response:
+            ui_print("[jellyfin error]: couldnt get items from jellyfin server at " + library.url)
+            return list
+        
+        # Jellyfin returns {"Items": [...], "TotalRecordCount": ...}
+        if hasattr(items_response, 'Items'):
+            ui_print(f'[jellyfin] found {items_response.TotalRecordCount} items in library')
+            for element in items_response.Items:
+                try:
+                    # Convert Jellyfin item to jellyfin_debrid media object
+                    media_obj = classes.media(element)
+                    list += [media_obj]
+                except Exception as e:
+                    ui_print(f"[jellyfin] error processing item: {str(e)}", debug=ui_settings.debug)
         else:
-            ui_print(
-                "[jellyfin error]: couldnt reach local jellyfin server at server address: " + library.url + " - or this library really is empty.")
+            ui_print("[jellyfin error]: unexpected response format from jellyfin server")
+        
         if len(list) == 0:
-            ui_print(
-                "[jellyfin error]: Your library seems empty. To prevent unwanted behaviour, no further downloads will be started. If your library really is empty, please add at least one media item manually.")
+            ui_print("[jellyfin error]: Your library seems empty. To prevent unwanted behaviour, no further downloads will be started. If your library really is empty, please add at least one media item manually.")
         return list
 
 # Multiprocessing watchlist method
