@@ -175,8 +175,14 @@ def scrape(query, altquery):
             )) if regex.search(r'(?<=👤 )([1-9]+)', result.title) else 0)
             source = ((regex.search(r'(?<=⚙️ )(.*)(?=\n|$)', result.title).group())
                       if regex.search(r'(?<=⚙️ )(.*)(?=\n|$)', result.title) else "unknown")
-            scraped_releases += [releases.release(
-                '[torrentio: '+source+']', 'torrent', title, [], size, links, seeds)]
+            release = releases.release(
+                '[torrentio: '+source+']', 'torrent', title, [], size, links, seeds)
+            # If nodownloadlinks is enabled, Torrentio only returns cached results
+            # Mark them as cached for RealDebrid to skip the cache check
+            if nodownloadlinks:
+                release.cached = ['RD']  # Assume RealDebrid since that's the primary service
+                ui_print('[torrentio] marking release as cached (nodownloadlinks enabled): ' + title, ui_settings.debug)
+            scraped_releases += [release]
             count += 1
         except:
             continue

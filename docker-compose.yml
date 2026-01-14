@@ -9,6 +9,9 @@ services:
     tty: true
     volumes:
       - ./config:/config
+      - E:/Media:/media
     restart: unless-stopped
     env_file:
       - .env
+    environment:
+      - DOWNLOAD_PATH=/media

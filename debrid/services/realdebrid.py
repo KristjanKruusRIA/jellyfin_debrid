@@ -2,6 +2,15 @@
 from base import *
 from ui.ui_print import *
 import releases
+import downloader
+
+# Try to import rd_downloader for existing torrents
+try:
+    import rd_downloader
+    has_rd_downloader = True
+except:
+    has_rd_downloader = False
+    ui_print("[realdebrid] rd_downloader module not available", ui_settings.debug)
 
 # (required) Name of the Debrid service
 name = "Real Debrid"
@@ -134,6 +143,65 @@ def download(element, stream=True, query='', force=False):
         if regex.match(query, release.title,regex.I) or force:
             if stream:
                 release.size = 0
+                # Check if files are available, if not we need to add magnet to get file list
+                if not release.files or all(not hasattr(v, 'files') or len(v.files) == 0 for v in release.files):
+                    ui_print('[realdebrid] no file info available (nodownloadlinks enabled), adding magnet to RD...', ui_settings.debug)
+                    # Add magnet to get file information
+                    try:
+                        context = "release: '" + str(release.title) + "' | item: '" + str(element.query()) + "'"
+                        response = post('https://api.real-debrid.com/rest/1.0/torrents/addMagnet',{'magnet': str(release.download[0])}, context=context)
+                        torrent_id = str(response.id)
+                        ui_print('[realdebrid] magnet added, torrent_id: ' + torrent_id, ui_settings.debug)
+                        
+                        # Get torrent info to see available files
+                        import time
+                        time.sleep(2)  # Wait for RD to process
+                        response = get('https://api.real-debrid.com/rest/1.0/torrents/info/' + torrent_id, context=context)
+                        ui_print('[realdebrid] torrent status: ' + response.status, ui_settings.debug)
+                        
+                        # Select all files in the torrent
+                        if hasattr(response, 'files') and len(response.files) > 0:
+                            file_ids = [str(f.id) for f in response.files]
+                            ui_print('[realdebrid] selecting all ' + str(len(file_ids)) + ' files...', ui_settings.debug)
+                            post('https://api.real-debrid.com/rest/1.0/torrents/selectFiles/' + torrent_id, 
+                                 {'files': ','.join(file_ids)}, context=context)
+                            
+                            # Wait a bit more and get updated info
+                            time.sleep(2)
+                            response = get('https://api.real-debrid.com/rest/1.0/torrents/info/' + torrent_id, context=context)
+                            ui_print('[realdebrid] updated status: ' + response.status, ui_settings.debug)
+                            
+                            # Get unrestricted links and download
+                            if hasattr(response, 'links') and len(response.links) > 0:
+                                ui_print('[realdebrid] getting unrestricted links for ' + str(len(response.links)) + ' files...', ui_settings.debug)
+                                unrestricted_links = []
+                                for link in response.links:
+                                    try:
+                                        unres_response = post('https://api.real-debrid.com/rest/1.0/unrestrict/link',{'link': link}, context=context)
+                                        if hasattr(unres_response, 'download'):
+                                            unrestricted_links.append(unres_response.download)
+                                    except:
+                                        continue
+                                
+                                if len(unrestricted_links) > 0:
+                                    release.download = unrestricted_links
+                                    ui_print('[realdebrid] downloading from cached RD torrent: ' + release.title)
+                                    download_success = downloader.download_from_realdebrid(release, element)
+                                    if download_success:
+                                        ui_print('[realdebrid] successfully downloaded file to local storage')
+                                        return True
+                            else:
+                                ui_print('[realdebrid] no links available yet, status: ' + response.status, ui_settings.debug)
+                        
+                        # Delete the torrent since we couldn't use it or already processed it
+                        delete('https://api.real-debrid.com/rest/1.0/torrents/delete/' + torrent_id, context=context)
+                    except Exception as e:
+                        ui_print('[realdebrid] error processing torrent: ' + str(e), ui_settings.debug)
+                        import traceback
+                        ui_print('[realdebrid] traceback: ' + traceback.format_exc(), ui_settings.debug)
+                    
+                    continue  # Skip to next release instead of trying version.files
+                    
                 for version in release.files:
                     if hasattr(version, 'files'):
                         if len(version.files) > 0 and version.wanted > len(wanted) / 2 or force:
@@ -172,15 +240,36 @@ def download(element, stream=True, query='', force=False):
                                     delete('https://api.real-debrid.com/rest/1.0/torrents/delete/' + torrent_id, context=context)
                                     continue
                             if len(release.download) > 0:
+                                # Get unrestricted download links
+                                unrestricted_links = []
                                 for link in release.download:
                                     try:
                                         response = post('https://api.real-debrid.com/rest/1.0/unrestrict/link',{'link': link}, context=context)
+                                        if hasattr(response, 'download'):
+                                            unrestricted_links.append(response.download)
                                     except:
                                         break
+                                
+                                # Update release with unrestricted links
+                                if len(unrestricted_links) > 0:
+                                    release.download = unrestricted_links
+                                
                                 release.files = version.files
                                 ui_print('[realdebrid] adding cached release: ' + release.title)
                                 if not actual_title == "":
                                     release.title = actual_title
+                                
+                                # Download the best file locally
+                                try:
+                                    ui_print('[realdebrid] initiating local download of best quality file...')
+                                    download_success = downloader.download_from_realdebrid(release, element)
+                                    if download_success:
+                                        ui_print('[realdebrid] successfully downloaded file to local storage')
+                                    else:
+                                        ui_print('[realdebrid] warning: download to local storage failed, but release was added')
+                                except Exception as e:
+                                    ui_print(f'[realdebrid] error during download: {str(e)}', ui_settings.debug)
+                                
                                 return True
                 ui_print('[realdebrid] error: no streamable version could be selected for release: ' + release.title)
                 return False
@@ -233,8 +322,9 @@ def check(element, force=False):
                                 debrid_file = file(file_, file_attr.filename, file_attr.filesize, wanted_patterns, unwanted_patterns)
                                 version_files.append(debrid_file)
                             release.files += [version(version_files), ]
-                        # select cached version that has the most needed, most wanted, least unwanted files and most files overall
+                        # select cached version that has the most needed, most wanted, least unwanted files, highest quality and largest size
                         release.files.sort(key=lambda x: len(x.files), reverse=True)
+                        release.files.sort(key=lambda x: x.size, reverse=True)  # Sort by size (larger is better)
                         release.files.sort(key=lambda x: x.wanted, reverse=True)
                         release.files.sort(key=lambda x: x.unwanted, reverse=False)
                         release.wanted = release.files[0].wanted
@@ -242,6 +332,10 @@ def check(element, force=False):
                         release.size = release.files[0].size
                         release.cached += ['RD']
                         continue
+        
+        # Sort releases by quality and size to prioritize best quality
+        ui_print("[realdebrid] sorting releases by quality and size...", ui_settings.debug)
+        element.Releases.sort(key=lambda x: getattr(x, 'size', 0), reverse=True)  # Larger files first
         ui_print("done",ui_settings.debug)
 
 # Diagnostic: get basic account info (useful to debug 403 permissions)

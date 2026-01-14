@@ -1,7 +1,7 @@
 FROM python:3
 
-# Install gettext for envsubst
-RUN apt-get update && apt-get install -y gettext-base && rm -rf /var/lib/apt/lists/*
+# Install gettext for envsubst and aria2 for fast multi-connection downloads
+RUN apt-get update && apt-get install -y gettext-base aria2 && rm -rf /var/lib/apt/lists/*
 
 # Copy the application code
 COPY . /app
