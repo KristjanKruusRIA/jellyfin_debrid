@@ -175,20 +175,33 @@ def download(element, stream=True, query='', force=False):
                             if hasattr(response, 'links') and len(response.links) > 0:
                                 ui_print('[realdebrid] getting unrestricted links for ' + str(len(response.links)) + ' files...', ui_settings.debug)
                                 unrestricted_links = []
+                                filenames = []
                                 for link in response.links:
                                     try:
                                         unres_response = post('https://api.real-debrid.com/rest/1.0/unrestrict/link',{'link': link}, context=context)
                                         if hasattr(unres_response, 'download'):
                                             unrestricted_links.append(unres_response.download)
+                                            # Store actual filename from RD response
+                                            if hasattr(unres_response, 'filename'):
+                                                filenames.append(unres_response.filename)
+                                            else:
+                                                filenames.append(release.title)
                                     except:
                                         continue
                                 
                                 if len(unrestricted_links) > 0:
                                     release.download = unrestricted_links
+                                    release.filenames = filenames  # Store actual filenames
                                     ui_print('[realdebrid] downloading from cached RD torrent: ' + release.title)
                                     download_success = downloader.download_from_realdebrid(release, element)
                                     if download_success:
                                         ui_print('[realdebrid] successfully downloaded file to local storage')
+                                        # Trigger Jellyfin library refresh after successful download
+                                        try:
+                                            from content.services import jellyfin
+                                            jellyfin.library.refresh(element)
+                                        except Exception as e:
+                                            ui_print(f'[realdebrid] could not refresh jellyfin libraries: {str(e)}', debug=True)
                                         return True
                             else:
                                 ui_print('[realdebrid] no links available yet, status: ' + response.status, ui_settings.debug)

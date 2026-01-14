@@ -12,6 +12,29 @@ Plex/Emby/Jellyfin/Infuse torrent streaming through Debrid Services, using Plex 
 
 Using content services like plex discover, trakt and jellyseerr, your personal media server users can add movies/shows to their watchlist and they become available to stream in seconds.
 
+## Quick Start (Windows)
+
+**New Windows-native installation (no Docker required!):**
+
+1. Install Python 3.10+ and create virtual environment:
+   ```powershell
+   .\setup_venv.ps1
+   ```
+
+2. Configure your settings in `config\settings.json`
+
+3. Verify setup:
+   ```powershell
+   .\verify_setup.ps1
+   ```
+
+4. Install as Windows service:
+   - Right-click `install_autostart.bat` and run as administrator
+   - Or manually start: `.\start_service.bat`
+
+**For detailed Windows setup instructions, see [WINDOWS_SETUP.md](WINDOWS_SETUP.md)**
+
+---
  
 ### In Action:
 

@@ -6,13 +6,16 @@ from ui.ui_print import *
 import os
 import shutil
 import requests
-import subprocess
 from pathlib import Path
+import re
 
-# Download settings - use environment variable if available, otherwise default
-download_path = os.environ.get('DOWNLOAD_PATH', '/media')
+# Download settings - use environment variable if available, otherwise default to E:\Media
+download_path = os.environ.get('DOWNLOAD_PATH', r'E:\Media')
 movies_path = os.path.join(download_path, "Movies")
 shows_path = os.path.join(download_path, "Shows")
+
+# Use Windows temp directory for downloading
+# Files will be moved to the final location after download completes
 temp_download_path = os.path.join(download_path, ".downloading")
 
 # Ensure directories exist
@@ -20,73 +23,69 @@ os.makedirs(movies_path, exist_ok=True)
 os.makedirs(shows_path, exist_ok=True)
 os.makedirs(temp_download_path, exist_ok=True)
 
+def sanitize_filename(filename):
+    """
+    Sanitize filename to remove invalid Windows characters
+    """
+    # Remove or replace invalid Windows filename characters: < > : " / \ | ? *
+    # Also handle special patterns like ../ and ..\
+    filename = re.sub(r'[<>:"|?*]', '', filename)
+    filename = re.sub(r'[\/\\]+', '.', filename)  # Replace slashes with dots
+    filename = re.sub(r'\.\.\.', '.', filename)  # Replace ... with .
+    filename = re.sub(r'^\.\.', '', filename)  # Remove leading ..
+    filename = filename.strip('. ')  # Remove leading/trailing dots and spaces
+    
+    # Ensure filename is not empty after sanitization
+    if not filename:
+        filename = "download"
+    
+    return filename
+
 def download_file(url, filename, is_show=False):
     """
-    Download a file from URL using aria2c for multi-connection downloads (much faster)
-    Falls back to requests if aria2c is not available
+    Download a file from URL using requests library
     """
     try:
+        # Sanitize filename to remove invalid characters
+        filename = sanitize_filename(filename)
         ui_print(f"[downloader] Starting download: {filename}", debug="true")
         
         # Download to temp directory first
         temp_file = os.path.join(temp_download_path, filename)
         
-        # Try using aria2c for multi-connection downloads (like Firefox)
-        try:
-            aria2_cmd = [
-                'aria2c',
-                '--max-connection-per-server=16',  # Use 16 parallel connections
-                '--split=16',  # Split file into 16 segments
-                '--min-split-size=1M',  # Minimum size per segment
-                '--max-concurrent-downloads=1',
-                '--continue=true',  # Resume support
-                '--allow-overwrite=true',
-                '--auto-file-renaming=false',
-                '--summary-interval=5',  # Progress every 5 seconds
-                '--console-log-level=notice',  # Show download progress
-                f'--dir={temp_download_path}',
-                f'--out={filename}',
-                '--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                url
-            ]
+        # Remove existing temp file if it exists
+        if os.path.exists(temp_file):
+            try:
+                os.remove(temp_file)
+                ui_print(f"[downloader] Removed existing temp file", debug="true")
+            except Exception as e:
+                ui_print(f"[downloader] Warning: Could not remove existing temp file: {e}", debug="true")
+        
+        session = requests.Session()
+        session.headers.update({
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        })
+        
+        with session.get(url, stream=True, timeout=30) as response:
+            response.raise_for_status()
+            total_size = int(response.headers.get('content-length', 0))
             
-            ui_print(f"[downloader] Using aria2c with 16 parallel connections", debug="true")
-            result = subprocess.run(aria2_cmd, text=True)
+            chunk_size = 16 * 1024 * 1024  # 16MB chunks
+            downloaded = 0
+            last_reported = 0
             
-            if result.returncode == 0 and os.path.exists(temp_file):
-                ui_print(f"[downloader] aria2c download successful", debug="true")
-            else:
-                raise Exception(f"aria2c failed: {result.stderr}")
-                
-        except Exception as aria_error:
-            # Fallback to requests if aria2c fails
-            ui_print(f"[downloader] aria2c unavailable, using requests fallback: {str(aria_error)}", debug="true")
-            
-            session = requests.Session()
-            session.headers.update({
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-            })
-            
-            with session.get(url, stream=True, timeout=30) as response:
-                response.raise_for_status()
-                total_size = int(response.headers.get('content-length', 0))
-                
-                chunk_size = 16 * 1024 * 1024
-                downloaded = 0
-                last_reported = 0
-                
-                with open(temp_file, 'wb') as f:
-                    for chunk in response.iter_content(chunk_size=chunk_size, decode_unicode=False):
-                        if chunk:
-                            f.write(chunk)
-                            downloaded += len(chunk)
-                            
-                            if downloaded - last_reported >= 500 * 1024 * 1024:
-                                percent = (downloaded / total_size) * 100 if total_size > 0 else 0
-                                downloaded_mb = downloaded / (1024 * 1024)
-                                total_mb = total_size / (1024 * 1024)
-                                ui_print(f"[downloader] Progress: {downloaded_mb:.0f}MB / {total_mb:.0f}MB ({percent:.1f}%)", debug="true")
-                                last_reported = downloaded
+            with open(temp_file, 'wb') as f:
+                for chunk in response.iter_content(chunk_size=chunk_size, decode_unicode=False):
+                    if chunk:
+                        f.write(chunk)
+                        downloaded += len(chunk)
+                        
+                        if downloaded - last_reported >= 500 * 1024 * 1024:  # Report every 500MB
+                            percent = (downloaded / total_size) * 100 if total_size > 0 else 0
+                            downloaded_mb = downloaded / (1024 * 1024)
+                            total_mb = total_size / (1024 * 1024)
+                            ui_print(f"[downloader] Progress: {downloaded_mb:.0f}MB / {total_mb:.0f}MB ({percent:.1f}%)", debug="true")
+                            last_reported = downloaded
         
         # Get organized destination path
         dest_path = organize_path(filename, is_show)
@@ -261,10 +260,13 @@ def download_from_realdebrid(release, element):
                             })
         
         if not files_to_download and release.download:
-            # Fallback: use release title and download links
+            # Fallback: use actual filenames from RD or release title
+            filenames = getattr(release, 'filenames', [])
             for i, link in enumerate(release.download):
+                # Use actual filename from RD if available, otherwise fall back to release title
+                filename = filenames[i] if i < len(filenames) else release.title
                 files_to_download.append({
-                    'name': release.title,
+                    'name': filename,
                     'size': getattr(release, 'size', 0) * 1000000000,
                     'id': i,
                     'url': link
