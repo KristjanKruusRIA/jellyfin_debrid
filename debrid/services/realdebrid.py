@@ -150,11 +150,12 @@ def download(element, stream=True, query='', force=False):
             alternative_query = f'S{parent_index:02d}'
     
     for release in cached[:]:
-        # if release matches query OR alternative query OR force
+        # if release matches query OR alternative query OR force OR is cached
         matches_primary = regex.match(query, release.title, regex.I)
         matches_alternative = alternative_query and alternative_query.lower() in release.title.lower()
+        is_cached = hasattr(release, 'cached') and release.cached
         
-        if matches_primary or matches_alternative or force:
+        if matches_primary or matches_alternative or force or is_cached:
             if stream:
                 release.size = 0
                 
@@ -234,8 +235,8 @@ def download(element, stream=True, query='', force=False):
                         # Only attempt to add if it looks like a magnet
                         if magnet_candidate.startswith('magnet:'):
                             response = post('https://api.real-debrid.com/rest/1.0/torrents/addMagnet',{'magnet': magnet_candidate}, context=context)
-                            # Check if response has an error
-                            if not response or hasattr(response, 'error'):
+                            # Check if response has an error or missing id
+                            if not response or hasattr(response, 'error') or not hasattr(response, 'id'):
                                 ui_print('[realdebrid] error adding magnet: ' + (response.error if response and hasattr(response, 'error') else 'unknown error'), ui_settings.debug)
                                 continue
                         else:

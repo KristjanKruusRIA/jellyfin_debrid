@@ -179,19 +179,57 @@ def scrape(query, altquery):
     ui_print('[aiostreams] debug: found ' + str(len(response.streams)) + ' streams', ui_settings.debug)
     for idx, result in enumerate(response.streams):
         try:
-            # Extract URL - contains the filename at the end
+            # Extract URL first
             stream_url = None
             if hasattr(result, 'url') and result.url:
                 stream_url = result.url
             else:
                 continue
             
-            # Extract filename - prefer filename field, fallback to URL end
-            filename = result.filename if hasattr(result, 'filename') and result.filename else None
-            if not filename and '/' in stream_url:
-                filename = stream_url.split('/')[-1]
+            # Extract filename - Sootio/AIOStreams provides filename in behaviorHints
+            filename = None
+            
+            # Method 1: Check behaviorHints.filename (most reliable for Sootio/AIOStreams)
+            if hasattr(result, 'behaviorHints') and hasattr(result.behaviorHints, 'filename') and result.behaviorHints.filename:
+                raw_filename = str(result.behaviorHints.filename)
+                # Remove [Cloud] prefix and leading slashes
+                filename = raw_filename.replace('[Cloud] ', '').replace('[Cloud]', '').lstrip('/')
+            
+            # Method 2: Check name field (Sootio streams may have filename here)
+            if not filename and hasattr(result, 'name') and result.name:
+                # Sootio format: "filename\n🔗 provider | source" or direct URLs
+                name_lines = str(result.name).split('\n')
+                if name_lines and name_lines[0].strip():
+                    potential_filename = name_lines[0].strip()
+                    
+                    # If it's a full URL, extract just the filename
+                    if potential_filename.startswith('http://') or potential_filename.startswith('https://'):
+                        filename = potential_filename.split('/')[-1].split('?')[0]
+                    # If it's a real filename (has extension and not a Sootio ID)
+                    elif '.' in potential_filename and not potential_filename.startswith('realdebrid:'):
+                        filename = potential_filename
+            
+            # Method 2: Check description field (Sootio alternate format)
+            if not filename and hasattr(result, 'description') and result.description:
+                desc_lines = str(result.description).split('\n')
+                if desc_lines and desc_lines[0].strip():
+                    potential_filename = desc_lines[0].strip()
+                    
+                    # If it's a URL, extract the filename
+                    if potential_filename.startswith('http://') or potential_filename.startswith('https://'):
+                        filename = potential_filename.split('/')[-1].split('?')[0]
+                    # If it's a real filename
+                    elif '.' in potential_filename and not potential_filename.startswith('realdebrid:'):
+                        filename = potential_filename
+            
+            # Method 3: Fallback to URL path (URL-decode it first)
             if not filename:
-                filename = "Unknown"
+                try:
+                    from urllib.parse import unquote
+                    decoded_url = unquote(stream_url)
+                    filename = decoded_url.split('/')[-1].split('?')[0] if '/' in decoded_url else "Unknown"
+                except:
+                    filename = stream_url.split('/')[-1].split('?')[0] if '/' in stream_url else "Unknown"
             
             # URL decode the filename if needed
             try:

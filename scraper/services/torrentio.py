@@ -6,7 +6,7 @@ import releases
 name = "torrentio"
 
 # Default options — includes quality filters and client-side limit
-default_opts = "https://torrentio.strem.fun/qualityfilter=threed,720p,480p,scr,cam|limit=5/manifest.json"
+default_opts = "https://torrentio.strem.fun/qualityfilter=threed,720p,480p,scr,cam|limit=5|debridoptions=nodownloadlinks/manifest.json"
 
 session = custom_session()
 # Use a browser-like User-Agent and accept JSON to avoid remote server blocking Python requests

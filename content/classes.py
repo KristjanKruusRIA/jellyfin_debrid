@@ -927,7 +927,7 @@ class media:
         if retries == 0:
             return
         try:
-            cooldown_min = int(os.getenv('DOWNLOAD_COOLDOWN_MINUTES', '10'))
+            cooldown_min = int(os.getenv('DOWNLOAD_COOLDOWN_MINUTES', '30'))
         except Exception:
             cooldown_min = 30
 

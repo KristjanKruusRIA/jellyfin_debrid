@@ -149,7 +149,7 @@
             "."
         ]
     ],
-    "Torrentio Scraper Parameters": "https://torrentio.strem.fun/qualityfilter=threed,720p,480p,scr,cam|limit=5|debridoptions=nodownloadlinks/manifest.json",
+    "Torrentio Scraper Parameters": "https://torrentio.strem.fun/qualityfilter=threed,720p,480p,scr,cam|limit=5/manifest.json",
     "AIOStreams UUID": "${AIOSTREAMS_UUID}",
     "AIOStreams B64Config": "${AIOSTREAMS_B64CONFIG}",
     "Debrid Services": ["Real Debrid"],

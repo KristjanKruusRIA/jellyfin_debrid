@@ -442,7 +442,7 @@ def threaded(stop):
                         else:
                             # Skip if item is in cooldown
                             try:
-                                cooldown_min = int(os.getenv('DOWNLOAD_COOLDOWN_MINUTES', '10'))
+                                cooldown_min = int(os.getenv('DOWNLOAD_COOLDOWN_MINUTES', '30'))
                             except Exception:
                                 cooldown_min = 30
                             if element.is_in_cooldown():
@@ -450,17 +450,7 @@ def threaded(stop):
                                 ui_print(f"[ui] skipping download (in cooldown {rem}s): {element_name}", ui_settings.debug)
                             else:
                                 content.classes.media.ignore_queue += [element]
-                                try:
-                                    element.download(library=library)
-                                finally:
-                                    match = next((x for x in content.classes.media.ignore_queue if element == x), None)
-                                    if match:
-                                        content.classes.media.ignore_queue.remove(match)
-                                    # set cooldown after attempt to avoid immediate re-scans
-                                    try:
-                                        element.set_cooldown(cooldown_min)
-                                    except Exception:
-                                        pass
+                                element.download(library=library)
                         ui_print(f'[ui] finished downloading: {element_name}', ui_settings.debug)
                     except Exception as e:
                         import traceback
@@ -497,7 +487,7 @@ def threaded(stop):
                                     continue
                                 # Skip if item is in cooldown
                                 try:
-                                    cooldown_min = int(os.getenv('DOWNLOAD_COOLDOWN_MINUTES', '10'))
+                                    cooldown_min = int(os.getenv('DOWNLOAD_COOLDOWN_MINUTES', '30'))
                                 except Exception:
                                     cooldown_min = 30
                                 if element.is_in_cooldown():
