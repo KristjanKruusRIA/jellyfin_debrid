@@ -176,17 +176,57 @@ def get_quality_score(quality_str):
     }
     return quality_map.get(quality_str.upper(), 0)
 
+def is_video_file(filename):
+    """
+    Check if a file is a video file based on extension
+    """
+    video_extensions = [
+        '.mkv', '.mp4', '.avi', '.mov', '.flv', '.wmv', '.webm',
+        '.m4v', '.mpg', '.mpeg', '.3gp', '.ogv', '.ts', '.m2ts',
+        '.mts', '.m2v', '.m4p', '.mxf', '.asf', '.rm', '.rmvb',
+        '.vob', '.f4v', '.divx'
+    ]
+    filename_lower = filename.lower()
+    return any(filename_lower.endswith(ext) for ext in video_extensions)
+
+def is_archive_or_unsafe(filename):
+    """
+    Check if a file is an archive or potentially unsafe
+    """
+    unsafe_extensions = [
+        '.rar', '.zip', '.7z', '.tar', '.gz', '.bz2', '.iso',
+        '.exe', '.bat', '.cmd', '.com', '.scr', '.txt', '.doc',
+        '.docx', '.pdf', '.nfo', '.sfv', '.md5', '.sub', '.srt',
+        '.ass', '.ssa', '.vtt', '.m3u'
+    ]
+    filename_lower = filename.lower()
+    return any(filename_lower.endswith(ext) for ext in unsafe_extensions)
+
 def select_best_file(files_list):
     """
     Select the best file from a list based on quality and size
     Returns the file with highest quality, and if tied, the largest file
+    Only considers video files, excludes archives and unsafe files
     """
     if not files_list:
         return None
     
+    # Filter to only video files and exclude archives/unsafe files
+    filtered_files = []
+    for file in files_list:
+        filename = file.get('name', '')
+        if is_video_file(filename) and not is_archive_or_unsafe(filename):
+            filtered_files.append(file)
+    
+    if not filtered_files:
+        # No video files found - try to warn about this
+        available_files = [f.get('name', '') for f in files_list[:5]]
+        ui_print(f"[downloader] Warning: No video files found in release. Available files: {available_files}", debug="true")
+        return None
+    
     # Score each file
     scored_files = []
-    for file in files_list:
+    for file in filtered_files:
         info = parse_filename(file.get('name', ''))
         quality_score = get_quality_score(info['quality'])
         size = file.get('size', 0)
@@ -238,15 +278,17 @@ def organize_path(filename, is_show=False):
 def download_from_realdebrid(release, element):
     """
     Download files from a Real-Debrid release
-    Automatically selects the best quality file and downloads it
+    For shows: downloads all episode files from the same quality tier
+    For movies: downloads the best quality file
     """
     try:
         if not hasattr(release, 'download') or not release.download:
             ui_print("[downloader] No download links available", debug="true")
             return False
         
-        # Determine if this is a show or movie
-        is_show = hasattr(element, 'show_id') or 'show' in str(type(element)).lower()
+        # Determine if this is a show or movie based on element type
+        is_show = getattr(element, 'type', '') == 'show' or getattr(element, 'type', '') == 'season' or getattr(element, 'type', '') == 'episode'
+        ui_print(f"[downloader] Processing element type: {getattr(element, 'type', 'unknown')} (is_show: {is_show})", debug="true")
         
         # Get all files from the release
         files_to_download = []
@@ -277,27 +319,79 @@ def download_from_realdebrid(release, element):
                     'url': link
                 })
         
-        # Select the best file
-        best_file = select_best_file(files_to_download)
-        
-        if not best_file:
-            ui_print("[downloader] No suitable file found to download", debug="true")
-            return False
-        
-        # Get download URL
-        if best_file['url']:
-            download_url = best_file['url']
-        elif len(release.download) > 0:
-            # Use the first download link if URL not specified
-            download_url = release.download[0]
+        if is_show:
+            # For TV shows: download ALL episode files from the highest quality tier
+            # First, find the highest quality among video files
+            filtered_files = []
+            for file in files_to_download:
+                filename = file.get('name', '')
+                if is_video_file(filename) and not is_archive_or_unsafe(filename):
+                    filtered_files.append(file)
+            
+            if not filtered_files:
+                ui_print("[downloader] No suitable video files found to download", debug="true")
+                return False
+            
+            # Score all files and find the highest quality
+            max_quality_score = -1
+            for file in filtered_files:
+                info = parse_filename(file.get('name', ''))
+                quality_score = get_quality_score(info['quality'])
+                max_quality_score = max(max_quality_score, quality_score)
+            
+            # Download all files with the highest quality score
+            files_to_download_final = []
+            for file in filtered_files:
+                info = parse_filename(file.get('name', ''))
+                quality_score = get_quality_score(info['quality'])
+                if quality_score == max_quality_score:
+                    files_to_download_final.append(file)
+                    ui_print(f"[downloader] Queuing file: {file.get('name')} "
+                             f"(Quality: {info['quality']}, Size: {file.get('size', 0) / (1024**3):.2f} GB)", 
+                             debug="true")
+            
+            # Download all selected files
+            all_success = True
+            for file in files_to_download_final:
+                # Get download URL
+                if file.get('url'):
+                    download_url = file['url']
+                elif len(release.download) > 0:
+                    # Use the first download link if URL not specified
+                    download_url = release.download[0]
+                else:
+                    ui_print("[downloader] No download URL available", debug="true")
+                    all_success = False
+                    continue
+                
+                # Download the file
+                result = download_file(download_url, file['name'], is_show)
+                if result is None:
+                    all_success = False
+            
+            return all_success
         else:
-            ui_print("[downloader] No download URL available", debug="true")
-            return False
-        
-        # Download the file
-        result = download_file(download_url, best_file['name'], is_show)
-        
-        return result is not None
+            # For movies: select and download only the best file
+            best_file = select_best_file(files_to_download)
+            
+            if not best_file:
+                ui_print("[downloader] No suitable file found to download", debug="true")
+                return False
+            
+            # Get download URL
+            if best_file['url']:
+                download_url = best_file['url']
+            elif len(release.download) > 0:
+                # Use the first download link if URL not specified
+                download_url = release.download[0]
+            else:
+                ui_print("[downloader] No download URL available", debug="true")
+                return False
+            
+            # Download the file
+            result = download_file(download_url, best_file['name'], is_show)
+            
+            return result is not None
         
     except Exception as e:
         ui_print(f"[downloader] Error in download_from_realdebrid: {str(e)}", debug="true")

@@ -9,10 +9,13 @@ session = requests.Session()
 api_key = ''
 
 def logerror(response):
-    if not response.status_code == 200 and hasattr(response,"content") and len(str(response.content)) > 0:
-        ui_print("jellyfin error: " + str(response.content), debug=ui_settings.debug)
-    if response.status_code == 401:
-        ui_print("jellyfin error: (401 unauthorized): api token does not seem to work. check your jellyfin settings.")
+    if hasattr(response, "status_code"):
+        if response.status_code >= 400:
+            # Only log actual errors (4xx, 5xx status codes)
+            if hasattr(response,"content") and response.content and len(response.content) > 0:
+                ui_print("jellyfin error: " + str(response.content), debug=ui_settings.debug)
+        if response.status_code == 401:
+            ui_print("jellyfin error: (401 unauthorized): api token does not seem to work. check your jellyfin settings.")
 
 def get(url, timeout=30):
     try:
@@ -139,8 +142,16 @@ class library(classes.library):
                 ui_print('[jellyfin] refreshing all libraries')
                 url = library.url + '/Library/Refresh'
                 response = post(url,"")
-            except:
-                print("[jellyfin] error: couldnt refresh libraries")
+                # /Library/Refresh returns 204 No Content or 200 with empty body on success
+                # response will be None when the body is empty, which is expected
+                # Only warn if there was an actual error
+                if response is None:
+                    # This is expected - the endpoint returns empty body
+                    pass
+                elif hasattr(response, 'status_code') and response.status_code >= 400:
+                    ui_print('[jellyfin] warning: library refresh returned error status code', ui_settings.debug)
+            except Exception as e:
+                ui_print(f"[jellyfin] error: couldnt refresh libraries: {str(e)}", ui_settings.debug)
 
     def __new__(self):
         list = []
@@ -172,6 +183,37 @@ class library(classes.library):
             ui_print(f'[jellyfin] found {items_response.TotalRecordCount} items in library')
             for element in items_response.Items:
                 try:
+                    # Map Jellyfin Type to jellyfin_debrid type field
+                    if hasattr(element, 'Type'):
+                        if element.Type == 'Movie':
+                            element.type = 'movie'
+                        elif element.Type == 'Series':
+                            element.type = 'show'
+                    
+                    # Determine if this is a series and fetch full details
+                    if hasattr(element, 'Type') and element.Type == 'Series':
+                        # Fetch seasons for this series
+                        seasons_url = library.url + '/Users/' + user.Id + '/Items?ParentId=' + element.Id + '&IncludeItemTypes=Season'
+                        seasons_response = get(seasons_url, timeout=30)
+                        if seasons_response and hasattr(seasons_response, 'Items'):
+                            element.seasons = []
+                            total_episode_count = 0
+                            for season in seasons_response.Items:
+                                # Fetch episodes for this season
+                                episodes_url = library.url + '/Users/' + user.Id + '/Items?ParentId=' + season.Id
+                                episodes_response = get(episodes_url, timeout=30)
+                                season.Episodes = []
+                                if episodes_response and hasattr(episodes_response, 'Items'):
+                                    season.Episodes = episodes_response.Items
+                                    total_episode_count += len(episodes_response.Items)
+                                element.seasons.append(season)
+                            # Set leafCount to total episode count for matching
+                            element.leafCount = total_episode_count
+                        else:
+                            # Fallback to empty seasons list if fetch fails
+                            element.seasons = []
+                            element.leafCount = 0
+                    
                     # Convert Jellyfin item to jellyfin_debrid media object
                     media_obj = classes.media(element)
                     list += [media_obj]

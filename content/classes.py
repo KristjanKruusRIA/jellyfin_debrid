@@ -343,16 +343,20 @@ class media:
                 self.services += [service]
                 return True
             elif self.type == "show":
+                # Ensure match object has Seasons attribute
+                if not hasattr(match, 'Seasons'):
+                    match.Seasons = []
                 for season in match.Seasons[:]:
                     if not season in self.Seasons:
                         match.Seasons.remove(season)
                     elif self.services != ["content.services.jellyseerr"]:
                         matching_season = next(
                             (x for x in self.Seasons if x == season), None)
-                        for episode in season.Episodes:
-                            if not episode in matching_season.Episodes:
-                                season.Episodes.remove(episode)
-                if self.services != ["content.services.jellyseerr"]:
+                        if matching_season and hasattr(season, 'Episodes'):
+                            for episode in season.Episodes:
+                                if not episode in matching_season.Episodes:
+                                    season.Episodes.remove(episode)
+                if self.services != ["content.services.jellyseerr"] and hasattr(match, 'Seasons'):
                     for season in match.Seasons:
                         matching_season = next(
                             (x for x in self.Seasons if x == season), None)
@@ -367,16 +371,17 @@ class media:
                             season.__dict__.update(matching_season.__dict__)
                     delattr(match, "guid")
                 else:
-                    for season in match.Seasons:
-                        if not hasattr(season, 'services'):
-                            season.services = [self.__module__]
-                        if not hasattr(season, 'requestedBy') and hasattr(self, "requestedBy"):
-                            season.requestedBy = self.requestedBy
-                        for episode in season.Episodes:
-                            if not hasattr(episode, 'services'):
-                                episode.services = [self.__module__]
-                            if not hasattr(episode, 'requestedBy') and hasattr(self, "requestedBy"):
-                                episode.requestedBy = self.requestedBy
+                    if hasattr(match, 'Seasons'):
+                        for season in match.Seasons:
+                            if not hasattr(season, 'services'):
+                                season.services = [self.__module__]
+                            if not hasattr(season, 'requestedBy') and hasattr(self, "requestedBy"):
+                                season.requestedBy = self.requestedBy
+                            for episode in season.Episodes:
+                                if not hasattr(episode, 'services'):
+                                    episode.services = [self.__module__]
+                                if not hasattr(episode, 'requestedBy') and hasattr(self, "requestedBy"):
+                                    episode.requestedBy = self.requestedBy
                 self.__dict__.update(match.__dict__)
                 self.services += [service]
                 for season in self.Seasons:
@@ -913,14 +918,19 @@ class media:
 
     def released(self):
         try:
+            # Ensure originallyAvailableAt exists, default to old date if not
+            air_date = getattr(self, 'originallyAvailableAt', '1990-01-01')
+            if not air_date:
+                air_date = '1990-01-01'
+            
             released = datetime.datetime.utcnow(
-            ) - datetime.datetime.strptime(self.originallyAvailableAt, '%Y-%m-%d')
+            ) - datetime.datetime.strptime(air_date, '%Y-%m-%d')
             if hasattr(self, "offset_airtime"):
                 smallest_offset = 0
                 for offset in self.offset_airtime:
                     if float(offset) < smallest_offset or smallest_offset == 0:
                         smallest_offset = float(offset)
-                released = datetime.datetime.utcnow() - datetime.datetime.strptime(self.originallyAvailableAt,
+                released = datetime.datetime.utcnow() - datetime.datetime.strptime(air_date,
                                                                                    '%Y-%m-%d') - datetime.timedelta(hours=float(smallest_offset))
             if self.type == 'movie':
                 if released.days >= -30 and released.days <= 180:
@@ -940,8 +950,12 @@ class media:
         import content.services.jellyseerr as jellyseerr
         # Simplified availability check without Plex/Trakt
         try:
+            air_date = getattr(self, 'originallyAvailableAt', '1990-01-01')
+            if not air_date:
+                air_date = '1990-01-01'
+            
             released = datetime.datetime.utcnow(
-            ) - datetime.datetime.strptime(self.originallyAvailableAt, '%Y-%m-%d')
+            ) - datetime.datetime.strptime(air_date, '%Y-%m-%d')
             if released.days < 0:
                 return False
             return True
@@ -970,7 +984,7 @@ class media:
             return False
         if self.type == "season":
             for show in list:
-                if show.type == "show":
+                if show.type == "show" and hasattr(show, 'Seasons'):
                     for season in show.Seasons:
                         if self == season:
                             if season.leafCount == self.leafCount:
@@ -979,7 +993,7 @@ class media:
             return False
         if self.type == "episode":
             for show in list:
-                if show.type == "show":
+                if show.type == "show" and hasattr(show, 'Seasons'):
                     for season in show.Seasons:
                         for episode in season.Episodes:
                             if self == episode:
@@ -1026,6 +1040,9 @@ class media:
         refresh_ = False
         i = 0
         self.Releases = []
+        # Ensure Seasons attribute exists for show objects
+        if self.type == "show" and not hasattr(self, 'Seasons'):
+            self.Seasons = []
         if self.type in ["movie", "show"] and ((not hasattr(self, "title") or self.title == "" or self.title == None) or (not hasattr(self, "year") or self.year == None or self.year == "")):
             title_info = f"title='{self.title}'" if hasattr(self, "title") else "no title"
             year_info = f"year='{self.year}'" if hasattr(self, "year") else "no year"
@@ -1033,10 +1050,18 @@ class media:
             ui_print(
                 f"error: media item has no title or release year ({type_info}, {title_info}, {year_info}). This unknown movie/show might not be released yet.")
             return
+        # Extra safety: ensure show objects have Seasons
+        if self.type == "show" and not hasattr(self, 'Seasons'):
+            ui_print(f"error: show '{self.title}' is missing Seasons attribute, cannot process", ui_settings.debug)
+            return
         scraper.services.overwrite = []
         EIDS = []
         imdbID = "."
         tmdbID = "."
+        # Ensure show objects always have Seasons attribute
+        if self.type == "show":
+            if not hasattr(self, 'Seasons'):
+                self.Seasons = []
         if hasattr(self, "EID"):
             EIDS = self.EID
         if hasattr(self, "parentEID"):
@@ -1113,6 +1138,9 @@ class media:
             if len(self.versions()) > 0 and self.released() and (not self.collected(library) or self.version_missing()) and not self.watched():
                 self.isanime()
                 self.Seasons = self.uncollected(library)
+                # Ensure Seasons is a list after uncollected()
+                if not isinstance(self.Seasons, list):
+                    self.Seasons = []
                 # if there are uncollected episodes
                 if len(self.Seasons) > 0:
                     tic = time.perf_counter()
@@ -1159,6 +1187,9 @@ class media:
                                     break
                         debrid.check(self)
                         parentReleases = copy.deepcopy(self.Releases)
+                        # Ensure Seasons attribute exists for show objects
+                        if not hasattr(self, 'Seasons'):
+                            self.Seasons = []
                         # if there are more than 3 uncollected seasons, look for multi-season releases before downloading single-season releases
                         if len(self.Seasons) > 3:
                             # gather file information on scraped, cached releases

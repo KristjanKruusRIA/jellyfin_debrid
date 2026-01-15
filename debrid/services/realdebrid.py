@@ -138,9 +138,23 @@ def download(element, stream=True, query='', force=False):
     wanted = [query]
     if not isinstance(element, releases.release):
         wanted = element.files()
+    
+    # For episodes/seasons, also accept full season releases even if they don't match episode pattern
+    alternative_query = None
+    if hasattr(element, 'type') and element.type == 'episode':
+        # For episodes, also try to match season-level releases
+        # Extract season number from episode pattern and create a season pattern
+        parent_index = getattr(element, 'parentIndex', None)
+        if parent_index is not None:
+            # Try to match releases with just the season number (S01, S01.COMPLETE, etc.)
+            alternative_query = f'S{parent_index:02d}'
+    
     for release in cached[:]:
-        # if release matches query
-        if regex.match(query, release.title,regex.I) or force:
+        # if release matches query OR alternative query OR force
+        matches_primary = regex.match(query, release.title, regex.I)
+        matches_alternative = alternative_query and alternative_query.lower() in release.title.lower()
+        
+        if matches_primary or matches_alternative or force:
             if stream:
                 release.size = 0
                 # Check if files are available, if not we need to add magnet to get file list
@@ -159,10 +173,21 @@ def download(element, stream=True, query='', force=False):
                         response = get('https://api.real-debrid.com/rest/1.0/torrents/info/' + torrent_id, context=context)
                         ui_print('[realdebrid] torrent status: ' + response.status, ui_settings.debug)
                         
-                        # Select all files in the torrent
+                        # Select only video files in the torrent (avoid .rar, .exe, etc.)
                         if hasattr(response, 'files') and len(response.files) > 0:
-                            file_ids = [str(f.id) for f in response.files]
-                            ui_print('[realdebrid] selecting all ' + str(len(file_ids)) + ' files...', ui_settings.debug)
+                            video_extensions = ['.mkv', '.mp4', '.avi', '.mov', '.flv', '.wmv', '.webm', 
+                                              '.m4v', '.mpg', '.mpeg', '.3gp', '.ogv', '.ts', '.m2ts',
+                                              '.mts', '.m2v', '.m4p', '.mxf', '.asf', '.rm', '.rmvb',
+                                              '.vob', '.f4v', '.divx']
+                            file_ids = [str(f.id) for f in response.files 
+                                       if any(getattr(f, 'filename', getattr(f, 'name', '')).lower().endswith(ext) for ext in video_extensions)]
+                            
+                            if not file_ids:
+                                # Fallback: select all files if no video files found
+                                ui_print('[realdebrid] warning: no video files found, selecting all files', ui_settings.debug)
+                                file_ids = [str(f.id) for f in response.files]
+                            
+                            ui_print('[realdebrid] selecting ' + str(len(file_ids)) + ' video files...', ui_settings.debug)
                             post('https://api.real-debrid.com/rest/1.0/torrents/selectFiles/' + torrent_id, 
                                  {'files': ','.join(file_ids)}, context=context)
                             

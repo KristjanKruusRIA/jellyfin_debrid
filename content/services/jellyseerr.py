@@ -243,7 +243,12 @@ class show(classes.media):
         self.watchlistedAt = datetime.datetime.timestamp(datetime.datetime.strptime(self.updatedAt,'%Y-%m-%dT%H:%M:%S.000Z'))
         self.Seasons = []
         
+        # Set default originallyAvailableAt to ensure it always exists
+        if not hasattr(self, 'originallyAvailableAt'):
+            self.originallyAvailableAt = "1990-01-01"
+        
         # Fetch full TV show details from Jellyseerr to get title, first air date, and IMDB ID
+        seasons_from_api = []
         if hasattr(self, 'media') and hasattr(self.media, 'tmdbId'):
             try:
                 tv_details = get(base_url + f'/api/v1/tv/{self.media.tmdbId}')
@@ -259,16 +264,99 @@ class show(classes.media):
                         imdb_id_str = 'imdb://' + str(tv_details.externalIds.imdbId)
                         if imdb_id_str not in self.EID:
                             self.EID.insert(0, imdb_id_str)  # Add IMDB at beginning since Torrentio needs it
+                    # Extract seasons from TV details if available
+                    if hasattr(tv_details, 'seasons') and tv_details.seasons:
+                        seasons_from_api = list(tv_details.seasons)
             except Exception as e:
                 ui_print(f'[jellyseerr] error fetching TV details: {str(e)}', ui_settings.debug)
         
-        if hasattr(self,'seasons'):
-            for season in self.seasons:
-                season.type = "season"
-                season.index = season.seasonNumber
-                season.parentEID = self.EID
-                season.Episodes = []
-                self.Seasons += [season]
+        # Process seasons
+        # First check if this request has specific seasons (from request API)
+        # If so, use only requested/approved seasons; otherwise use all seasons from TV details
+        seasons_to_process = []
+        if hasattr(self, 'seasons') and self.seasons:
+            # Use seasons from request, but filter to only approved/requested ones
+            for req_season in self.seasons:
+                # Include season if it has approved status (status >= 2)
+                # Status values: 0=pending, 1=requested, 2=approved, 3=completed, etc.
+                if hasattr(req_season, 'status') and req_season.status >= 2:
+                    seasons_to_process.append(req_season)
+        
+        # If no approved seasons in request, use all seasons from TV details
+        if not seasons_to_process:
+            seasons_to_process = seasons_from_api if seasons_from_api else []
+        
+        for season in seasons_to_process:
+            season.type = "season"
+            season.index = season.seasonNumber
+            season.parentEID = self.EID
+            season.parentTitle = self.title
+            season.parentYear = self.year
+            # Initialize episodes list
+            season.Episodes = []
+            
+            # Create placeholder episodes based on episodeCount if available
+            try:
+                episode_count = 0
+                # Try to get episode count from season object
+                if hasattr(season, 'episodeCount'):
+                    episode_count = season.episodeCount
+                elif hasattr(season, 'episodes') and season.episodes:
+                    episode_count = len(season.episodes)
+                
+                # Create episode objects for each episode in the season
+                for ep_num in range(1, episode_count + 1):
+                    episode = SimpleNamespace()
+                    episode.type = "episode"
+                    episode.index = ep_num
+                    episode.parentIndex = season.seasonNumber
+                    episode.grandparentEID = self.EID
+                    episode.grandparentTitle = self.title
+                    episode.grandparentYear = self.year
+                    
+                    # Set air date if available
+                    if hasattr(season, 'airDate') and season.airDate:
+                        episode.originallyAvailableAt = season.airDate
+                    elif hasattr(self, 'originallyAvailableAt'):
+                        episode.originallyAvailableAt = self.originallyAvailableAt
+                    else:
+                        episode.originallyAvailableAt = "1990-01-01"  # Fallback date
+                    
+                    season.Episodes.append(episode)
+                
+                if episode_count == 0:
+                    ui_print(f'[jellyseerr] warning: season {season.seasonNumber} has no episode count, creating minimal episode', ui_settings.debug)
+                    # Create at least one placeholder episode if we don't know the count
+                    episode = SimpleNamespace()
+                    episode.type = "episode"
+                    episode.index = 1
+                    episode.parentIndex = season.seasonNumber
+                    episode.grandparentEID = self.EID
+                    episode.grandparentTitle = self.title
+                    episode.grandparentYear = self.year
+                    episode.originallyAvailableAt = self.originallyAvailableAt if hasattr(self, 'originallyAvailableAt') else "1990-01-01"
+                    season.Episodes.append(episode)
+                    
+            except Exception as e:
+                ui_print(f'[jellyseerr] error creating episodes for season {season.seasonNumber}: {str(e)}', ui_settings.debug)
+                # Create at least one episode as fallback
+                episode = SimpleNamespace()
+                episode.type = "episode"
+                episode.index = 1
+                episode.parentIndex = season.seasonNumber
+                episode.grandparentEID = self.EID
+                episode.grandparentTitle = self.title
+                episode.grandparentYear = self.year
+                episode.originallyAvailableAt = self.originallyAvailableAt if hasattr(self, 'originallyAvailableAt') else "1990-01-01"
+                season.Episodes.append(episode)
+            
+            # Convert episodes to proper media objects first
+            for i, episode in enumerate(season.Episodes):
+                season.Episodes[i] = classes.media(episode)
+            
+            # Convert season to proper media object
+            season_media = classes.media(season)
+            self.Seasons += [season_media]
 
 class requests(classes.watchlist):
 
@@ -280,15 +368,20 @@ class requests(classes.watchlist):
             ui_print('[jellyseerr] getting all jellyseerr requests ...')
             try:
                 response = get(base_url + '/api/v1/request?take=10000')
-                for element in response.results:
-                    if not element in self.data and (element.requestedBy.displayName in users or users == ['all']) and ([str(element.media.status)] in allowed_movie_status if element.type == 'movie' else [str(element.media.status)] in allowed_show_status):
-                        last_requests.append(element)
+                ui_print(f'[jellyseerr] received {len(response.results) if response and hasattr(response, "results") else 0} requests from API', ui_settings.debug)
+                if response and hasattr(response, 'results'):
+                    for element in response.results:
+                        ui_print(f'[jellyseerr] checking request: type={element.type}, status={element.media.status}, user={element.requestedBy.displayName}', ui_settings.debug)
+                        if not element in self.data and (element.requestedBy.displayName in users or users == ['all']) and ([str(element.media.status)] in allowed_movie_status if element.type == 'movie' else [str(element.media.status)] in allowed_show_status):
+                            ui_print(f'[jellyseerr] adding request to queue', ui_settings.debug)
+                            last_requests.append(element)
             except Exception as e:
                 ui_print('[jellyseerr] error: ' + str(e), ui_settings.debug)
                 ui_print('[jellyseerr] error: jellyseerr couldnt be reached. turn on debug printing for more info.')
                 last_requests = []
-            ui_print('done')
+            ui_print(f'done - found {len(last_requests)} requests to process')
             if last_requests == []:
+                ui_print('[jellyseerr] no requests to process, skipping', ui_settings.debug)
                 return
             # REMOVED: Plex/Trakt matching - we don't use those services anymore
             # Just process the jellyseerr requests directly
