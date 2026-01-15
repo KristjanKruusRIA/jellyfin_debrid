@@ -42,9 +42,11 @@ def sanitize_filename(filename):
     
     return filename
 
-def download_file(url, filename, is_show=False):
+def download_file(url, filename, is_show=False, expected_size=None):
     """
     Download a file from URL using requests library
+
+    expected_size: optional expected size (bytes). If provided, final file will be validated and discarded on large mismatch.
     """
     try:
         # Sanitize filename to remove invalid characters
@@ -72,8 +74,12 @@ def download_file(url, filename, is_show=False):
         })
         
         with session.get(url, stream=True, timeout=30) as response:
+            # Add diagnostics: log status, content-length and content-type to help debug small or non-video downloads
+            content_length = response.headers.get('content-length', 'None')
+            content_type = response.headers.get('content-type', 'None')
+            ui_print(f"[downloader] HTTP status: {response.status_code}; Content-Length: {content_length}; Content-Type: {content_type}", debug="true")
             response.raise_for_status()
-            total_size = int(response.headers.get('content-length', 0))
+            total_size = int(content_length) if content_length and content_length.isdigit() else 0
             
             chunk_size = 16 * 1024 * 1024  # 16MB chunks
             downloaded = 0
@@ -85,13 +91,87 @@ def download_file(url, filename, is_show=False):
                         f.write(chunk)
                         downloaded += len(chunk)
                         
-                        if downloaded - last_reported >= 500 * 1024 * 1024:  # Report every 500MB
+                        # Report progress every 500MB
+                        if downloaded - last_reported >= 500 * 1024 * 1024:
                             percent = (downloaded / total_size) * 100 if total_size > 0 else 0
                             downloaded_mb = downloaded / (1024 * 1024)
                             total_mb = total_size / (1024 * 1024)
                             ui_print(f"[downloader] Progress: {downloaded_mb:.0f}MB / {total_mb:.0f}MB ({percent:.1f}%)", debug="true")
                             last_reported = downloaded
-        
+
+        # If nothing was downloaded, avoid moving an empty file and surface diagnostics
+        if downloaded == 0:
+            ui_print(f"[downloader] Error: downloaded 0 bytes for URL: {url} (status: {response.status_code}); not moving temp file", debug="true")
+            # Try to capture small response for debugging
+            try:
+                snippet = response.content[:2048]
+                ui_print(f"[downloader] Response snippet (first 2KB): {snippet!r}", debug="true")
+            except Exception:
+                pass
+            # Clean up temp file if it exists
+            if os.path.exists(temp_file):
+                try:
+                    os.remove(temp_file)
+                except Exception:
+                    pass
+            return None
+
+        # If the downloaded file is suspiciously small, capture diagnostics (headers and snippet)
+        if downloaded < 5 * 1024 * 1024:  # less than 5MB
+            ui_print(f"[downloader] Warning: small download size ({downloaded} bytes). Content-Type: {content_type}", debug="true")
+            try:
+                snippet = open(temp_file, 'rb').read(2048)
+                ui_print(f"[downloader] Small response snippet (first 2KB): {snippet!r}", debug="true")
+            except Exception:
+                pass
+
+            # If content-type is not a video type, warn
+            if not (isinstance(content_type, str) and content_type.startswith('video')):
+                ui_print(f"[downloader] Warning: content-type does not look like a video file, might be an error page", debug="true")
+
+            # If it's a video but too small compared to expected streaming sizes, try a single ranged retry
+            if isinstance(content_type, str) and content_type.startswith('video'):
+                ui_print("[downloader] Attempting ranged retry (Range: bytes=0-) to fetch a larger file", debug="true")
+                try:
+                    # Remove previous partial temp file
+                    if os.path.exists(temp_file):
+                        os.remove(temp_file)
+                    # Use Range header to request full content from start
+                    ranged_headers = {'Range': 'bytes=0-'}
+                    with session.get(url, stream=True, timeout=60, headers=ranged_headers, allow_redirects=True) as resp2:
+                        ui_print(f"[downloader] Range HTTP status: {resp2.status_code}; Content-Length: {resp2.headers.get('content-length', 'None')}; Content-Range: {resp2.headers.get('content-range', 'None')}", debug="true")
+                        if resp2.status_code in (200, 206):
+                            downloaded2 = 0
+                            with open(temp_file, 'wb') as f2:
+                                for chunk in resp2.iter_content(chunk_size=chunk_size, decode_unicode=False):
+                                    if chunk:
+                                        f2.write(chunk)
+                                        downloaded2 += len(chunk)
+                            ui_print(f"[downloader] Ranged request downloaded {downloaded2} bytes", debug="true")
+                            downloaded = downloaded2
+                        else:
+                            ui_print("[downloader] Ranged request returned non-206/200 status, skipping", debug="true")
+                except Exception as e:
+                    ui_print(f"[downloader] Ranged retry failed: {e}", debug="true")
+
+        # Size validation against expected_size (if provided)
+        try:
+            if expected_size and expected_size > 0:
+                # expected_size is in bytes
+                diff = abs(downloaded - expected_size)
+                threshold = max(int(expected_size * 0.05), 10 * 1024 * 1024)  # 5% or 10MB
+                if diff > threshold:
+                    ui_print(f"[downloader] Error: downloaded size ({downloaded} bytes) differs from expected ({expected_size} bytes) by more than threshold ({threshold} bytes). Discarding file.", debug="true")
+                    # Clean up temp file
+                    if os.path.exists(temp_file):
+                        try:
+                            os.remove(temp_file)
+                        except Exception:
+                            pass
+                    return None
+        except Exception as e:
+            ui_print(f"[downloader] Error during size validation: {e}", debug="true")
+
         # Get organized destination path
         dest_path = organize_path(filename, is_show)
         
@@ -99,8 +179,9 @@ def download_file(url, filename, is_show=False):
         ui_print(f"[downloader] Moving file to: {dest_path}", debug="true")
         shutil.move(temp_file, dest_path)
         
-        file_size = os.path.getsize(dest_path) / (1024 * 1024)
-        ui_print(f"[downloader] Download complete: {file_size:.0f}MB - {filename}", debug="true")
+        file_size_bytes = os.path.getsize(dest_path)
+        file_size_mb = file_size_bytes / (1024 * 1024)
+        ui_print(f"[downloader] Download complete: {file_size_mb:.2f}MB ({file_size_bytes} bytes) - {filename}", debug="true")
         return dest_path
         
     except Exception as e:
@@ -365,7 +446,7 @@ def download_from_realdebrid(release, element):
                     continue
                 
                 # Download the file
-                result = download_file(download_url, file['name'], is_show)
+                result = download_file(download_url, file['name'], is_show, expected_size=file.get('size'))
                 if result is None:
                     all_success = False
             
@@ -389,7 +470,7 @@ def download_from_realdebrid(release, element):
                 return False
             
             # Download the file
-            result = download_file(download_url, best_file['name'], is_show)
+            result = download_file(download_url, best_file['name'], is_show, expected_size=best_file.get('size'))
             
             return result is not None
         

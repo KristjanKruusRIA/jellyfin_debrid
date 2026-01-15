@@ -8,7 +8,7 @@ name = 'jellyseerr'
 base_url = ""
 users = ['all']
 allowed_movie_status = [['2'], ['3']]
-allowed_show_status = [['2'], ['3'], ['4'], ['5']]
+allowed_show_status = [['2'], ['3'], ['4']]
 api_key = ""
 session = requests.Session()
 last_requests = []
@@ -370,11 +370,35 @@ class requests(classes.watchlist):
                 response = get(base_url + '/api/v1/request?take=10000')
                 ui_print(f'[jellyseerr] received {len(response.results) if response and hasattr(response, "results") else 0} requests from API', ui_settings.debug)
                 if response and hasattr(response, 'results'):
-                    for element in response.results:
-                        ui_print(f'[jellyseerr] checking request: type={element.type}, status={element.media.status}, user={element.requestedBy.displayName}', ui_settings.debug)
-                        if not element in self.data and (element.requestedBy.displayName in users or users == ['all']) and ([str(element.media.status)] in allowed_movie_status if element.type == 'movie' else [str(element.media.status)] in allowed_show_status):
-                            ui_print(f'[jellyseerr] adding request to queue', ui_settings.debug)
-                            last_requests.append(element)
+                    seen = set()
+                    added = 0
+                    skipped = 0
+                    checked = 0
+                for element in response.results:
+                    # Build a dedupe key (media id + requesting user) to avoid duplicate processing
+                    try:
+                        media_id = getattr(element.media, 'id', None)
+                        user = element.requestedBy.displayName if hasattr(element, 'requestedBy') and hasattr(element.requestedBy, 'displayName') else None
+                        dedupe_key = (str(media_id), str(user))
+                    except Exception:
+                        dedupe_key = None
+
+                    # Skip if duplicate media+user in same API response
+                    if dedupe_key and dedupe_key in seen:
+                        skipped += 1
+                        ui_print(f'[jellyseerr] skipping duplicate request for media={media_id} user={user}', ui_settings.debug)
+                        continue
+
+                    checked += 1
+                    # Only log when adding a request (reduce noise)
+                    if not element in self.data and (element.requestedBy.displayName in users or users == ['all']) and ([str(element.media.status)] in allowed_movie_status if element.type == 'movie' else [str(element.media.status)] in allowed_show_status):
+                        ui_print(f'[jellyseerr] adding request to queue: type={element.type}, status={getattr(element.media, "status", "?")}, user={getattr(element.requestedBy, "displayName", "?")}', ui_settings.debug)
+                        last_requests.append(element)
+                        added += 1
+                        seen.add(dedupe_key if dedupe_key else element.id)
+
+                # Summary log to avoid spamming the logs on each scan
+                ui_print(f'[jellyseerr] checked {checked} unique requests, added {added}, skipped {skipped} duplicates', ui_settings.debug)
             except Exception as e:
                 ui_print('[jellyseerr] error: ' + str(e), ui_settings.debug)
                 ui_print('[jellyseerr] error: jellyseerr couldnt be reached. turn on debug printing for more info.')
@@ -413,29 +437,50 @@ class requests(classes.watchlist):
                 response = get(base_url + '/api/v1/request?take=10000')
                 for element_ in response.results:
                     if not any(x.id == element_.id and x.updatedAt == element_.updatedAt for x in last_requests) and (element_.requestedBy.displayName in users or users == ['all']) and ([str(element_.media.status)] in allowed_movie_status if element_.type == 'movie' else [str(element_.media.status)] in allowed_show_status):
-                        ui_print('[jellyseerr] found new jellyseerr request by user "' + element_.requestedBy.displayName + '".')
-                        refresh = True
-                        last_requests.append(element_)
-                        # REMOVED: Plex/Trakt matching - just use jellyseerr data directly
-                        ui_print('[jellyseerr] processing new jellyseerr request ...')
+                        # Convert to media object first to check if already in self.data
                         element = copy.deepcopy(element_)
                         if element.type == "movie":
                             element = movie(element)
                         elif element.type == "tv":
                             element = show(element)
                         element.request_id = element_.media.id
+                        
+                        # Only process if not already in watchlist
                         if not element in self.data:
+                            ui_print('[jellyseerr] found new jellyseerr request by user "' + element_.requestedBy.displayName + '".')
+                            refresh = True
+                            last_requests.append(element_)
+                            ui_print('[jellyseerr] processing new jellyseerr request ...')
                             self.data.append(element)
+                            ui_print('done')
                         else:
+                            # Already in watchlist, just update last_requests to avoid re-checking
+                            if not any(x.id == element_.id and x.updatedAt == element_.updatedAt for x in last_requests):
+                                last_requests.append(element_)
+                            # Handle season updates for shows
                             existing = next(x for x in self.data if x == element)
                             if element.type == "show":
                                 for season in element.Seasons:
                                     if not any(season.index == x.index for x in existing.Seasons):
                                         existing.Seasons.append(season)
-                        ui_print('done')
+                                        refresh = True
+                # Clean up last_requests for items no longer in API results
                 for element in last_requests[:]:
                     if not element.id in (x.id for x in response.results):
                         last_requests.remove(element)
+                
+                # Remove items from watchlist if their status is no longer in allowed list (e.g., status changed to 5 Available)
+                for existing_item in self.data[:]:
+                    # Find the corresponding API result
+                    api_result = next((x for x in response.results if hasattr(existing_item, 'request_id') and x.media.id == existing_item.request_id), None)
+                    if api_result:
+                        # Check if status is still allowed
+                        status_allowed = ([str(api_result.media.status)] in allowed_movie_status if api_result.type == 'movie' else [str(api_result.media.status)] in allowed_show_status)
+                        if not status_allowed:
+                            ui_print(f'[jellyseerr] removing request from queue (status changed to {api_result.media.status}): {existing_item.title if hasattr(existing_item, "title") else "unknown"}')
+                            self.data.remove(existing_item)
+                            refresh = True
+                
                 if refresh:
                     return True
             except:

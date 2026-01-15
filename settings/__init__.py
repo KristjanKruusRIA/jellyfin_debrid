@@ -6,6 +6,13 @@ import releases
 import debrid
 from ui import ui_settings
 
+# Lazy loader for scraper.services to avoid circular imports
+class LazyScraperServices:
+    def __getattr__(self, name):
+        return getattr(scraper.services, name)
+
+_lazy_scraper_services = LazyScraperServices()
+
 class setting:
     def __init__(self, name, prompt, cls, key, required=False, entry="", test=None, help="", hidden=False,
                     subclass=False, oauth=False, moveable=True, preflight=False, radio=False, special=False):
@@ -367,7 +374,7 @@ settings_list = [
     ]
         ],
     ['Scraper Settings', [
-        setting('Sources', [''], scraper.services, 'active', entry="source", subclass=True, preflight=True),
+        setting('Sources', [''], _lazy_scraper_services, 'active', entry="source", subclass=True, preflight=True),
         setting('Versions', [], releases.sort, 'versions', special=True, entry="version"),
         setting('Special character renaming', ['Please specify a character or string that should be replaced, or provide a regex using {{regex}}: ','Please specify with what character or string it should be replaced: '],releases.rename, 'replaceChars', entry="rule",help='In this setting you can specify a character or a string that should be replaced by nothing, some other character or a string. You can enter regular expressions using {{regex}}.'),
         # REMOVED: Missing scraper services (only torrentio exists)
@@ -383,7 +390,7 @@ settings_list = [
         # setting('Nyaa parameters', ...),
         # setting('Nyaa sleep time', ...),
         # setting('Nyaa proxy', ...),
-        setting('Torrentio Scraper Parameters','Please enter a valid torrentio manifest url: ',scraper.services.torrentio, 'default_opts', entry="parameter", help='This settings lets you control the torrentio scraping parameters. Visit "https://torrentio.strem.fun/configure" and configure your settings. Dont choose a debrid service. The "manifest url" will be copied to your clipboard.', hidden=True),
+        setting('Torrentio Scraper Parameters','Please enter a valid torrentio manifest url: ',_lazy_scraper_services.torrentio, 'default_opts', entry="parameter", help='This settings lets you control the torrentio scraping parameters. Visit "https://torrentio.strem.fun/configure" and configure your settings. Dont choose a debrid service. The "manifest url" will be copied to your clipboard.', hidden=True),
     ]
         ],
     ['Debrid Services', [

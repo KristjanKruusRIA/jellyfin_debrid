@@ -157,13 +157,91 @@ def download(element, stream=True, query='', force=False):
         if matches_primary or matches_alternative or force:
             if stream:
                 release.size = 0
+                
+                # Detect HTTP type releases FIRST - before any processing
+                is_http_release = False
+                if release.download and len(release.download) > 0:
+                    download_str = str(release.download[0])
+                    # Check both type attribute AND download URL format
+                    if (hasattr(release, 'type') and release.type == 'http') or \
+                       download_str.startswith('http://') or download_str.startswith('https://'):
+                        is_http_release = True
+                        release.type = 'http'
+                
+                # Debug: Log release attributes for HTTP detection
+                release_type = getattr(release, 'type', None)
+                download_val = getattr(release, 'download', None)
+                download_preview = str(download_val[0])[:100] if download_val and len(download_val) > 0 else 'None'
+                ui_print('[realdebrid] debug: checking release: ' + release.title + ' | type=' + str(release_type) + ' | is_http: ' + str(is_http_release) + ' | download[0]: ' + download_preview, ui_settings.debug)
+                
+                # Handle HTTP type releases (e.g., from AIOStreams) - direct download links
+                # Do this BEFORE any magnet/file processing
+                if is_http_release:
+                    ui_print('[realdebrid] processing http stream link: ' + release.title, ui_settings.debug)
+                    if release.download and len(release.download) > 0:
+                        http_url = release.download[0]
+                        ui_print('[realdebrid] http download url: ' + http_url[:100] + '...', ui_settings.debug)
+                        ui_print('[realdebrid] http release ready for download: ' + release.title, ui_settings.debug)
+                        download_success = downloader.download_from_realdebrid(release, element)
+                        if download_success:
+                            ui_print('[realdebrid] successfully downloaded file from http stream')
+                            # Trigger Jellyfin library refresh after successful download
+                            try:
+                                from content.services import jellyfin
+                                jellyfin.library.refresh(element)
+                            except Exception as e:
+                                ui_print(f'[realdebrid] could not refresh jellyfin libraries: {str(e)}', debug=True)
+                            # Mark Jellyseerr request as available after successful download
+                            try:
+                                from content.services import jellyseerr
+                                jellyseerr.library.refresh(element)
+                            except Exception as e:
+                                ui_print(f'[realdebrid] could not mark jellyseerr request as available: {str(e)}', debug=True)
+                            return True
+                    continue
+                
                 # Check if files are available, if not we need to add magnet to get file list
                 if not release.files or all(not hasattr(v, 'files') or len(v.files) == 0 for v in release.files):
                     ui_print('[realdebrid] no file info available (nodownloadlinks enabled), adding magnet to RD...', ui_settings.debug)
                     # Add magnet to get file information
                     try:
                         context = "release: '" + str(release.title) + "' | item: '" + str(element.query()) + "'"
-                        response = post('https://api.real-debrid.com/rest/1.0/torrents/addMagnet',{'magnet': str(release.download[0])}, context=context)
+                        # Validate the download link before attempting to add as magnet
+                        magnet_candidate = ''
+                        if hasattr(release, 'download') and release.download and len(release.download) > 0:
+                            magnet_candidate = str(release.download[0])
+
+                        # If this is an HTTP URL, process as HTTP stream instead of adding magnet
+                        if magnet_candidate.startswith('http://') or magnet_candidate.startswith('https://'):
+                            ui_print('[realdebrid] warning: download entry looks like an HTTP URL in addMagnet path, processing as HTTP instead: ' + release.title, ui_settings.debug)
+                            release.type = 'http'
+                            download_success = downloader.download_from_realdebrid(release, element)
+                            if download_success:
+                                ui_print('[realdebrid] successfully downloaded file from http stream')
+                                try:
+                                    from content.services import jellyfin
+                                    jellyfin.library.refresh(element)
+                                except Exception as e:
+                                    ui_print(f'[realdebrid] could not refresh jellyfin libraries: {str(e)}', debug=True)
+                                try:
+                                    from content.services import jellyseerr
+                                    jellyseerr.library.refresh(element)
+                                except Exception as e:
+                                    ui_print(f'[realdebrid] could not mark jellyseerr request as available: {str(e)}', debug=True)
+                                return True
+                            continue
+
+                        # Only attempt to add if it looks like a magnet
+                        if magnet_candidate.startswith('magnet:'):
+                            response = post('https://api.real-debrid.com/rest/1.0/torrents/addMagnet',{'magnet': magnet_candidate}, context=context)
+                            # Check if response has an error
+                            if not response or hasattr(response, 'error'):
+                                ui_print('[realdebrid] error adding magnet: ' + (response.error if response and hasattr(response, 'error') else 'unknown error'), ui_settings.debug)
+                                continue
+                        else:
+                            ui_print('[realdebrid] error: invalid download link (not magnet or http): ' + str(magnet_candidate) + ' | release: ' + release.title, ui_settings.debug)
+                            continue
+                        
                         torrent_id = str(response.id)
                         ui_print('[realdebrid] magnet added, torrent_id: ' + torrent_id, ui_settings.debug)
                         
@@ -255,8 +333,36 @@ def download(element, stream=True, query='', force=False):
                             # post magnet to real debrid
                             try:
                                 context = "release: '" + str(release.title) + "' | item: '" + str(element.query()) + "'"
-                                response = post('https://api.real-debrid.com/rest/1.0/torrents/addMagnet',{'magnet': str(release.download[0])}, context=context)
-                                torrent_id = str(response.id)
+                                # Validate before adding magnet
+                                magnet_candidate = ''
+                                if hasattr(release, 'download') and release.download and len(release.download) > 0:
+                                    magnet_candidate = str(release.download[0])
+
+                                if magnet_candidate.startswith('http://') or magnet_candidate.startswith('https://'):
+                                    ui_print('[realdebrid] warning: download entry looks like an HTTP URL in addMagnet path, processing as HTTP instead: ' + release.title, ui_settings.debug)
+                                    release.type = 'http'
+                                    download_success = downloader.download_from_realdebrid(release, element)
+                                    if download_success:
+                                        ui_print('[realdebrid] successfully downloaded file from http stream')
+                                        try:
+                                            from content.services import jellyfin
+                                            jellyfin.library.refresh(element)
+                                        except Exception as e:
+                                            ui_print(f'[realdebrid] could not refresh jellyfin libraries: {str(e)}', debug=True)
+                                        try:
+                                            from content.services import jellyseerr
+                                            jellyseerr.library.refresh(element)
+                                        except Exception as e:
+                                            ui_print(f'[realdebrid] could not mark jellyseerr request as available: {str(e)}', debug=True)
+                                        return True
+                                    continue
+
+                                if magnet_candidate.startswith('magnet:'):
+                                    response = post('https://api.real-debrid.com/rest/1.0/torrents/addMagnet',{'magnet': magnet_candidate}, context=context)
+                                    torrent_id = str(response.id)
+                                else:
+                                    ui_print('[realdebrid] error: invalid download link (not magnet or http): ' + str(magnet_candidate) + ' | release: ' + release.title, ui_settings.debug)
+                                    continue
                             except:
                                 ui_print('[realdebrid] error: could not add magnet for release: ' + release.title, ui_settings.debug)
                                 continue
@@ -320,7 +426,35 @@ def download(element, stream=True, query='', force=False):
             else:
                 try:
                     context = "release: '" + str(release.title) + "' | item: '" + str(element.query()) + "'"
-                    response = post('https://api.real-debrid.com/rest/1.0/torrents/addMagnet',{'magnet': release.download[0]}, context=context)
+                    # Validate before adding magnet
+                    magnet_candidate = ''
+                    if hasattr(release, 'download') and release.download and len(release.download) > 0:
+                        magnet_candidate = str(release.download[0])
+
+                    if magnet_candidate.startswith('http://') or magnet_candidate.startswith('https://'):
+                        ui_print('[realdebrid] warning: download entry looks like an HTTP URL in addMagnet path, processing as HTTP instead: ' + release.title, ui_settings.debug)
+                        release.type = 'http'
+                        download_success = downloader.download_from_realdebrid(release, element)
+                        if download_success:
+                            ui_print('[realdebrid] successfully downloaded file from http stream')
+                            try:
+                                from content.services import jellyfin
+                                jellyfin.library.refresh(element)
+                            except Exception as e:
+                                ui_print(f'[realdebrid] could not refresh jellyfin libraries: {str(e)}', debug=True)
+                            try:
+                                from content.services import jellyseerr
+                                jellyseerr.library.refresh(element)
+                            except Exception as e:
+                                ui_print(f'[realdebrid] could not mark jellyseerr request as available: {str(e)}', debug=True)
+                            return True
+                        continue
+
+                    if magnet_candidate.startswith('magnet:'):
+                        response = post('https://api.real-debrid.com/rest/1.0/torrents/addMagnet',{'magnet': magnet_candidate}, context=context)
+                    else:
+                        ui_print('[realdebrid] error: invalid download link (not magnet or http): ' + str(magnet_candidate) + ' | release: ' + release.title, ui_settings.debug)
+                        continue
                     time.sleep(0.1)
                     post('https://api.real-debrid.com/rest/1.0/torrents/selectFiles/' + str(response.id),{'files': 'all'}, context=context)
                     ui_print('[realdebrid] adding uncached release: ' + release.title)
@@ -343,6 +477,11 @@ def check(element, force=False):
 
     hashes = []
     for release in element.Releases[:]:
+        # Skip hash checking for HTTP type releases (e.g., from AIOStreams)
+        if hasattr(release, 'type') and release.type == 'http':
+            ui_print("[realdebrid] skipping hash check for http release: '" + release.title + "' (will process directly)", ui_settings.debug)
+            continue
+        
         if len(release.hash) == 40:
             hashes += [release.hash]
         else:

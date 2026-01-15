@@ -2,6 +2,18 @@ from base import *
 #import child modules
 # FIXED: Only import scrapers that exist
 from scraper.services import torrentio
+
+try:
+    from scraper.services import aiostreams
+    scrapers = [torrentio, aiostreams]
+    # AIOStreams provides direct HTTP cached download links
+    active_default = ['torrentio', 'aiostreams']
+except Exception as e:
+    print(f"Warning: Could not import aiostreams: {e}")
+    scrapers = [torrentio]
+    active_default = ['torrentio']
+    aiostreams = None
+
 # from scraper.services import rarbg
 # from scraper.services import x1337
 # from scraper.services import jackett
@@ -11,9 +23,9 @@ from scraper.services import torrentio
 
 #define subclass method
 def __subclasses__():
-    return [torrentio]
+    return scrapers
 
-active = ['torrentio']
+active = active_default
 overwrite = []
 
 def setup(cls, new=False):

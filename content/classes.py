@@ -268,6 +268,37 @@ class media:
 
     ignore_queue = []
     downloaded_versions = []
+    # cooldowns maps a media query string to a Unix timestamp until which scanning is suppressed
+    cooldowns = {}
+
+    def is_in_cooldown(self):
+        """Return True if this media item is currently in cooldown."""
+        try:
+            key = self.query()
+        except Exception:
+            return False
+        expiry = media.cooldowns.get(key)
+        if expiry and time.time() < expiry:
+            return True
+        return False
+
+    def cooldown_remaining(self):
+        """Return remaining cooldown seconds for this media item, or 0 if none."""
+        try:
+            key = self.query()
+        except Exception:
+            return 0
+        expiry = media.cooldowns.get(key, 0)
+        rem = int(expiry - time.time())
+        return rem if rem > 0 else 0
+
+    def set_cooldown(self, minutes):
+        """Set a cooldown of `minutes` minutes for this media item."""
+        try:
+            key = self.query()
+        except Exception:
+            return
+        media.cooldowns[key] = time.time() + (int(minutes) * 60)
 
     def __init__(self, other):
         self.__dict__.update(other.__dict__)
@@ -708,7 +739,7 @@ class media:
         # update media items ignore count
         if self in media.ignore_queue:
             match = next((x for x in media.ignore_queue if self == x), None)
-            self.ignored_count = match.ignored_count
+            self.ignored_count = getattr(match, 'ignored_count', 1)
         # remove versions that dont apply
         for version in versions[:]:
             if not version.applies(self):
@@ -824,7 +855,7 @@ class media:
         all_versions = []
         if self in media.ignore_queue:
             match = next((x for x in media.ignore_queue if self == x), None)
-            self.ignored_count = match.ignored_count
+            self.ignored_count = getattr(match, 'ignored_count', 1)
         for version in releases.sort.versions:
             if not '\u0336' in version[0]:
                 all_versions += [releases.sort.version(
@@ -895,17 +926,31 @@ class media:
                         retries = int(float(trigger[2]))
         if retries == 0:
             return
+        try:
+            cooldown_min = int(os.getenv('DOWNLOAD_COOLDOWN_MINUTES', '10'))
+        except Exception:
+            cooldown_min = 30
+
         if not self in media.ignore_queue:
             self.ignored_count = 1
             media.ignore_queue += [self]
-            ui_print('retrying download in 30min for item: ' + self.query() + ' - version/s [' + '],['.join(
+            ui_print('retrying download in ' + str(cooldown_min) + 'min for item: ' + self.query() + ' - version/s [' + '],['.join(
                 names) + '] - attempt ' + str(self.ignored_count) + '/' + str(retries))
+            try:
+                # set cooldown to prevent immediate re-scan
+                self.set_cooldown(cooldown_min)
+            except Exception:
+                pass
         else:
             match = next((x for x in media.ignore_queue if self == x), None)
             if match.ignored_count < retries:
                 match.ignored_count += 1
-                ui_print('retrying download in 30min for item: ' + self.query() + ' - version/s [' + '],['.join(
+                ui_print('retrying download in ' + str(cooldown_min) + 'min for item: ' + self.query() + ' - version/s [' + '],['.join(
                     names) + '] - attempt ' + str(match.ignored_count) + '/' + str(retries))
+                try:
+                    match.set_cooldown(cooldown_min)
+                except Exception:
+                    pass
             else:
                 media.ignore_queue.remove(match)
                 ignore.add(self)
