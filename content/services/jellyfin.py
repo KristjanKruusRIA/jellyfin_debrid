@@ -30,7 +30,11 @@ def post(url, data):
         headers = {"X-MediaBrowser-Token": api_key}
         response = session.post(url, data=data, headers=headers)
         logerror(response)
-        response = json.loads(response.content, object_hook=lambda d: SimpleNamespace(**d))
+        # Some endpoints like /Library/Refresh return empty responses
+        if response.content and len(response.content) > 0:
+            response = json.loads(response.content, object_hook=lambda d: SimpleNamespace(**d))
+        else:
+            response = None
         return response
     except Exception as e:
         ui_print("jellyfin error: (json exception): " + str(e), debug=ui_settings.debug)

@@ -8,6 +8,7 @@ import shutil
 import requests
 from pathlib import Path
 import re
+import time
 
 # Download settings - use environment variable if available, otherwise default to E:\Media
 download_path = os.environ.get('DOWNLOAD_PATH', r'E:\Media')
@@ -53,13 +54,17 @@ def download_file(url, filename, is_show=False):
         # Download to temp directory first
         temp_file = os.path.join(temp_download_path, filename)
         
-        # Remove existing temp file if it exists
+        # Remove existing temp file if it exists and is old (more than 1 hour old)
         if os.path.exists(temp_file):
             try:
-                os.remove(temp_file)
-                ui_print(f"[downloader] Removed existing temp file", debug="true")
+                file_age = time.time() - os.path.getmtime(temp_file)
+                if file_age > 3600:  # More than 1 hour old - abandoned download
+                    os.remove(temp_file)
+                    ui_print(f"[downloader] Removed old temp file", debug="true")
+                # Otherwise skip removal - file is likely from current download
             except Exception as e:
-                ui_print(f"[downloader] Warning: Could not remove existing temp file: {e}", debug="true")
+                # If we can't remove it, just skip and let the new download overwrite
+                pass
         
         session = requests.Session()
         session.headers.update({

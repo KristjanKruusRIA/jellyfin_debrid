@@ -202,6 +202,12 @@ def download(element, stream=True, query='', force=False):
                                             jellyfin.library.refresh(element)
                                         except Exception as e:
                                             ui_print(f'[realdebrid] could not refresh jellyfin libraries: {str(e)}', debug=True)
+                                        # Mark Jellyseerr request as available after successful download
+                                        try:
+                                            from content.services import jellyseerr
+                                            jellyseerr.library.refresh(element)
+                                        except Exception as e:
+                                            ui_print(f'[realdebrid] could not mark jellyseerr request as available: {str(e)}', debug=True)
                                         return True
                             else:
                                 ui_print('[realdebrid] no links available yet, status: ' + response.status, ui_settings.debug)
