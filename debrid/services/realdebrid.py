@@ -186,6 +186,13 @@ def download(element, stream=True, query='', force=False):
                         download_success = downloader.download_from_realdebrid(release, element)
                         if download_success:
                             ui_print('[realdebrid] successfully downloaded file from http stream')
+                            # Remove from downloading list
+                            import debrid as db
+                            if hasattr(element, 'version'):
+                                download_id = element.query() + ' [' + element.version.name + ']'
+                                if download_id in db.downloading:
+                                    db.downloading.remove(download_id)
+                                    ui_print(f'[realdebrid] removed from downloading list: {download_id}', debug=True)
                             # Trigger Jellyfin library refresh after successful download
                             try:
                                 from content.services import jellyfin
@@ -219,6 +226,13 @@ def download(element, stream=True, query='', force=False):
                             download_success = downloader.download_from_realdebrid(release, element)
                             if download_success:
                                 ui_print('[realdebrid] successfully downloaded file from http stream')
+                                # Remove from downloading list
+                                import debrid as db
+                                if hasattr(element, 'version'):
+                                    download_id = element.query() + ' [' + element.version.name + ']'
+                                    if download_id in db.downloading:
+                                        db.downloading.remove(download_id)
+                                        ui_print(f'[realdebrid] removed from downloading list: {download_id}', debug=True)
                                 try:
                                     from content.services import jellyfin
                                     jellyfin.library.refresh(element)
@@ -345,6 +359,13 @@ def download(element, stream=True, query='', force=False):
                                     download_success = downloader.download_from_realdebrid(release, element)
                                     if download_success:
                                         ui_print('[realdebrid] successfully downloaded file from http stream')
+                                        # Remove from downloading list
+                                        import debrid as db
+                                        if hasattr(element, 'version'):
+                                            download_id = element.query() + ' [' + element.version.name + ']'
+                                            if download_id in db.downloading:
+                                                db.downloading.remove(download_id)
+                                                ui_print(f'[realdebrid] removed from downloading list: {download_id}', debug=True)
                                         try:
                                             from content.services import jellyfin
                                             jellyfin.library.refresh(element)
@@ -438,6 +459,13 @@ def download(element, stream=True, query='', force=False):
                         download_success = downloader.download_from_realdebrid(release, element)
                         if download_success:
                             ui_print('[realdebrid] successfully downloaded file from http stream')
+                            # Remove from downloading list
+                            import debrid as db
+                            if hasattr(element, 'version'):
+                                download_id = element.query() + ' [' + element.version.name + ']'
+                                if download_id in db.downloading:
+                                    db.downloading.remove(download_id)
+                                    ui_print(f'[realdebrid] removed from downloading list: {download_id}', debug=True)
                             try:
                                 from content.services import jellyfin
                                 jellyfin.library.refresh(element)
