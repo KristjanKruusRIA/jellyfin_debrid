@@ -482,10 +482,7 @@ def threaded(stop):
                         for element in new_watchlists:
                             if hasattr(element, 'download'):
                                 element_name = element.title if hasattr(element, 'title') else str(type(element))
-                                if element in content.classes.media.ignore_queue:
-                                    ui_print(f'[ui] skipping download (already in progress): {element_name}', ui_settings.debug)
-                                    continue
-                                # Skip if item is in cooldown
+                                # Skip if item is in cooldown - check this FIRST before ignore_queue
                                 try:
                                     cooldown_min = int(os.getenv('DOWNLOAD_COOLDOWN_MINUTES', '30'))
                                 except Exception:
@@ -493,6 +490,10 @@ def threaded(stop):
                                 if element.is_in_cooldown():
                                     rem = element.cooldown_remaining()
                                     ui_print(f"[ui] skipping download (in cooldown {rem}s): {element_name}", ui_settings.debug)
+                                    continue
+                                # Now check if actively downloading (ignore_queue is only for active downloads)
+                                if element in content.classes.media.ignore_queue:
+                                    ui_print(f'[ui] skipping download (already in progress): {element_name}', ui_settings.debug)
                                     continue
                                 content.classes.media.ignore_queue += [element]
                                 try:
@@ -538,7 +539,11 @@ def threaded(stop):
                                         break
                         if newly_added:
                             element_name = element.title if hasattr(element, 'title') else str(type(element))
-                        if element in content.classes.media.ignore_queue:
+                        # Skip if item is in cooldown - check this FIRST before ignore_queue
+                        if element.is_in_cooldown():
+                            rem = element.cooldown_remaining()
+                            ui_print(f"[ui] skipping download (in cooldown {rem}s): {element_name}", ui_settings.debug)
+                        elif element in content.classes.media.ignore_queue:
                             ui_print(f'[ui] skipping download (already in progress): {element_name}', ui_settings.debug)
                         else:
                             content.classes.media.ignore_queue += [element]

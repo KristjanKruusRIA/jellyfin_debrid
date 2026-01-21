@@ -1,5 +1,5 @@
 @echo off
-schtasks /create /tn jellyfin_debrid /sc ONSTART /DELAY 0002:00 /RL HIGHEST /NP /tr "\"E:\DockerDesktopWSL\jellyfin_debrid\start_all_services.bat\"" /f
+schtasks /create /tn jellyfin_debrid /sc ONSTART /DELAY 0005:00 /RL HIGHEST /NP /tr "\"E:\DockerDesktopWSL\jellyfin_debrid\scripts\start_all_services.bat\"" /f
 if errorlevel 1 (
     echo.
     echo Warning: Task was created but may need administrator privileges.

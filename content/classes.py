@@ -931,9 +931,9 @@ class media:
         except Exception:
             cooldown_min = 30
 
-        if not self in media.ignore_queue:
+        # Check if we already have an ignored_count tracked (for retries)
+        if not hasattr(self, 'ignored_count'):
             self.ignored_count = 1
-            media.ignore_queue += [self]
             ui_print('retrying download in ' + str(cooldown_min) + 'min for item: ' + self.query() + ' - version/s [' + '],['.join(
                 names) + '] - attempt ' + str(self.ignored_count) + '/' + str(retries))
             try:
@@ -942,18 +942,20 @@ class media:
             except Exception:
                 pass
         else:
-            match = next((x for x in media.ignore_queue if self == x), None)
-            if match.ignored_count < retries:
-                match.ignored_count += 1
+            if self.ignored_count < retries:
+                self.ignored_count += 1
                 ui_print('retrying download in ' + str(cooldown_min) + 'min for item: ' + self.query() + ' - version/s [' + '],['.join(
-                    names) + '] - attempt ' + str(match.ignored_count) + '/' + str(retries))
+                    names) + '] - attempt ' + str(self.ignored_count) + '/' + str(retries))
                 try:
-                    match.set_cooldown(cooldown_min)
+                    self.set_cooldown(cooldown_min)
                 except Exception:
                     pass
             else:
-                media.ignore_queue.remove(match)
+                # Max retries reached, add to permanent ignore list
                 ignore.add(self)
+                # Clear the retry counter
+                if hasattr(self, 'ignored_count'):
+                    delattr(self, 'ignored_count')
 
     def unwatch(self):
         ignore.remove(self)

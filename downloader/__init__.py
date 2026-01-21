@@ -172,7 +172,7 @@ def download_file(url, filename, is_show=False, expected_size=None):
         except Exception as e:
             ui_print(f"[downloader] Error during size validation: {e}", debug="true")
 
-        # Get organized destination path
+        # Get organized destination path (no element parameter here since this is generic download_file)
         dest_path = organize_path(filename, is_show)
         
         # Move from temp to final location
@@ -259,7 +259,8 @@ def get_quality_score(quality_str):
 
 def is_video_file(filename):
     """
-    Check if a file is a video file based on extension
+    Check if a file is a video file based on extension or video-like patterns.
+    Handles both traditional extensions and extensionless HTTP filenames.
     """
     video_extensions = [
         '.mkv', '.mp4', '.avi', '.mov', '.flv', '.wmv', '.webm',
@@ -268,7 +269,19 @@ def is_video_file(filename):
         '.vob', '.f4v', '.divx'
     ]
     filename_lower = filename.lower()
-    return any(filename_lower.endswith(ext) for ext in video_extensions)
+    
+    # Check for traditional video extensions
+    if any(filename_lower.endswith(ext) for ext in video_extensions):
+        return True
+    
+    # Handle extensionless filenames from HTTP sources (e.g., AIOStreams)
+    # Check for quality indicators (1080p, 720p, 4K, 2160p, etc.)
+    import regex
+    if regex.search(r'(2160p|4K|1080p|720p|480p|BluRay|WEB-?DL|HDTV|WEBRip)', filename, regex.I):
+        # Likely a video file based on quality/source markers
+        return True
+    
+    return False
 
 def is_archive_or_unsafe(filename):
     """
@@ -329,26 +342,64 @@ def select_best_file(files_list):
     
     return best['file']
 
-def organize_path(filename, is_show=False):
+def organize_path(filename, is_show=False, element=None):
     """
     Create organized folder structure for the file
     Returns the full destination path
+    
+    element: optional media element with title/year metadata
     """
     info = parse_filename(filename)
     
+    # Try to get metadata from element first, fallback to parsed filename
+    if element:
+        if hasattr(element, 'type'):
+            element_type = element.type
+            # Determine if show based on element type
+            if element_type in ['show', 'season', 'episode']:
+                is_show = True
+    
     if info['is_show'] or is_show:
         # TV Show: Shows/Show Name/Season XX/filename
-        show_name = info['title'] if info['title'] else "Unknown Show"
-        season_folder = f"Season {info['season']}" if info['season'] else "Season 01"
+        if element and hasattr(element, 'title'):
+            show_name = element.title
+        elif element and hasattr(element, 'parentTitle'):
+            show_name = element.parentTitle
+        elif element and hasattr(element, 'grandparentTitle'):
+            show_name = element.grandparentTitle
+        else:
+            show_name = info['title'] if info['title'] else "Unknown Show"
+        
+        # Get season number from element or filename
+        season_num = None
+        if element and hasattr(element, 'parentIndex'):
+            season_num = str(element.parentIndex).zfill(2)
+        elif element and hasattr(element, 'index') and hasattr(element, 'type') and element.type == 'season':
+            season_num = str(element.index).zfill(2)
+        elif info['season']:
+            season_num = info['season']
+        
+        season_folder = f"Season {season_num}" if season_num else "Season 01"
         
         dest_dir = os.path.join(shows_path, show_name, season_folder)
         os.makedirs(dest_dir, exist_ok=True)
         return os.path.join(dest_dir, filename)
     else:
         # Movie: Movies/Movie Name (Year)/filename
-        movie_name = info['title'] if info['title'] else "Unknown Movie"
-        if info['year']:
-            folder_name = f"{movie_name} ({info['year']})"
+        if element and hasattr(element, 'title'):
+            movie_name = element.title
+        else:
+            movie_name = info['title'] if info['title'] else "Unknown Movie"
+        
+        # Get year from element or filename
+        year = None
+        if element and hasattr(element, 'year'):
+            year = str(element.year)
+        elif info['year']:
+            year = info['year']
+        
+        if year:
+            folder_name = f"{movie_name} ({year})"
         else:
             folder_name = movie_name
         
@@ -445,7 +496,10 @@ def download_from_realdebrid(release, element):
                     all_success = False
                     continue
                 
-                # Download the file
+                # Download the file - we use custom path organization in download_from_realdebrid
+                # So we'll organize the path here before calling download_file
+                dest_path = organize_path(file['name'], is_show, element)
+                # Extract just the filename from dest_path for download_file
                 result = download_file(download_url, file['name'], is_show, expected_size=file.get('size'))
                 if result is None:
                     all_success = False
@@ -466,7 +520,9 @@ def download_from_realdebrid(release, element):
                 # Use the first download link if URL not specified
                 download_url = release.download[0]
             else:
-                ui_print("[downloader] No download URL available", debug="true")
+                ui_print("[down - organize path with element metadata
+            # Pre-calculate the organized path so the file goes to the right folder
+            dest_path = organize_path(best_file['name'], is_show, element)loader] No download URL available", debug="true")
                 return False
             
             # Download the file

@@ -37,12 +37,18 @@ class LowRatedBlacklist:
         jellyseerr_api_key: str,
         user_id: int,
         min_imdb_score: float = 5.0,
+        blacklist_no_ratings: bool = False,
+        min_runtime: Optional[int] = None,
+        skip_blacklist_check: bool = False,
         dry_run: bool = False
     ):
         self.jellyseerr_url = jellyseerr_url.rstrip('/')
         self.jellyseerr_api_key = jellyseerr_api_key
         self.user_id = user_id
         self.min_imdb_score = min_imdb_score
+        self.blacklist_no_ratings = blacklist_no_ratings
+        self.min_runtime = min_runtime
+        self.skip_blacklist_check = skip_blacklist_check
         self.dry_run = dry_run
         self.session = requests.Session()
         self.session.headers.update({
@@ -57,12 +63,21 @@ class LowRatedBlacklist:
         year_lte: Optional[int] = None,
         vote_avg_gte: Optional[float] = None,
         vote_count_gte: Optional[int] = None,
+        vote_count_lte: Optional[int] = None,
         sort_by: str = "vote_average.desc",
         max_pages: int = 50
     ) -> List[Dict]:
         """Fetch movies from Jellyseerr discover endpoint"""
         print(f"Fetching movies from Jellyseerr discover...")
-        print(f"Filters: genre={genre}, year>={year_gte}, vote_avg>={vote_avg_gte}, vote_count>={vote_count_gte}")
+        year_filter = f"year>={year_gte}" if year_gte else ""
+        if year_lte:
+            year_filter += f"-{year_lte}" if year_filter else f"year<={year_lte}"
+        year_filter = year_filter or "all years"
+        vote_count_filter = f"vote_count>={vote_count_gte}" if vote_count_gte else ""
+        if vote_count_lte:
+            vote_count_filter += f"-{vote_count_lte}" if vote_count_filter else f"vote_count<={vote_count_lte}"
+        vote_count_filter = vote_count_filter or "any"
+        print(f"Filters: genre={genre}, {year_filter}, vote_avg>={vote_avg_gte}, {vote_count_filter}")
         
         all_movies = []
         page = 1
@@ -84,6 +99,8 @@ class LowRatedBlacklist:
                     params['voteAverageGte'] = vote_avg_gte
                 if vote_count_gte:
                     params['voteCountGte'] = vote_count_gte
+                if vote_count_lte:
+                    params['voteCountLte'] = vote_count_lte
                 
                 response = self.session.get(
                     f"{self.jellyseerr_url}/api/v1/discover/movies",
@@ -115,13 +132,18 @@ class LowRatedBlacklist:
         return all_movies
 
     def get_movie_ratings(self, tmdb_id: int) -> Optional[Dict]:
-        """Get movie ratings including IMDb score"""
+        """Get movie ratings including IMDb score. Returns 'NOT_FOUND' for 404 errors."""
         try:
             response = self.session.get(
                 f"{self.jellyseerr_url}/api/v1/movie/{tmdb_id}/ratingscombined"
             )
             response.raise_for_status()
             return response.json()
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 404:
+                return 'NOT_FOUND'
+            print(f"Error fetching ratings for TMDB {tmdb_id}: {e}")
+            return None
         except Exception as e:
             print(f"Error fetching ratings for TMDB {tmdb_id}: {e}")
             return None
@@ -136,6 +158,19 @@ class LowRatedBlacklist:
             return imdb_data.get('criticsScore')
         
         return None
+
+    def get_movie_details(self, tmdb_id: int) -> Optional[Dict]:
+        """Get full movie details including runtime"""
+        try:
+            response = self.session.get(
+                f"{self.jellyseerr_url}/api/v1/movie/{tmdb_id}"
+            )
+            if response.status_code == 200:
+                return response.json()
+            return None
+        except Exception as e:
+            print(f"Error fetching movie details for TMDB {tmdb_id}: {e}")
+            return None
 
     def get_existing_blacklist(self) -> set:
         """Get currently blacklisted TMDB IDs from Jellyseerr"""
@@ -173,10 +208,11 @@ class LowRatedBlacklist:
             print(f"Error fetching blacklist: {e}")
             return set()
 
-    def add_to_blacklist(self, tmdb_id: int, title: str, imdb_score: float) -> bool:
+    def add_to_blacklist(self, tmdb_id: int, title: str, imdb_score: Optional[float]) -> bool:
         """Add a movie to Jellyseerr blacklist"""
         if self.dry_run:
-            print(f"[DRY RUN] Would blacklist: {title} (TMDB: {tmdb_id}, IMDb: {imdb_score})")
+            score_str = f"IMDb: {imdb_score}" if imdb_score is not None else "No ratings"
+            print(f"[DRY RUN] Would blacklist: {title} (TMDB: {tmdb_id}, {score_str})")
             return True
         
         try:
@@ -210,15 +246,19 @@ class LowRatedBlacklist:
         movies: List[Dict],
         existing_blacklist: set
     ):
-        """Process movies and blacklist those with low IMDb scores"""
+        """Process movies and blacklist those with low IMDb scores or short runtime"""
         print(f"\nProcessing {len(movies)} movies...")
         print(f"IMDb score threshold: < {self.min_imdb_score}")
+        if self.min_runtime:
+            print(f"Runtime threshold: < {self.min_runtime} minutes")
         print(f"Dry run mode: {self.dry_run}\n")
         
         success_count = 0
         skip_count = 0
         no_score_count = 0
+        no_ratings_count = 0
         above_threshold_count = 0
+        runtime_blacklist_count = 0
         error_count = 0
         
         for idx, movie in enumerate(movies, 1):
@@ -230,14 +270,36 @@ class LowRatedBlacklist:
                 skip_count += 1
                 continue
             
-            # Skip if already blacklisted
-            if tmdb_id in existing_blacklist:
-                skip_count += 1
-                continue
+            # Get movie details for runtime check if needed
+            movie_details = None
+            if self.min_runtime:
+                movie_details = self.get_movie_details(tmdb_id)
+                if movie_details:
+                    runtime = movie_details.get('runtime', 0)
+                    if runtime > 0 and runtime < self.min_runtime:
+                        print(f"[{idx}/{len(movies)}] {title}: Runtime {runtime}min < {self.min_runtime}min → BLACKLISTING")
+                        if self.add_to_blacklist(tmdb_id, title, None):
+                            runtime_blacklist_count += 1
+                        else:
+                            error_count += 1
+                        continue
             
             # Get movie ratings to fetch IMDb score
             print(f"[{idx}/{len(movies)}] Checking: {title}...", end=" ")
             ratings = self.get_movie_ratings(tmdb_id)
+            
+            # Handle movies without ratings endpoint (404)
+            if ratings == 'NOT_FOUND':
+                if self.blacklist_no_ratings:
+                    print("No ratings available → BLACKLISTING")
+                    if self.add_to_blacklist(tmdb_id, title, None):
+                        success_count += 1
+                    else:
+                        error_count += 1
+                else:
+                    print("⊘ No ratings available")
+                    no_ratings_count += 1
+                continue
             
             if not ratings:
                 print("✗ Failed to fetch ratings")
@@ -268,11 +330,14 @@ class LowRatedBlacklist:
         
         print("\n" + "="*60)
         print("Processing Summary:")
-        print(f"  Total movies processed: {len(movies)}")
+        print(f"  Total movies checked: {len(movies)}")
         print(f"  Blacklisted (IMDb < {self.min_imdb_score}): {success_count}")
+        if self.min_runtime:
+            print(f"  Blacklisted (runtime < {self.min_runtime}min): {runtime_blacklist_count}")
         print(f"  Above threshold: {above_threshold_count}")
         print(f"  No IMDb score available: {no_score_count}")
-        print(f"  Already blacklisted: {skip_count}")
+        print(f"  No ratings endpoint (404): {no_ratings_count}")
+        print(f"  Skipped (no TMDB ID): {skip_count}")
         print(f"  Errors: {error_count}")
         print("="*60)
 
@@ -337,6 +402,16 @@ def main():
         help='Minimum TMDB vote count (e.g., 51)'
     )
     parser.add_argument(
+        '--vote-count-lte',
+        type=int,
+        help='Maximum TMDB vote count (e.g., 1000)'
+    )
+    parser.add_argument(
+        '--min-runtime',
+        type=int,
+        help='Minimum acceptable runtime - blacklist movies with runtime less than this value in minutes (e.g., 80)'
+    )
+    parser.add_argument(
         '--sort-by',
         default='vote_average.desc',
         help='Sort order (default: vote_average.desc)'
@@ -349,6 +424,16 @@ def main():
     )
     
     # Options
+    parser.add_argument(
+        '--blacklist-no-ratings',
+        action='store_true',
+        help='Blacklist movies that have no ratings endpoint (404)'
+    )
+    parser.add_argument(
+        '--skip-blacklist-check',
+        action='store_true',
+        help='Skip fetching existing blacklist (faster, relies on API 412 for duplicates)'
+    )
     parser.add_argument(
         '--dry-run',
         action='store_true',
@@ -363,6 +448,9 @@ def main():
         jellyseerr_api_key=args.jellyseerr_api_key,
         user_id=args.user_id,
         min_imdb_score=args.min_score,
+        blacklist_no_ratings=args.blacklist_no_ratings,
+        min_runtime=args.min_runtime,
+        skip_blacklist_check=args.skip_blacklist_check,
         dry_run=args.dry_run
     )
     
@@ -373,6 +461,7 @@ def main():
         year_lte=args.year_lte,
         vote_avg_gte=args.vote_avg_gte,
         vote_count_gte=args.vote_count_gte,
+        vote_count_lte=args.vote_count_lte,
         sort_by=args.sort_by,
         max_pages=args.max_pages
     )
@@ -381,11 +470,26 @@ def main():
         print("No movies found with the specified filters")
         sys.exit(1)
     
-    # Get existing blacklist
-    existing_blacklist = processor.get_existing_blacklist()
+    # Get existing blacklist (skip if requested for performance)
+    if args.skip_blacklist_check:
+        print("Skipping blacklist check (--skip-blacklist-check enabled)")
+        print("API will return 412 for already blacklisted movies\n")
+        existing_blacklist = set()
+        movies_to_check = movies
+    else:
+        existing_blacklist = processor.get_existing_blacklist()
+        
+        # Filter out already blacklisted movies
+        movies_to_check = [m for m in movies if m.get('id') not in existing_blacklist]
+        print(f"\nAfter filtering blacklisted movies: {len(movies_to_check)} movies to check")
+        print(f"Skipped {len(movies) - len(movies_to_check)} already blacklisted movies\n")
+        
+        if not movies_to_check:
+            print("All discovered movies are already blacklisted!")
+            sys.exit(0)
     
     # Process and blacklist low-rated movies
-    processor.process_movies(movies, existing_blacklist)
+    processor.process_movies(movies_to_check, existing_blacklist)
 
 
 if __name__ == '__main__':

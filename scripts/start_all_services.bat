@@ -1,5 +1,5 @@
 @echo off
-cd /d "%~dp0"
+cd /d "%~dp0\.."
 echo Starting jellyfin_debrid service in background...
 echo Logs available at: http://localhost:7654
 echo.
