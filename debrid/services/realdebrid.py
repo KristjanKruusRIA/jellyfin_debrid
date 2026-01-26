@@ -559,6 +559,7 @@ def download(element, stream=True, query='', force=False):
                     continue
         else:
             ui_print('[realdebrid] error: rejecting release: "' + release.title + '" because it doesnt match the allowed deviation', ui_settings.debug)
+            continue  # Skip to next release instead of stopping
     return False
 
 # (required) Check Function
