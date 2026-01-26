@@ -598,9 +598,26 @@ class media:
             if self.type == 'movie':
                 if regex.search(str(self.year), releases.rename(self.title.replace(str(self.year), '') + ' ' + str(self.year))):
                     title = title.replace('.' + str(self.year), '')
+                    # If original title contains a colon/subtitle (e.g., "Movie: Subtitle"), make the subtitle part optional
+                    # This allows "White Noise 2" to match "White Noise 2: The Light"
+                    if ':' in self.title:
+                        # Split original title on colon to find subtitle
+                        title_parts = self.title.split(':', 1)  # Split only on first colon
+                        main_title = releases.rename(title_parts[0].strip())
+                        main_title = main_title.replace('.' + str(self.year), '')
+                        # Make subtitle part optional in the pattern
+                        # Match either just the main title or main title + subtitle
+                        title = main_title + '(\\.[^A-Za-z0-9]+.*)?'
                     if year != "":
-                        return '[^A-Za-z0-9]*(' + title + ':?.)\(?\[?(' + str(year) + ')'
-                    return '[^A-Za-z0-9]*(' + title + ':?.)\(?\[?(' + str(self.year) + '|' + str(self.year - 1) + '|' + str(self.year + 1) + ')'
+                        # Year must match if present, or can be absent
+                        # Negative lookahead to reject wrong years: (?!.*\.(19|20)\d\d(?!\d))
+                        # Then require correct year if any year present: (?:.*[\.\(](' + str(year) + ')[\.\)])?
+                        return '[^A-Za-z0-9]*(' + title + ')(?!.*[\.\(]((?:19|20)\\d\\d)(?![\\d])).*|[^A-Za-z0-9]*(' + title + ').*[\.\(]?(' + str(year) + ')[\.\)]?'
+                    # Match title with year (current, previous, or next year) or reject other years
+                    # Use negative lookahead to reject releases with wrong years
+                    allowed_years = f'{self.year}|{self.year - 1}|{self.year + 1}'
+                    # Pattern: match title, then either (no year at all) OR (one of the allowed years)
+                    return f'[^A-Za-z0-9]*({title})(?!.*[\.\(]((?:19|20)\\d\\d)(?![\\d]))|[^A-Za-z0-9]*({title}).*[\.\(]?({allowed_years})[\.\)]?'
                 else:
                     title = title.replace('.' + str(self.year), '')
                     return '[^A-Za-z0-9]*(' + title + ')'

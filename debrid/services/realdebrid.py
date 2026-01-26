@@ -225,6 +225,11 @@ def download(element, stream=True, query='', force=False):
 
                         # If this is an HTTP URL, process as HTTP stream instead of adding magnet
                         if magnet_candidate.startswith('http://') or magnet_candidate.startswith('https://'):
+                            # Check deviation before downloading HTTP stream
+                            if not (matches_primary or matches_alternative or force):
+                                ui_print('[realdebrid] error: rejecting http release (no file info): "' + release.title + '" because it doesnt match the allowed deviation', ui_settings.debug)
+                                continue  # Skip to next release
+                            
                             ui_print('[realdebrid] warning: download entry looks like an HTTP URL in addMagnet path, processing as HTTP instead: ' + release.title, ui_settings.debug)
                             release.type = 'http'
                             download_success = downloader.download_from_realdebrid(release, element)
@@ -408,6 +413,11 @@ def download(element, stream=True, query='', force=False):
                                     magnet_candidate = str(release.download[0])
 
                                 if magnet_candidate.startswith('http://') or magnet_candidate.startswith('https://'):
+                                    # Check deviation before downloading HTTP stream
+                                    if not (matches_primary or matches_alternative or force):
+                                        ui_print('[realdebrid] error: rejecting http release: "' + release.title + '" because it doesnt match the allowed deviation', ui_settings.debug)
+                                        continue  # Skip to next release
+                                    
                                     ui_print('[realdebrid] warning: download entry looks like an HTTP URL in addMagnet path, processing as HTTP instead: ' + release.title, ui_settings.debug)
                                     release.type = 'http'
                                     download_success = downloader.download_from_realdebrid(release, element)
@@ -510,6 +520,11 @@ def download(element, stream=True, query='', force=False):
                 ui_print('[realdebrid] error: no streamable version could be selected for release: ' + release.title)
                 return False
             else:
+                # For uncached downloads, also check if release matches deviation pattern
+                if not (matches_primary or matches_alternative or force):
+                    ui_print('[realdebrid] error: rejecting uncached release: "' + release.title + '" because it doesnt match the allowed deviation', ui_settings.debug)
+                    continue  # Skip to next release
+                
                 try:
                     context = "release: '" + str(release.title) + "' | item: '" + str(element.query()) + "'"
                     # Validate before adding magnet
@@ -518,6 +533,11 @@ def download(element, stream=True, query='', force=False):
                         magnet_candidate = str(release.download[0])
 
                     if magnet_candidate.startswith('http://') or magnet_candidate.startswith('https://'):
+                        # Check deviation before downloading HTTP stream
+                        if not (matches_primary or matches_alternative or force):
+                            ui_print('[realdebrid] error: rejecting uncached http release: "' + release.title + '" because it doesnt match the allowed deviation', ui_settings.debug)
+                            continue  # Skip to next release
+                        
                         ui_print('[realdebrid] warning: download entry looks like an HTTP URL in addMagnet path, processing as HTTP instead: ' + release.title, ui_settings.debug)
                         release.type = 'http'
                         download_success = downloader.download_from_realdebrid(release, element)
