@@ -191,9 +191,12 @@ def download(element, stream=True, query='', force=False):
                             download_id = element.query()
                             if hasattr(element, 'version'):
                                 download_id += ' [' + element.version.name + ']'
+                            ui_print(f'[realdebrid] debug: checking if "{download_id}" is in downloading list (len={len(db.downloading)}): {db.downloading}', ui_settings.debug)
                             if download_id in db.downloading:
                                 db.downloading.remove(download_id)
-                                ui_print(f'[realdebrid] removed from downloading list: {download_id}', debug=True)
+                                ui_print(f'[realdebrid] removed from downloading list: {download_id}')
+                            else:
+                                ui_print(f'[realdebrid] warning: download_id "{download_id}" not found in downloading list: {db.downloading}')
                             # Trigger Jellyfin library refresh after successful download
                             try:
                                 from content.services import jellyfin
@@ -249,143 +252,146 @@ def download(element, stream=True, query='', force=False):
                             continue
 
                         # Only attempt to add if it looks like a magnet
-                        if magnet_candidate.startswith('magnet:'):
-                            response = post('https://api.real-debrid.com/rest/1.0/torrents/addMagnet',{'magnet': magnet_candidate}, context=context)
-                            # Check if response has an error or missing id
-                            if not response or hasattr(response, 'error') or not hasattr(response, 'id'):
-                                ui_print('[realdebrid] error adding magnet: ' + (response.error if response and hasattr(response, 'error') else 'unknown error'), ui_settings.debug)
+                        try:
+                            if magnet_candidate.startswith('magnet:'):
+                                response = post('https://api.real-debrid.com/rest/1.0/torrents/addMagnet',{'magnet': magnet_candidate}, context=context)
+                                # Check if response has an error or missing id
+                                if not response or hasattr(response, 'error') or not hasattr(response, 'id'):
+                                    ui_print('[realdebrid] error adding magnet: ' + (response.error if response and hasattr(response, 'error') else 'unknown error'), ui_settings.debug)
+                                    continue
+                            else:
+                                ui_print('[realdebrid] error: invalid download link (not magnet or http): ' + str(magnet_candidate) + ' | release: ' + release.title, ui_settings.debug)
                                 continue
-                        else:
-                            ui_print('[realdebrid] error: invalid download link (not magnet or http): ' + str(magnet_candidate) + ' | release: ' + release.title, ui_settings.debug)
-                            continue
-                        
-                        torrent_id = str(response.id)
-                        ui_print('[realdebrid] magnet added, torrent_id: ' + torrent_id, ui_settings.debug)
-                        
-                        # Get torrent info to see available files
-                        import time
-                        time.sleep(2)  # Wait for RD to process
-                        response = get('https://api.real-debrid.com/rest/1.0/torrents/info/' + torrent_id, context=context)
-                        ui_print('[realdebrid] torrent status: ' + response.status, ui_settings.debug)
-                        
-                        # Select only video files in the torrent (avoid .rar, .exe, etc.)
-                        if hasattr(response, 'files') and len(response.files) > 0:
-                            video_extensions = ['.mkv', '.mp4', '.avi', '.mov', '.flv', '.wmv', '.webm', 
+                            
+                            torrent_id = str(response.id)
+                            ui_print('[realdebrid] magnet added, torrent_id: ' + torrent_id, ui_settings.debug)
+                            
+                            # Get torrent info to see available files
+                            import time
+                            time.sleep(2)  # Wait for RD to process
+                            response = get('https://api.real-debrid.com/rest/1.0/torrents/info/' + torrent_id, context=context)
+                            ui_print('[realdebrid] torrent status: ' + response.status, ui_settings.debug)
+                            
+                            # Select only video files in the torrent (avoid .rar, .exe, etc.)
+                            if hasattr(response, 'files') and len(response.files) > 0:
+                                video_extensions = ['.mkv', '.mp4', '.avi', '.mov', '.flv', '.wmv', '.webm', 
                                               '.m4v', '.mpg', '.mpeg', '.3gp', '.ogv', '.ts', '.m2ts',
                                               '.mts', '.m2v', '.m4p', '.mxf', '.asf', '.rm', '.rmvb',
                                               '.vob', '.f4v', '.divx']
-                            file_ids = [str(f.id) for f in response.files 
-                                       if any(getattr(f, 'filename', getattr(f, 'name', '')).lower().endswith(ext) for ext in video_extensions)]
-                            
-                            if not file_ids:
-                                # Fallback: select all files if no video files found
-                                ui_print('[realdebrid] warning: no video files found, selecting all files', ui_settings.debug)
-                                file_ids = [str(f.id) for f in response.files]
-                            
-                            ui_print('[realdebrid] selecting ' + str(len(file_ids)) + ' video files...', ui_settings.debug)
-                            post('https://api.real-debrid.com/rest/1.0/torrents/selectFiles/' + torrent_id, 
-                                 {'files': ','.join(file_ids)}, context=context)
-                            
-                            # Wait a bit more and get updated info
-                            time.sleep(2)
-                            response = get('https://api.real-debrid.com/rest/1.0/torrents/info/' + torrent_id, context=context)
-                            ui_print('[realdebrid] updated status: ' + response.status, ui_settings.debug)
-                            
-                            # Get unrestricted links - use response.links which contains links for all selected files
-                            unrestricted_links = []
-                            filenames = []
-                            
-                            if hasattr(response, 'links') and len(response.links) > 0:
-                                ui_print(f'[realdebrid] getting unrestricted links for {len(response.links)} video files...', ui_settings.debug)
+                                file_ids = [str(f.id) for f in response.files 
+                                           if any(getattr(f, 'filename', getattr(f, 'name', '')).lower().endswith(ext) for ext in video_extensions)]
                                 
-                                # Get corresponding filenames from the files that were selected
-                                selected_file_names = []
-                                if hasattr(response, 'files'):
-                                    # Get filenames for selected files (selected == 1 or selected == True)
-                                    for f in response.files:
-                                        is_selected = False
-                                        if hasattr(f, 'selected'):
-                                            # Handle both integer (1) and boolean (True) values
-                                            is_selected = (f.selected == 1 or f.selected is True or f.selected == True)
-                                        if is_selected:
-                                            filename = getattr(f, 'path', getattr(f, 'filename', getattr(f, 'name', '')))
-                                            # Extract just the filename from path if needed
-                                            if '/' in filename:
-                                                filename = filename.split('/')[-1]
-                                            selected_file_names.append(filename)
+                                if not file_ids:
+                                    # Fallback: select all files if no video files found
+                                    ui_print('[realdebrid] warning: no video files found, selecting all files', ui_settings.debug)
+                                    file_ids = [str(f.id) for f in response.files]
                                 
-                                # Get unrestricted download links for each link
-                                for idx, link in enumerate(response.links):
-                                    try:
-                                        unres_response = post('https://api.real-debrid.com/rest/1.0/unrestrict/link',
-                                                            {'link': link}, context=context)
-                                        if hasattr(unres_response, 'download'):
-                                            unrestricted_links.append(unres_response.download)
-                                            # Use filename from our selected_file_names list, or from unrestrict response, or fallback
-                                            if idx < len(selected_file_names) and selected_file_names[idx]:
-                                                filename = selected_file_names[idx]
-                                            elif hasattr(unres_response, 'filename'):
-                                                filename = unres_response.filename
-                                            else:
-                                                filename = release.title + '_file_' + str(idx)
-                                            filenames.append(filename)
-                                            ui_print(f'[realdebrid] debug: got link for video file: {filename}', debug=True)
-                                    except Exception as e:
-                                        ui_print(f'[realdebrid] error getting unrestricted link: {str(e)}', debug=True)
-                                        continue
+                                ui_print('[realdebrid] selecting ' + str(len(file_ids)) + ' video files...', ui_settings.debug)
+                                post('https://api.real-debrid.com/rest/1.0/torrents/selectFiles/' + torrent_id, 
+                                     {'files': ','.join(file_ids)}, context=context)
                                 
-                                if len(unrestricted_links) > 0:
-                                    release.download = unrestricted_links
-                                    release.filenames = filenames  # Store actual filenames
-                                    ui_print('[realdebrid] downloading from cached RD torrent: ' + release.title)
-                                    ui_print(f'[realdebrid] debug: filenames from RD unrestrict: {filenames}', debug=True)
-                                    ui_print(f'[realdebrid] debug: download links: {[link[:80] + "..." for link in unrestricted_links]}', debug=True)
-                                    download_success = downloader.download_from_realdebrid(release, element)
-                                    if download_success:
-                                        ui_print('[realdebrid] successfully downloaded file to local storage')
-                                        # Trigger Jellyfin library refresh after successful download
+                                # Wait a bit more and get updated info
+                                time.sleep(2)
+                                response = get('https://api.real-debrid.com/rest/1.0/torrents/info/' + torrent_id, context=context)
+                                ui_print('[realdebrid] updated status: ' + response.status, ui_settings.debug)
+                                
+                                # Get unrestricted links - use response.links which contains links for all selected files
+                                unrestricted_links = []
+                                filenames = []
+                                
+                                if hasattr(response, 'links') and len(response.links) > 0:
+                                    ui_print(f'[realdebrid] getting unrestricted links for {len(response.links)} video files...', ui_settings.debug)
+                                    
+                                    # Get corresponding filenames from the files that were selected
+                                    selected_file_names = []
+                                    if hasattr(response, 'files'):
+                                        # Get filenames for selected files (selected == 1 or selected == True)
+                                        for f in response.files:
+                                            is_selected = False
+                                            if hasattr(f, 'selected'):
+                                                # Handle both integer (1) and boolean (True) values
+                                                is_selected = (f.selected == 1 or f.selected is True or f.selected == True)
+                                            if is_selected:
+                                                filename = getattr(f, 'path', getattr(f, 'filename', getattr(f, 'name', '')))
+                                                # Extract just the filename from path if needed
+                                                if '/' in filename:
+                                                    filename = filename.split('/')[-1]
+                                                selected_file_names.append(filename)
+                                    
+                                    # Get unrestricted download links for each link
+                                    for idx, link in enumerate(response.links):
                                         try:
-                                            from content.services import jellyfin
-                                            jellyfin.library.refresh(element)
+                                            unres_response = post('https://api.real-debrid.com/rest/1.0/unrestrict/link',
+                                                                {'link': link}, context=context)
+                                            if hasattr(unres_response, 'download'):
+                                                unrestricted_links.append(unres_response.download)
+                                                # Use filename from our selected_file_names list, or from unrestrict response, or fallback
+                                                if idx < len(selected_file_names) and selected_file_names[idx]:
+                                                    filename = selected_file_names[idx]
+                                                elif hasattr(unres_response, 'filename'):
+                                                    filename = unres_response.filename
+                                                else:
+                                                    filename = release.title + '_file_' + str(idx)
+                                                filenames.append(filename)
+                                                ui_print(f'[realdebrid] debug: got link for video file: {filename}', debug=True)
                                         except Exception as e:
-                                            ui_print(f'[realdebrid] could not refresh jellyfin libraries: {str(e)}', debug=True)
-                                        # Mark Jellyseerr request as available after successful download
-                                        try:
-                                            from content.services import jellyseerr
-                                            jellyseerr.library.refresh(element)
-                                        except Exception as e:
-                                            ui_print(f'[realdebrid] could not mark jellyseerr request as available: {str(e)}', debug=True)
-                                        return True
-                            else:
-                                # Torrent is still downloading/queued - check if we should keep it as uncached
-                                ui_print('[realdebrid] no links available yet, status: ' + response.status, ui_settings.debug)
-                                
-                                if response.status in ["queued", "magnet_conversion", "downloading", "uploading"]:
-                                    # Check if element allows uncached downloads
-                                    if hasattr(element, "version"):
-                                        debrid_uncached = True
-                                        for i, rule in enumerate(element.version.rules):
-                                            if (rule[0] == "cache status") and (rule[1] == 'requirement' or rule[1] == 'preference') and (rule[2] == "cached"):
-                                                debrid_uncached = False
-                                        if debrid_uncached:
-                                            # Keep this torrent and mark as uncached download in progress
-                                            import debrid as db
-                                            download_id = element.query() + ' [' + element.version.name + ']'
-                                            if download_id not in db.downloading:
-                                                db.downloading.append(download_id)
-                                            ui_print('[realdebrid] keeping uncached torrent (status: ' + response.status + ') - will retry later', ui_settings.debug)
+                                            ui_print(f'[realdebrid] error getting unrestricted link: {str(e)}', debug=True)
+                                            continue
+                                    
+                                    if len(unrestricted_links) > 0:
+                                        release.download = unrestricted_links
+                                        release.filenames = filenames  # Store actual filenames
+                                        ui_print('[realdebrid] downloading from cached RD torrent: ' + release.title)
+                                        ui_print(f'[realdebrid] debug: filenames from RD unrestrict: {filenames}', debug=True)
+                                        ui_print(f'[realdebrid] debug: download links: {[link[:80] + "..." for link in unrestricted_links]}', debug=True)
+                                        download_success = downloader.download_from_realdebrid(release, element)
+                                        if download_success:
+                                            ui_print('[realdebrid] successfully downloaded file to local storage')
+                                            # Trigger Jellyfin library refresh after successful download
+                                            try:
+                                                from content.services import jellyfin
+                                                jellyfin.library.refresh(element)
+                                            except Exception as e:
+                                                ui_print(f'[realdebrid] could not refresh jellyfin libraries: {str(e)}', debug=True)
+                                            # Mark Jellyseerr request as available after successful download
+                                            try:
+                                                from content.services import jellyseerr
+                                                jellyseerr.library.refresh(element)
+                                            except Exception as e:
+                                                ui_print(f'[realdebrid] could not mark jellyseerr request as available: {str(e)}', debug=True)
                                             return True
-                                
-                                # Delete torrent if we can't use it (either wrong status or cached-only requirement)
-                                ui_print('[realdebrid] deleting torrent (cannot use): ' + torrent_id, ui_settings.debug)
-                                delete('https://api.real-debrid.com/rest/1.0/torrents/delete/' + torrent_id, context=context)
+                                else:
+                                    # Torrent is still downloading/queued - check if we should keep it as uncached
+                                    ui_print('[realdebrid] no links available yet, status: ' + response.status, ui_settings.debug)
+                                    
+                                    if response.status in ["queued", "magnet_conversion", "downloading", "uploading"]:
+                                        # Check if element allows uncached downloads
+                                        if hasattr(element, "version"):
+                                            debrid_uncached = True
+                                            for i, rule in enumerate(element.version.rules):
+                                                if (rule[0] == "cache status") and (rule[1] == 'requirement' or rule[1] == 'preference') and (rule[2] == "cached"):
+                                                    debrid_uncached = False
+                                            if debrid_uncached:
+                                                # Keep this torrent and mark as uncached download in progress
+                                                import debrid as db
+                                                download_id = element.query() + ' [' + element.version.name + ']'
+                                                if download_id not in db.downloading:
+                                                    db.downloading.append(download_id)
+                                                ui_print('[realdebrid] keeping uncached torrent (status: ' + response.status + ') - will retry later', ui_settings.debug)
+                                                return True
+                                    
+                                    # Delete torrent if we can't use it (either wrong status or cached-only requirement)
+                                    ui_print('[realdebrid] deleting torrent (cannot use): ' + torrent_id, ui_settings.debug)
+                                    delete('https://api.real-debrid.com/rest/1.0/torrents/delete/' + torrent_id, context=context)
                         
                         except Exception as e:
-                        ui_print('[realdebrid] error processing torrent: ' + str(e), ui_settings.debug)
-                        import traceback
-                        ui_print('[realdebrid] traceback: ' + traceback.format_exc(), ui_settings.debug)
-                    
-                    continue  # Skip to next release instead of trying version.files
+                            ui_print('[realdebrid] error processing torrent: ' + str(e), ui_settings.debug)
+                            import traceback
+                            ui_print('[realdebrid] traceback: ' + traceback.format_exc(), ui_settings.debug)
+                            continue  # Skip to next release on error
+                    except Exception as outer_e:
+                        ui_print('[realdebrid] error in outer magnet processing: ' + str(outer_e), ui_settings.debug)
+                        continue
                     
                 for version in release.files:
                     if hasattr(version, 'files'):
@@ -485,6 +491,16 @@ def download(element, stream=True, query='', force=False):
                                     download_success = downloader.download_from_realdebrid(release, element)
                                     if download_success:
                                         ui_print('[realdebrid] successfully downloaded file to local storage')
+                                        # Remove from downloading list
+                                        import debrid as db
+                                        if hasattr(element, 'version'):
+                                            download_id = element.query() + ' [' + element.version.name + ']'
+                                            ui_print(f'[realdebrid] debug: checking if "{download_id}" is in downloading list (len={len(db.downloading)}): {db.downloading}', ui_settings.debug)
+                                            if download_id in db.downloading:
+                                                db.downloading.remove(download_id)
+                                                ui_print(f'[realdebrid] removed from downloading list: {download_id}')
+                                            else:
+                                                ui_print(f'[realdebrid] warning: download_id "{download_id}" not found in downloading list: {db.downloading}')
                                     else:
                                         ui_print('[realdebrid] warning: download to local storage failed, but release was added')
                                 except Exception as e:
@@ -511,9 +527,12 @@ def download(element, stream=True, query='', force=False):
                             import debrid as db
                             if hasattr(element, 'version'):
                                 download_id = element.query() + ' [' + element.version.name + ']'
+                                ui_print(f'[realdebrid] debug: checking if "{download_id}" is in downloading list (len={len(db.downloading)}): {db.downloading}', ui_settings.debug)
                                 if download_id in db.downloading:
                                     db.downloading.remove(download_id)
-                                    ui_print(f'[realdebrid] removed from downloading list: {download_id}', debug=True)
+                                    ui_print(f'[realdebrid] removed from downloading list: {download_id}')
+                                else:
+                                    ui_print(f'[realdebrid] warning: download_id "{download_id}" not found in downloading list: {db.downloading}')
                             try:
                                 from content.services import jellyfin
                                 jellyfin.library.refresh(element)

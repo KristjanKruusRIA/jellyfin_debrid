@@ -283,8 +283,41 @@ def scrape(query, altquery):
                     seeds = 0
             
             # Extract source provider from service info
-            source = "aiostreams"
-            if hasattr(result, 'service') and result.service:
+            plugin_name = None
+            service_name = None
+            
+            # Extract plugin name from the name field (e.g., "[RD☁️⚡] Sootio 1080p" -> "Sootio")
+            if hasattr(result, 'name') and result.name:
+                try:
+                    # Pattern: "[prefix] PluginName quality" - extract text between ] and quality marker
+                    name_match = regex.search(r'\]\s+([A-Za-z0-9]+)', str(result.name))
+                    if name_match:
+                        plugin_name = name_match.group(1).strip()
+                except:
+                    pass
+            
+            # Extract service from behaviorHints.bingeGroup (pipe-separated format)
+            # Format: "domain|service|cached|quality|..." where service is what we want
+            if hasattr(result, 'behaviorHints') and hasattr(result.behaviorHints, 'bingeGroup'):
+                try:
+                    binge_parts = str(result.behaviorHints.bingeGroup).split('|')
+                    if len(binge_parts) >= 2:
+                        service_name = binge_parts[1].strip()
+                except:
+                    pass
+            
+            # Build source string: aiostreams:plugin:service or fallback variations
+            if plugin_name and service_name:
+                source = f"{plugin_name.lower()}:{service_name}"
+            elif plugin_name:
+                source = plugin_name.lower()
+            elif service_name:
+                source = service_name
+            else:
+                source = "aiostreams"
+            
+            # Fallback: Try result.service.id (older format)
+            if source == "aiostreams" and hasattr(result, 'service') and result.service:
                 try:
                     if hasattr(result.service, 'id'):
                         source = str(result.service.id)

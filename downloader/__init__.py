@@ -370,6 +370,9 @@ def organize_path(filename, is_show=False, element=None):
         else:
             show_name = info['title'] if info['title'] else "Unknown Show"
         
+        # Sanitize show name to remove invalid Windows characters (like colons)
+        show_name = sanitize_filename(show_name)
+        
         # Get season number from element or filename
         season_num = None
         if element and hasattr(element, 'parentIndex'):
@@ -402,6 +405,9 @@ def organize_path(filename, is_show=False, element=None):
             folder_name = f"{movie_name} ({year})"
         else:
             folder_name = movie_name
+        
+        # Sanitize folder name to remove invalid Windows characters (like colons)
+        folder_name = sanitize_filename(folder_name)
         
         dest_dir = os.path.join(movies_path, folder_name)
         os.makedirs(dest_dir, exist_ok=True)
@@ -520,10 +526,11 @@ def download_from_realdebrid(release, element):
                 # Use the first download link if URL not specified
                 download_url = release.download[0]
             else:
-                ui_print("[down - organize path with element metadata
-            # Pre-calculate the organized path so the file goes to the right folder
-            dest_path = organize_path(best_file['name'], is_show, element)loader] No download URL available", debug="true")
+                ui_print("[downloader] No download URL available", debug="true")
                 return False
+            
+            # Pre-calculate the organized path so the file goes to the right folder
+            dest_path = organize_path(best_file['name'], is_show, element)
             
             # Download the file
             result = download_file(download_url, best_file['name'], is_show, expected_size=best_file.get('size'))

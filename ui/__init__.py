@@ -425,6 +425,27 @@ def threaded(stop):
     if len(library) > 0:
         # Do not start new scans while downloads are active
         import debrid as _debrid
+        
+        # Clean up downloading list - remove items already in library
+        if _debrid.downloading:
+            items_to_remove = []
+            for download_id in _debrid.downloading:
+                # Extract base query from download_id (format: "query [version]")
+                base_query = download_id.split(' [')[0] if ' [' in download_id else download_id
+                # Check if any library item matches this query
+                for lib_item in library:
+                    if hasattr(lib_item, 'query') and lib_item.query().lower() == base_query.lower():
+                        items_to_remove.append(download_id)
+                        ui_print(f'[ui] removing from downloading list (already in library): {download_id}')
+                        break
+            for item in items_to_remove:
+                _debrid.downloading.remove(item)
+        
+        ui_print(f'[ui] debug: initial scan check - debrid.downloading length: {len(_debrid.downloading)}, ignore_queue length: {len(content.classes.media.ignore_queue)}', ui_settings.debug)
+        if _debrid.downloading:
+            ui_print(f'[ui] debug: debrid.downloading contents: {_debrid.downloading}', ui_settings.debug)
+        if content.classes.media.ignore_queue:
+            ui_print(f'[ui] debug: ignore_queue contents: {[str(x) for x in content.classes.media.ignore_queue]}', ui_settings.debug)
         if _debrid.downloading or content.classes.media.ignore_queue:
             ui_print('[ui] downloads in progress, skipping scan', ui_settings.debug)
         else:
@@ -450,7 +471,20 @@ def threaded(stop):
                                 ui_print(f"[ui] skipping download (in cooldown {rem}s): {element_name}", ui_settings.debug)
                             else:
                                 content.classes.media.ignore_queue += [element]
-                                element.download(library=library)
+                                ui_print(f'[ui] debug: added to ignore_queue: {element_name}, queue length: {len(content.classes.media.ignore_queue)}', ui_settings.debug)
+                                try:
+                                    element.download(library=library)
+                                finally:
+                                    match = next((x for x in content.classes.media.ignore_queue if element == x), None)
+                                    if match:
+                                        content.classes.media.ignore_queue.remove(match)
+                                        ui_print(f'[ui] debug: removed from ignore_queue: {element_name}, queue length: {len(content.classes.media.ignore_queue)}', ui_settings.debug)
+                                    else:
+                                        ui_print(f'[ui] warning: element not found in ignore_queue for removal: {element_name}, queue: {[str(x) for x in content.classes.media.ignore_queue]}')
+                                    try:
+                                        element.set_cooldown(cooldown_min)
+                                    except Exception:
+                                        pass
                         ui_print(f'[ui] finished downloading: {element_name}', ui_settings.debug)
                     except Exception as e:
                         import traceback
@@ -460,105 +494,91 @@ def threaded(stop):
                         tb = traceback.format_exc()
                         ui_print(f'[ui] error downloading {element_name} (type={element_type}, has_Seasons={has_seasons}): {str(e)}', ui_settings.debug)
                         ui_print(f'[ui] traceback: {tb}', ui_settings.debug)
-                    else:
-                        ui_print(f'[ui] element has no download method: {type(element)}', ui_settings.debug)
-                        t1 = time.time()
-                        #if more than 5 seconds have passed, check for newly watchlisted content
-                        if t1-t0 >= 5:
-                            if jellyseerr_requests.update():
-                                library = content.classes.library()[0]()
-                                if len(library) == 0:
-                                    continue
-                        new_watchlists = jellyseerr_requests
-                        try:
-                            new_watchlists.data.sort(key=lambda s: s.watchlistedAt,reverse=True)
-                        except:
-                            ui_print("couldnt sort monitored media by newest, using default order.", ui_settings.debug)
-                        new_watchlists = unique(new_watchlists)
-                        for element in new_watchlists[:]:
-                            if element in watchlists:
-                                new_watchlists.remove(element)
-                        ui_print('checking new content ...')
-                        for element in new_watchlists:
-                            if hasattr(element, 'download'):
-                                element_name = element.title if hasattr(element, 'title') else str(type(element))
-                                # Skip if item is in cooldown - check this FIRST before ignore_queue
-                                try:
-                                    cooldown_min = int(os.getenv('DOWNLOAD_COOLDOWN_MINUTES', '30'))
-                                except Exception:
-                                    cooldown_min = 30
-                                if element.is_in_cooldown():
-                                    rem = element.cooldown_remaining()
-                                    ui_print(f"[ui] skipping download (in cooldown {rem}s): {element_name}", ui_settings.debug)
-                                    continue
-                                # Now check if actively downloading (ignore_queue is only for active downloads)
-                                if element in content.classes.media.ignore_queue:
-                                    ui_print(f'[ui] skipping download (already in progress): {element_name}', ui_settings.debug)
-                                    continue
-                                content.classes.media.ignore_queue += [element]
-                                try:
-                                    element.download(library=library)
-                                finally:
-                                    match = next((x for x in content.classes.media.ignore_queue if element == x), None)
-                                    if match:
-                                        content.classes.media.ignore_queue.remove(match)
-                                    try:
-                                        element.set_cooldown(cooldown_min)
-                                    except Exception:
-                                        pass
-                        ui_print('done')
-                    t0 = time.time()
         ui_print('done')
     while not stop():
-        if jellyseerr_requests.update():
-            library = content.classes.library()[0]()
-            if len(library) == 0:
-                continue
-            watchlists = jellyseerr_requests
-            try:
-                watchlists.data.sort(key=lambda s: s.watchlistedAt,reverse=True)
-            except:
-                ui_print("couldnt sort monitored media by newest, using default order.", ui_settings.debug)
-            # Do not run periodic checks while downloads are active
-            import debrid as _debrid
-            if _debrid.downloading or content.classes.media.ignore_queue:
-                ui_print('[ui] downloads in progress, skipping periodic scan', ui_settings.debug)
-            else:
-                ui_print('checking new content ...')
-                for element in unique(watchlists):
-                    if hasattr(element, 'download'):
-                        newly_added = True
-                        if element.type == "show":
-                            for season in element.Seasons:
-                                if season in content.classes.media.ignore_queue or not newly_added:
+        ui_print('[ui] loop iteration starting', ui_settings.debug)
+        # Always check for updates and refresh watchlists
+        jellyseerr_requests.update()
+        library = content.classes.library()[0]()
+        if len(library) == 0:
+            ui_print('[ui] library is empty, skipping iteration', ui_settings.debug)
+            continue
+        # Refresh watchlists from updated jellyseerr requests
+        watchlists = jellyseerr_requests
+        try:
+            watchlists.data.sort(key=lambda s: s.watchlistedAt,reverse=True)
+        except:
+            ui_print("couldnt sort monitored media by newest, using default order.", ui_settings.debug)
+        ui_print(f'[ui] watchlist has {len(watchlists)} items', ui_settings.debug)
+        # Do not run periodic checks while downloads are active
+        import debrid as _debrid
+        
+        # Clean up downloading list - remove items already in library
+        if _debrid.downloading:
+            items_to_remove = []
+            for download_id in _debrid.downloading:
+                # Extract base query from download_id (format: "query [version]")
+                base_query = download_id.split(' [')[0] if ' [' in download_id else download_id
+                # Check if any library item matches this query
+                for lib_item in library:
+                    if hasattr(lib_item, 'query') and lib_item.query().lower() == base_query.lower():
+                        items_to_remove.append(download_id)
+                        ui_print(f'[ui] removing from downloading list (already in library): {download_id}')
+                        break
+            for item in items_to_remove:
+                _debrid.downloading.remove(item)
+        
+        ui_print(f'[ui] debug: periodic scan check - debrid.downloading length: {len(_debrid.downloading)}, ignore_queue length: {len(content.classes.media.ignore_queue)}', ui_settings.debug)
+        if _debrid.downloading:
+            ui_print(f'[ui] debug: debrid.downloading contents: {_debrid.downloading}', ui_settings.debug)
+        if content.classes.media.ignore_queue:
+            ui_print(f'[ui] debug: ignore_queue contents: {[str(x) for x in content.classes.media.ignore_queue]}', ui_settings.debug)
+        
+        # Check if we should skip periodic scan
+        skip_reason = None
+        if _debrid.downloading:
+            skip_reason = f"downloading list not empty ({len(_debrid.downloading)} items)"
+        elif content.classes.media.ignore_queue:
+            skip_reason = f"ignore queue not empty ({len(content.classes.media.ignore_queue)} items)"
+        
+        if skip_reason:
+            ui_print(f'[ui] downloads in progress, skipping periodic scan ({skip_reason})')
+        else:
+            ui_print('checking new content ...')
+            watchlists_unique = unique(watchlists)
+            for element in watchlists_unique:
+                if hasattr(element, 'download'):
+                    newly_added = True
+                    if element.type == "show":
+                        for season in element.Seasons:
+                            if season in content.classes.media.ignore_queue or not newly_added:
+                                newly_added = False
+                                break
+                            for episode in season.Episodes:
+                                if episode in content.classes.media.ignore_queue:
                                     newly_added = False
                                     break
-                                for episode in season.Episodes:
-                                    if episode in content.classes.media.ignore_queue:
-                                        newly_added = False
-                                        break
-                        if newly_added:
-                            element_name = element.title if hasattr(element, 'title') else str(type(element))
-                        # Skip if item is in cooldown - check this FIRST before ignore_queue
-                        if element.is_in_cooldown():
-                            rem = element.cooldown_remaining()
-                            ui_print(f"[ui] skipping download (in cooldown {rem}s): {element_name}", ui_settings.debug)
-                        elif element in content.classes.media.ignore_queue:
-                            ui_print(f'[ui] skipping download (already in progress): {element_name}', ui_settings.debug)
-                        else:
-                            content.classes.media.ignore_queue += [element]
-                            try:
-                                element.download(library=library)
-                            finally:
-                                match = next((x for x in content.classes.media.ignore_queue if element == x), None)
-                                if match:
-                                    content.classes.media.ignore_queue.remove(match)
-            ui_print('done')
-        elif timeout_counter >= regular_check:
-            # REMOVED: Plex/Trakt watchlists - using Jellyseerr only
-            # get all jellyseerr request
+                    if newly_added:
+                        element_name = element.title if hasattr(element, 'title') else str(type(element))
+                    # Skip if item is in cooldown - check this FIRST before ignore_queue
+                    if element.is_in_cooldown():
+                        rem = element.cooldown_remaining()
+                        ui_print(f"[ui] skipping download (in cooldown {rem}s): {element_name}", ui_settings.debug)
+                    elif element in content.classes.media.ignore_queue:
+                        ui_print(f'[ui] skipping download (already in progress): {element_name}', ui_settings.debug)
+                    else:
+                        content.classes.media.ignore_queue += [element]
+                        try:
+                            element.download(library=library)
+                        finally:
+                            match = next((x for x in content.classes.media.ignore_queue if element == x), None)
+                            if match:
+                                content.classes.media.ignore_queue.remove(match)
+        ui_print('done')
+        
+        # Scheduled check - runs every regular_check seconds
+        if timeout_counter >= regular_check:
             jellyseerr_requests = content.services.jellyseerr.requests()
-            # use only jellyseerr requests
             watchlists = jellyseerr_requests
             try:
                 watchlists.data.sort(key=lambda s: s.watchlistedAt,reverse=True)
@@ -570,6 +590,27 @@ def threaded(stop):
                 continue
             # Do not start scheduled scans while downloads are active
             import debrid as _debrid
+            
+            # Clean up downloading list - remove items already in library
+            if _debrid.downloading:
+                items_to_remove = []
+                for download_id in _debrid.downloading:
+                    # Extract base query from download_id (format: "query [version]")
+                    base_query = download_id.split(' [')[0] if ' [' in download_id else download_id
+                    # Check if any library item matches this query
+                    for lib_item in library:
+                        if hasattr(lib_item, 'query') and lib_item.query().lower() == base_query.lower():
+                            items_to_remove.append(download_id)
+                            ui_print(f'[ui] removing from downloading list (already in library): {download_id}')
+                            break
+                for item in items_to_remove:
+                    _debrid.downloading.remove(item)
+            
+            ui_print(f'[ui] debug: scheduled scan check - debrid.downloading length: {len(_debrid.downloading)}, ignore_queue length: {len(content.classes.media.ignore_queue)}', ui_settings.debug)
+            if _debrid.downloading:
+                ui_print(f'[ui] debug: debrid.downloading contents: {_debrid.downloading}', ui_settings.debug)
+            if content.classes.media.ignore_queue:
+                ui_print(f'[ui] debug: ignore_queue contents: {[str(x) for x in content.classes.media.ignore_queue]}', ui_settings.debug)
             if _debrid.downloading or content.classes.media.ignore_queue:
                 ui_print('[ui] downloads in progress, skipping scheduled scan', ui_settings.debug)
                 t0 = time.time()

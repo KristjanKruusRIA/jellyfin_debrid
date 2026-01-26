@@ -36,9 +36,10 @@ class LowRatedBlacklist:
         jellyseerr_url: str,
         jellyseerr_api_key: str,
         user_id: int,
-        min_imdb_score: float = 5.0,
+        min_imdb_score: Optional[float] = None,
         blacklist_no_ratings: bool = False,
         min_runtime: Optional[int] = None,
+        blacklist_countries: Optional[List[str]] = None,
         skip_blacklist_check: bool = False,
         dry_run: bool = False
     ):
@@ -48,6 +49,7 @@ class LowRatedBlacklist:
         self.min_imdb_score = min_imdb_score
         self.blacklist_no_ratings = blacklist_no_ratings
         self.min_runtime = min_runtime
+        self.blacklist_countries = [c.upper() for c in blacklist_countries] if blacklist_countries else []
         self.skip_blacklist_check = skip_blacklist_check
         self.dry_run = dry_run
         self.session = requests.Session()
@@ -248,9 +250,12 @@ class LowRatedBlacklist:
     ):
         """Process movies and blacklist those with low IMDb scores or short runtime"""
         print(f"\nProcessing {len(movies)} movies...")
-        print(f"IMDb score threshold: < {self.min_imdb_score}")
+        if self.min_imdb_score is not None:
+            print(f"IMDb score threshold: < {self.min_imdb_score}")
         if self.min_runtime:
             print(f"Runtime threshold: < {self.min_runtime} minutes")
+        if self.blacklist_countries:
+            print(f"Blacklisted countries: {', '.join(self.blacklist_countries)}")
         print(f"Dry run mode: {self.dry_run}\n")
         
         success_count = 0
@@ -259,6 +264,7 @@ class LowRatedBlacklist:
         no_ratings_count = 0
         above_threshold_count = 0
         runtime_blacklist_count = 0
+        country_blacklist_count = 0
         error_count = 0
         
         for idx, movie in enumerate(movies, 1):
@@ -270,60 +276,82 @@ class LowRatedBlacklist:
                 skip_count += 1
                 continue
             
-            # Get movie details for runtime check if needed
+            # Get movie details for runtime/country checks if needed
             movie_details = None
-            if self.min_runtime:
+            if self.min_runtime or self.blacklist_countries:
                 movie_details = self.get_movie_details(tmdb_id)
                 if movie_details:
-                    runtime = movie_details.get('runtime', 0)
-                    if runtime > 0 and runtime < self.min_runtime:
-                        print(f"[{idx}/{len(movies)}] {title}: Runtime {runtime}min < {self.min_runtime}min → BLACKLISTING")
+                    # Check runtime
+                    if self.min_runtime:
+                        runtime = movie_details.get('runtime', 0)
+                        if runtime > 0 and runtime < self.min_runtime:
+                            print(f"[{idx}/{len(movies)}] {title}: Runtime {runtime}min < {self.min_runtime}min → BLACKLISTING")
+                            if self.add_to_blacklist(tmdb_id, title, None):
+                                runtime_blacklist_count += 1
+                            else:
+                                error_count += 1
+                            continue
+                    
+                    # Check production countries
+                    if self.blacklist_countries:
+                        production_countries = movie_details.get('productionCountries', [])
+                        country_codes = [pc.get('iso_3166_1', '').upper() for pc in production_countries]
+                        blacklisted_country = next((c for c in country_codes if c in self.blacklist_countries), None)
+                        if blacklisted_country:
+                            country_name = next((pc.get('name', blacklisted_country) for pc in production_countries if pc.get('iso_3166_1', '').upper() == blacklisted_country), blacklisted_country)
+                            print(f"[{idx}/{len(movies)}] {title}: Country '{country_name}' is blacklisted → BLACKLISTING")
+                            if self.add_to_blacklist(tmdb_id, title, None):
+                                country_blacklist_count += 1
+                            else:
+                                error_count += 1
+                            continue
+            
+            # Only check IMDb score if threshold is set
+            if self.min_imdb_score is not None:
+                # Get movie ratings to fetch IMDb score
+                print(f"[{idx}/{len(movies)}] Checking: {title}...", end=" ")
+                ratings = self.get_movie_ratings(tmdb_id)
+                
+                # Handle movies without ratings endpoint (404)
+                if ratings == 'NOT_FOUND':
+                    if self.blacklist_no_ratings:
+                        print("No ratings available → BLACKLISTING")
                         if self.add_to_blacklist(tmdb_id, title, None):
-                            runtime_blacklist_count += 1
+                            success_count += 1
                         else:
                             error_count += 1
-                        continue
-            
-            # Get movie ratings to fetch IMDb score
-            print(f"[{idx}/{len(movies)}] Checking: {title}...", end=" ")
-            ratings = self.get_movie_ratings(tmdb_id)
-            
-            # Handle movies without ratings endpoint (404)
-            if ratings == 'NOT_FOUND':
-                if self.blacklist_no_ratings:
-                    print("No ratings available → BLACKLISTING")
-                    if self.add_to_blacklist(tmdb_id, title, None):
+                    else:
+                        print("⊘ No ratings available")
+                        no_ratings_count += 1
+                    continue
+                
+                if not ratings:
+                    print("✗ Failed to fetch ratings")
+                    error_count += 1
+                    continue
+                
+                imdb_score = self.get_imdb_score(ratings)
+                
+                if imdb_score is None:
+                    print(f"⊘ No IMDb score")
+                    no_score_count += 1
+                    continue
+                
+                print(f"IMDb: {imdb_score}", end=" ")
+                
+                if imdb_score < self.min_imdb_score:
+                    print("→ BLACKLISTING")
+                    if self.add_to_blacklist(tmdb_id, title, imdb_score):
                         success_count += 1
                     else:
                         error_count += 1
                 else:
-                    print("⊘ No ratings available")
-                    no_ratings_count += 1
-                continue
-            
-            if not ratings:
-                print("✗ Failed to fetch ratings")
-                error_count += 1
-                continue
-            
-            imdb_score = self.get_imdb_score(ratings)
-            
-            if imdb_score is None:
-                print(f"⊘ No IMDb score")
-                no_score_count += 1
-                continue
-            
-            print(f"IMDb: {imdb_score}", end=" ")
-            
-            if imdb_score < self.min_imdb_score:
-                print("→ BLACKLISTING")
-                if self.add_to_blacklist(tmdb_id, title, imdb_score):
-                    success_count += 1
-                else:
-                    error_count += 1
+                    print("→ Above threshold, skipping")
+                    above_threshold_count += 1
             else:
-                print("→ Above threshold, skipping")
-                above_threshold_count += 1
+                # No IMDb filtering requested
+                print(f"[{idx}/{len(movies)}] Processed: {title}")
+                skip_count += 1
             
             # Rate limiting
             time.sleep(0.3)
@@ -331,13 +359,17 @@ class LowRatedBlacklist:
         print("\n" + "="*60)
         print("Processing Summary:")
         print(f"  Total movies checked: {len(movies)}")
-        print(f"  Blacklisted (IMDb < {self.min_imdb_score}): {success_count}")
+        if self.min_imdb_score is not None:
+            print(f"  Blacklisted (IMDb < {self.min_imdb_score}): {success_count}")
         if self.min_runtime:
             print(f"  Blacklisted (runtime < {self.min_runtime}min): {runtime_blacklist_count}")
-        print(f"  Above threshold: {above_threshold_count}")
-        print(f"  No IMDb score available: {no_score_count}")
-        print(f"  No ratings endpoint (404): {no_ratings_count}")
-        print(f"  Skipped (no TMDB ID): {skip_count}")
+        if self.blacklist_countries:
+            print(f"  Blacklisted (production country): {country_blacklist_count}")
+        if self.min_imdb_score is not None:
+            print(f"  Above threshold: {above_threshold_count}")
+            print(f"  No IMDb score available: {no_score_count}")
+            print(f"  No ratings endpoint (404): {no_ratings_count}")
+        print(f"  Skipped: {skip_count}")
         print(f"  Errors: {error_count}")
         print("="*60)
 
@@ -371,8 +403,8 @@ def main():
     parser.add_argument(
         '--min-score',
         type=float,
-        default=5.0,
-        help='Minimum IMDb score threshold (default: 5.0)'
+        default=None,
+        help='Minimum IMDb score threshold (optional, only checks IMDb if specified)'
     )
     
     # Discover filters
@@ -410,6 +442,11 @@ def main():
         '--min-runtime',
         type=int,
         help='Minimum acceptable runtime - blacklist movies with runtime less than this value in minutes (e.g., 80)'
+    )
+    parser.add_argument(
+        '--blacklist-countries',
+        nargs='+',
+        help='Production country codes to blacklist (e.g., IN for India, CN for China). Separate multiple with spaces.'
     )
     parser.add_argument(
         '--sort-by',
@@ -450,6 +487,7 @@ def main():
         min_imdb_score=args.min_score,
         blacklist_no_ratings=args.blacklist_no_ratings,
         min_runtime=args.min_runtime,
+        blacklist_countries=args.blacklist_countries,
         skip_blacklist_check=args.skip_blacklist_check,
         dry_run=args.dry_run
     )
