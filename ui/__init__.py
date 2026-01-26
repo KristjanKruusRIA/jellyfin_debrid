@@ -497,6 +497,41 @@ def threaded(stop):
         ui_print('done')
     while not stop():
         try:
+            # Quick check for new jellyseerr requests every loop (every 5 seconds)
+            # This ensures new requests are picked up immediately
+            if jellyseerr_requests.update():
+                ui_print('[jellyseerr] new request detected, processing immediately ...')
+                library = content.classes.library()[0]()
+                if len(library) > 0:
+                    new_watchlists = jellyseerr_requests
+                    try:
+                        new_watchlists.data.sort(key=lambda s: s.watchlistedAt, reverse=True)
+                    except:
+                        ui_print("couldnt sort monitored media by newest, using default order.", ui_settings.debug)
+                    
+                    for element in unique(new_watchlists):
+                        if hasattr(element, 'download'):
+                            element_name = element.title if hasattr(element, 'title') else str(type(element))
+                            if element in content.classes.media.ignore_queue:
+                                ui_print(f'[ui] skipping download (already in progress): {element_name}', ui_settings.debug)
+                                continue
+                            content.classes.media.ignore_queue += [element]
+                            try:
+                                ui_print(f'checking new content ...')
+                                element.download(library=library)
+                            except Exception as e:
+                                import traceback
+                                element_type = element.type if hasattr(element, 'type') else 'unknown'
+                                has_seasons = hasattr(element, 'Seasons') if element_type == 'show' else 'N/A'
+                                tb = traceback.format_exc()
+                                ui_print(f'[ui] error downloading {element_name} (type={element_type}, has_Seasons={has_seasons}): {str(e)}', ui_settings.debug)
+                                ui_print(f'[ui] traceback: {tb}', ui_settings.debug)
+                            finally:
+                                match = next((x for x in content.classes.media.ignore_queue if element == x), None)
+                                if match:
+                                    content.classes.media.ignore_queue.remove(match)
+                    ui_print('done')
+            
             # Scheduled check - runs every regular_check seconds
             if timeout_counter >= regular_check:
                 jellyseerr_requests = content.services.jellyseerr.requests()

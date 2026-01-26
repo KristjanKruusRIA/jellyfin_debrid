@@ -7,8 +7,10 @@ from ui.ui_print import *
 name = 'jellyseerr'
 base_url = ""
 users = ['all']
-allowed_movie_status = [['2'], ['3']]
-allowed_show_status = [['2'], ['3'], ['4']]
+# Jellyseerr statuses: 1=Pending, 2=Approved, 3=Declined, 4=Processing, 5=Available
+# Include status 1 (Pending) to pick up new requests immediately
+allowed_movie_status = [['1'], ['2'], ['3']]
+allowed_show_status = [['1'], ['2'], ['3'], ['4']]
 api_key = ""
 session = requests.Session()
 last_requests = []
@@ -362,6 +364,8 @@ class requests(classes.watchlist):
 
     def __init__(self):
         global last_requests
+        # last_requests tracks API-level request objects we've already seen
+        # It should persist between update() calls but reset on service restart
         last_requests = []
         self.data = []
         if len(users) > 0 and len(api_key) > 0:
@@ -374,6 +378,8 @@ class requests(classes.watchlist):
                     added = 0
                     skipped = 0
                     checked = 0
+                # Build list of requests to process
+                requests_to_process = []
                 for element in response.results:
                     # Build a dedupe key (media id + requesting user) to avoid duplicate processing
                     try:
@@ -390,21 +396,31 @@ class requests(classes.watchlist):
                         continue
 
                     checked += 1
-                    # Only log when adding a request (reduce noise)
-                    if not element in self.data and (element.requestedBy.displayName in users or users == ['all']) and ([str(element.media.status)] in allowed_movie_status if element.type == 'movie' else [str(element.media.status)] in allowed_show_status):
+                    
+                    # Check filters - on init, process ALL matching requests regardless of last_requests
+                    user_matches = (element.requestedBy.displayName in users or users == ['all'])
+                    status_matches = ([str(element.media.status)] in allowed_movie_status if element.type == 'movie' else [str(element.media.status)] in allowed_show_status)
+                    
+                    if user_matches and status_matches:
                         ui_print(f'[jellyseerr] adding request to queue: type={element.type}, status={getattr(element.media, "status", "?")}, user={getattr(element.requestedBy, "displayName", "?")}', ui_settings.debug)
-                        last_requests.append(element)
+                        requests_to_process.append(element)
                         added += 1
                         seen.add(dedupe_key if dedupe_key else element.id)
 
                 # Summary log to avoid spamming the logs on each scan
                 ui_print(f'[jellyseerr] checked {checked} unique requests, added {added}, skipped {skipped} duplicates', ui_settings.debug)
+                
+                # Update last_requests with all current API results to track what we've seen
+                for element in response.results:
+                    if not any(x.id == element.id and x.updatedAt == element.updatedAt for x in last_requests):
+                        last_requests.append(element)
+                        
             except Exception as e:
                 ui_print('[jellyseerr] error: ' + str(e), ui_settings.debug)
                 ui_print('[jellyseerr] error: jellyseerr couldnt be reached. turn on debug printing for more info.')
-                last_requests = []
-            ui_print(f'done - found {len(last_requests)} requests to process')
-            if last_requests == []:
+                requests_to_process = []
+            ui_print(f'done - found {len(requests_to_process)} requests to process')
+            if requests_to_process == []:
                 ui_print('[jellyseerr] no requests to process, skipping', ui_settings.debug)
                 return
             # REMOVED: Plex/Trakt matching - we don't use those services anymore
@@ -413,7 +429,7 @@ class requests(classes.watchlist):
             add = []
             # default autoremove behavior for this watchlist
             self.autoremove = 'both'
-            for element_ in last_requests:
+            for element_ in requests_to_process:
                 element = copy.deepcopy(element_)
                 if element.type == "movie":
                     element = movie(element)
