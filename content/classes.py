@@ -832,7 +832,9 @@ class media:
                                                 else (
                                                     "IX"
                                                     if n == 9
-                                                    else "X" if n == 10 else str(n)
+                                                    else "X"
+                                                    if n == 10
+                                                    else str(n)
                                                 )
                                             )
                                         )
@@ -885,7 +887,9 @@ class media:
                                                 else (
                                                     "IX"
                                                     if n == 9
-                                                    else "X" if n == 10 else str(n)
+                                                    else "X"
+                                                    if n == 10
+                                                    else str(n)
                                                 )
                                             )
                                         )
