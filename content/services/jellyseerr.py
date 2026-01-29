@@ -472,7 +472,7 @@ class show(classes.media):
             self.Seasons += [season_media]
 
 
-class requests(classes.watchlist):
+class jellyseerr_requests(classes.watchlist):
     def __init__(self):
         global last_requests
         # last_requests tracks API-level request objects we've already seen

@@ -31,7 +31,7 @@ def __subclasses__():
 
 
 active = active_default
-overwrite = []
+overwrite: list = []
 
 
 def setup(cls, new=False):

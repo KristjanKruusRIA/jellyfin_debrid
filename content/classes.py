@@ -40,7 +40,7 @@ class watchlist(Sequence):
 
 
 class library:
-    active = []
+    active: list = []
 
     def setup(cls, new=False):
         from settings import settings_list
@@ -85,7 +85,7 @@ class library:
 
 
 class refresh:
-    active = []
+    active: list = []
 
     def setup(cls, new=False):
         from settings import settings_list
@@ -130,8 +130,8 @@ class refresh:
 
 
 class ignore:
-    active = []
-    ignored = []
+    active: list = []
+    ignored: list = []
 
     def setup(cls, new=False):
         from settings import settings_list
@@ -237,7 +237,7 @@ class map:
         return {root.tag: map.element_to_dict(root)}
 
     class anidb:
-        titles = {}
+        titles: dict = {}
         last_update = 0
 
         def construct():
@@ -289,10 +289,10 @@ class map:
 
 
 class media:
-    ignore_queue = []
-    downloaded_versions = []
+    ignore_queue: list = []
+    downloaded_versions: list = []
     # cooldowns maps a media query string to a Unix timestamp until which scanning is suppressed
-    cooldowns = {}
+    cooldowns: dict = {}
 
     def is_in_cooldown(self):
         """Return True if this media item is currently in cooldown."""

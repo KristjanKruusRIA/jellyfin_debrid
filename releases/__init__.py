@@ -11,8 +11,8 @@ from ui import ui_settings
 from ui.ui_print import ui_cls, ui_print
 
 # Cache last printed sort and releases to avoid duplicate logging when functions are called multiple times in quick succession
-_last_sort_print = {}
-_last_releases_print = {"fingerprint": None, "time": 0.0}
+_last_sort_print: dict[str, float] = {}
+_last_releases_print: dict[str, float | None] = {"fingerprint": None, "time": 0.0}
 
 
 def strike(text):

@@ -6,8 +6,8 @@ import regex
 from debrid import services
 from ui.ui_print import ui_print
 
-tracker = []
-downloading = []
+tracker: list = []
+downloading: list = []
 uncached = "true"
 
 
