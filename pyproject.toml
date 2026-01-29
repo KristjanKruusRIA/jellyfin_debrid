@@ -11,6 +11,11 @@ line-length = 88
 [tool.mypy]
 python_version = "3.10"
 ignore_missing_imports = true
+exclude = [
+    "tests/.*",
+    "debug_.*\\.py$",
+    "jellyseer_sync/.*"
+]
 
 [tool.pytest.ini_options]
 minversion = "7.0"
