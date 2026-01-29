@@ -25,7 +25,6 @@ def setup(self):
     ui_cls("Options/Settings/Content Services/Content Services/jellyseerr")
     working_key = False
     working_url = False
-    # Removed plex/trakt check - we only use Jellyseerr now
     try:
         response = session.get(base_url + '/api/v1/request', headers={"X-Api-Key": api_key}, timeout=0.5)
         if response.status_code == 200:
@@ -423,7 +422,6 @@ class requests(classes.watchlist):
             if requests_to_process == []:
                 ui_print('[jellyseerr] no requests to process, skipping', ui_settings.debug)
                 return
-            # REMOVED: Plex/Trakt matching - we don't use those services anymore
             # Just process the jellyseerr requests directly
             ui_print('[jellyseerr] processing jellyseerr requests ...')
             add = []
@@ -435,7 +433,6 @@ class requests(classes.watchlist):
                     element = movie(element)
                 elif element.type == "tv":
                     element = show(element)
-                # REMOVED: Plex/Trakt matching - just use jellyseerr data directly
                 element.request_id = element_.media.id
                 # attach watchlist reference so the item can remove itself later
                 element.watchlist = self

@@ -495,7 +495,7 @@ class media:
             return title.replace('.', ' ') + ' ' + str(self.anime_count)
 
     def aliases(self, lan='en'):
-        # Removed Trakt integration - only use title and anime database
+        # Use title and anime database for aliases
         if not hasattr(self, "alternate_titles"):
             self.alternate_titles = []
         
@@ -787,85 +787,7 @@ class media:
                     versions.remove(version)
         if quick:
             return versions
-        # If Trakt is the  collection service, the upgrading of collected content is not possible, since no record of the downloaded file names is kept. return the missing versions from this session.
-        if library()[0].name != 'Plex Library':
-            return versions
-        # If Plex is the collection service, check if all versions are missing in this session. If not all versions are missing, at least one can still be downloaded normally and no upgrades should be made.
-        if versions != all_versions:
-            return versions
-        # Check if there are any missing versions with upgrade rules for this media item, if not, return all versions.
-        upgrade_versions = []
-        for version in versions:
-            for rule in version.rules:
-                if rule[1] == "upgrade":
-                    if not self.query() + ' [' + version.name + " upgrade]" in media.downloaded_versions:
-                        upgrade_versions += [version]
-                        break
-        if len(upgrade_versions) == 0:
-            return versions
-        # Check if the content is completely collected:
-        # REMOVED: Plex library check - not using Plex
-        # from content.services.plex import current_library
-        # if not self.complete(current_library):
-        #     return versions
-        # If the collection service is Plex, all versions are missing, there are upgradable versions and content is completely collected, look for upgrades:
-        versions = []
-        for version in upgrade_versions:
-            added = False
-            self.set_file_names()
-            if self.type == "movie" or self.type == "episode":
-                if not self.query() + ' [' + version.name + " upgrade]" in media.downloaded_versions:
-                    for rule in version.rules:
-                        if not rule[1] == "upgrade":
-                            continue
-                        if releases.sort.version.rule(rule[0], rule[1], rule[2], rule[3]).upgrade(self.existing_releases):
-                            upgrade_rules = copy.deepcopy(version.rules)
-                            for i, rule_ in enumerate(version.rules):
-                                if rule_[1] == "upgrade":
-                                    upgrade_rules[i][1] = "requirement"
-                            versions += [releases.sort.version(
-                                version.name + " upgrade", version.triggers, version.lang, upgrade_rules)]
-                            break
-            elif self.type == 'show':
-                for season in self.Seasons:
-                    for episode in season.Episodes:
-                        if not episode.query() + ' [' + version.name + " upgrade]" in media.downloaded_versions:
-                            for rule in version.rules:
-                                if not rule[1] == "upgrade":
-                                    continue
-                                if releases.sort.version.rule(rule[0], rule[1], rule[2], rule[3]).upgrade(episode.existing_releases):
-                                    upgrade_rules = copy.deepcopy(
-                                        version.rules)
-                                    for i, rule_ in enumerate(version.rules):
-                                        if rule_[1] == "upgrade":
-                                            upgrade_rules[i][1] = "requirement"
-                                    versions += [releases.sort.version(
-                                        version.name + " upgrade", version.triggers, version.lang, upgrade_rules)]
-                                    added = True
-                                    break
-                            if added:
-                                break
-                    if added:
-                        break
-            elif self.type == "season":
-                for episode in self.Episodes:
-                    if not episode.query() + ' [' + version.name + " upgrade]" in media.downloaded_versions:
-                        for rule in version.rules:
-                            if not rule[1] == "upgrade":
-                                continue
-                            if releases.sort.version.rule(rule[0], rule[1], rule[2], rule[3]).upgrade(episode.existing_releases):
-                                upgrade_rules = copy.deepcopy(version.rules)
-                                for i, rule_ in enumerate(version.rules):
-                                    if rule_[1] == "upgrade":
-                                        upgrade_rules[i][1] = "requirement"
-                                versions += [releases.sort.version(
-                                    version.name + " upgrade", version.triggers, version.lang, upgrade_rules)]
-                                added = True
-                                break
-                        if added:
-                            break
-        if len(versions) > 0:
-            versions
+        # Collection-service-specific upgrade checks have been removed; returning the available versions.
         return versions
 
     def version_missing(self):
@@ -883,22 +805,8 @@ class media:
         return len(self.versions()) > 0 and not self.versions() == all_versions
 
     def set_file_names(self):
-        if not library()[0].name == 'Plex Library' or hasattr(self, "upgradable"):
-            return
-        import content.services.plex as plex
-        self.upgradable = True
-        if self.type == "show":
-            for season in self.Seasons:
-                season.upgradable = True
-                for episode in season.Episodes:
-                    episode.set_file_names()
-        if self.type == "season":
-            for episode in self.Episodes:
-                episode.set_file_names()
-        # REMOVED: Plex library check - not using Plex
-        # if self.type in ["episode", "movie"]:
-        #     for element in plex.current_library:
-        #         ... (plex-specific code removed)
+        # No collection-service-specific file name mapping required for Jellyfin/Jellyseerr workflow.
+        return
 
 
     def complete(self, list):
@@ -1010,9 +918,9 @@ class media:
             return False
 
     def available(self):
-        # REMOVED: Plex/Trakt integration - using Jellyseerr only
+        # Using Jellyseerr for availability checks
         import content.services.jellyseerr as jellyseerr
-        # Simplified availability check without Plex/Trakt
+        # Simplified availability check
         try:
             air_date = getattr(self, 'originallyAvailableAt', '1990-01-01')
             if not air_date:
@@ -1028,7 +936,7 @@ class media:
 
     def collect(self, refresh_=True):
         for refresh_service in refresh():
-            # REMOVED: Plex/Trakt integration - simplified for Jellyseerr only
+            # Use Jellyseerr and Jellyfin for library refresh
             if refresh_service.__module__ == self.__module__ or (self.__module__ in ["content.services.jellyseerr"] and refresh_service.__module__ in ["content.services.jellyfin"]):
                 refresh_service(self)
             else:
@@ -1577,7 +1485,7 @@ class media:
         return files
 
     def bitrate(self):
-        # REMOVED: Plex/Trakt integration - using Jellyseerr only
+        # Bitrate calculation
         try:
             duration = 0
             # Get duration from self if available

@@ -188,6 +188,15 @@ def scrape(query, altquery):
             
             # Extract filename - Sootio/AIOStreams provides filename in behaviorHints
             filename = None
+            filename_from_url = None
+            
+            # Always extract filename from URL as a fallback (this includes the extension)
+            try:
+                from urllib.parse import unquote
+                decoded_url = unquote(stream_url)
+                filename_from_url = decoded_url.split('/')[-1].split('?')[0] if '/' in decoded_url else None
+            except:
+                filename_from_url = stream_url.split('/')[-1].split('?')[0] if '/' in stream_url else None
             
             # Method 1: Check behaviorHints.filename (most reliable for Sootio/AIOStreams)
             if hasattr(result, 'behaviorHints') and hasattr(result.behaviorHints, 'filename') and result.behaviorHints.filename:
@@ -209,7 +218,7 @@ def scrape(query, altquery):
                     elif '.' in potential_filename and not potential_filename.startswith('realdebrid:'):
                         filename = potential_filename
             
-            # Method 2: Check description field (Sootio alternate format)
+            # Method 3: Check description field (Sootio alternate format)
             if not filename and hasattr(result, 'description') and result.description:
                 desc_lines = str(result.description).split('\n')
                 if desc_lines and desc_lines[0].strip():
@@ -222,21 +231,26 @@ def scrape(query, altquery):
                     elif '.' in potential_filename and not potential_filename.startswith('realdebrid:'):
                         filename = potential_filename
             
-            # Method 3: Fallback to URL path (URL-decode it first)
-            if not filename:
-                try:
-                    from urllib.parse import unquote
-                    decoded_url = unquote(stream_url)
-                    filename = decoded_url.split('/')[-1].split('?')[0] if '/' in decoded_url else "Unknown"
-                except:
-                    filename = stream_url.split('/')[-1].split('?')[0] if '/' in stream_url else "Unknown"
+            # Method 4: Fallback to URL-extracted filename
+            if not filename and filename_from_url:
+                filename = filename_from_url
+            elif not filename:
+                filename = "Unknown"
             
-            # URL decode the filename if needed
+            # URL decode the filename if needed (in case it wasn't from URL extraction)
             try:
                 from urllib.parse import unquote
                 filename = unquote(filename)
             except:
                 pass
+            
+            # If filename doesn't have an extension but URL filename does, use the URL extension
+            import os
+            filename_ext = os.path.splitext(filename)[1].lower()
+            if not filename_ext and filename_from_url:
+                url_ext = os.path.splitext(filename_from_url)[1].lower()
+                if url_ext in ['.mkv', '.mp4', '.avi', '.mov', '.flv', '.wmv', '.webm', '.m4v', '.mpg', '.mpeg', '.ts', '.m2ts']:
+                    filename = filename + url_ext
             
             ui_print('[aiostreams] debug: stream ' + str(idx) + ' filename: ' + str(filename), ui_settings.debug)
             

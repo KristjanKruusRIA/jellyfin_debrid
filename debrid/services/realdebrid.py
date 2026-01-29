@@ -15,7 +15,7 @@ except:
 # (required) Name of the Debrid service
 name = "Real Debrid"
 short = "RD"
-# (required) Authentification of the Debrid service, can be oauth aswell. Create a setting for the required variables in the ui.settings_list. For an oauth example check the trakt authentification.
+# (required) Authentification of the Debrid service.
 api_key = ""
 # Define Variables
 session = requests.Session()

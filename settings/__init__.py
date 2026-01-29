@@ -270,9 +270,6 @@ class setting:
                             edit += [input(prompt)]
                         lists = [edit, ]
                         setattr(self.cls, self.key, lists)
-                    # REMOVED: Plex token validation - not using Plex
-                    # if self.name == 'Plex users':
-                    #     ... (validation code removed)
                     working = True
         else:
             working = False
@@ -333,13 +330,6 @@ settings_list = [
         setting('Content Services', [''], content.services, 'active', entry="content service", subclass=True,
                 moveable=False, required=True, preflight=True,
                 help='Please choose at least one content service that jellyfin_debrid should monitor for new content.'),
-        # REMOVED: Plex/Trakt settings - using Jellyseerr only
-        # setting('Plex users', ...),
-        # setting('Plex auto remove', ...),
-        # setting('Trakt users', ...),
-        # setting('Trakt lists', ...),
-        # setting('Trakt auto remove', ...),
-        # setting('Trakt early movie releases', ...),
         setting('jellyseerr users', ['Please choose a user: '], content.services.jellyseerr, 'users', entry="user",
                 help="Please specify which users requests should be downloaded by jellyfin_debrid.", hidden=True),
         setting('jellyseerr API Key', 'Please specify your jellyseerr API Key: ', content.services.jellyseerr, 'api_key', hidden=True),
@@ -350,24 +340,13 @@ settings_list = [
     ['Library Services', [
         setting('Library collection service', [''], content.classes.library, 'active', entry="library collection service", subclass=True,
                 radio=True, required=True, preflight=True,
-                help='Please choose one library collection service that plex debrid will use to determine your current media collection.'),
+                help='Please choose one library collection service that jellyfin_debrid will use to determine your current media collection.'),
         setting('Library update services', [''], content.classes.refresh, 'active', entry="libary update service", subclass=True,
                 radio=False, required=True, preflight=True,
-                help='Please choose at least one libary update service that plex debrid should update after a complete download'),
+                help='Please choose at least one libary update service that jellyfin_debrid should update after a complete download'),
         setting('Library ignore services', [''], content.classes.ignore, 'active', entry="libary ignore service", subclass=True,
                 radio=False, required=True, preflight=True,
-                help='Please choose at least one libary ignore service that plex debrid should use to ignore content that could repeatedly not be found.'),
-        # REMOVED: Plex/Trakt library settings - using Jellyseerr/Jellyfin only
-        # setting('Trakt library user', ...),
-        # setting('Trakt refresh user', ...),
-        # setting('Plex library refresh', ...),
-        # setting('Plex library partial scan', ...),
-        # setting('Plex library refresh delay', ...),
-        # setting('Plex server address', ...),
-        # setting('Plex library check', ...),
-        # setting('Plex ignore user', ...),
-        # setting('Trakt ignore user', ...),
-        # setting('Local ignore list path', ...), # textfile doesn't exist
+                help='Please choose at least one libary ignore service that jellyfin_debrid should use to ignore content that could repeatedly not be found.'),
         setting('Jellyfin API Key', 'Please specify your Jellyfin API Key: ', content.services.jellyfin, 'api_key', hidden=True),
         setting('Jellyfin server address', 'Please enter your Jellyfin server address: ', content.services.jellyfin.library, 'url', hidden=True),
     

@@ -35,7 +35,6 @@ def ignored():
                 return
             library = library_services[0]()
             if len(library) > 0:
-                # REMOVED: Plex/Trakt watchlists - using Jellyseerr only
                 jellyseerr_requests = content.services.jellyseerr.requests()
                 print('checking new content ...')
                 for iterator in itertools.zip_longest([jellyseerr_requests]):
@@ -295,24 +294,12 @@ def load(doprint=False, updated=False):
     elif not settings['version'][0] == ui_settings.version[0] and not ui_settings.version[2] == []:
         update(settings, ui_settings.version)
         updated = True
-    #compatability code for updating from <2.10 
-    if 'Library Service' in settings: 
+    #compatability code for updating from <2.10
+    if 'Library Service' in settings:
         settings['Library collection service'] = settings['Library Service']
-        if settings['Library Service'] == ["Plex Library"]:
-            if 'Plex \"movies\" library' in settings and 'Plex \"shows\" library' in settings: 
-                settings['Plex library refresh'] = [settings['Plex \"movies\" library'],settings['Plex \"shows\" library']]
-            settings['Library update services'] = ["Plex Libraries"]
-        elif settings['Library Service'] == ["Trakt Collection"]:
-            settings['Library update services'] = ["Trakt Collection"]
-            settings['Trakt refresh user'] = settings['Trakt library user']
     #compatability code for updating from <2.20
-    if not 'Library ignore services' in settings: 
-        if settings['Library collection service'] == ["Plex Library"]:
-            settings['Library ignore services'] = ["Plex Discover Watch Status"]
-            settings["Plex ignore user"] = settings["Plex users"][0][0]
-        elif settings['Library collection service'] == ["Trakt Collection"]:
-            settings['Library ignore services'] = ["Trakt Watch Status"]
-            settings["Trakt ignore user"] = settings["Trakt users"][0]
+    if not 'Library ignore services' in settings:
+        settings['Library ignore services'] = []
     for category, load_settings in settings_list:
         for setting in load_settings:
             if setting.name in settings and not setting.name == 'version' and not setting.name == 'Content Services':
@@ -413,7 +400,6 @@ def threaded(stop):
         ui_print('No library collection service configured. Exiting.', ui_settings.debug)
         return
     library = library_services[0]()
-    # REMOVED: Plex/Trakt watchlists - using Jellyseerr only
     # get all jellyseerr request
     jellyseerr_requests = content.services.jellyseerr.requests()
     # use only jellyseerr requests
@@ -555,10 +541,14 @@ def threaded(stop):
                         base_query = download_id.split(' [')[0] if ' [' in download_id else download_id
                         # Check if any library item matches this query
                         for lib_item in library:
-                            if hasattr(lib_item, 'query') and lib_item.query().lower() == base_query.lower():
-                                items_to_remove.append(download_id)
-                                ui_print(f'[ui] removing from downloading list (already in library): {download_id}')
-                                break
+                            try:
+                                if hasattr(lib_item, 'query') and lib_item.query().lower() == base_query.lower():
+                                    items_to_remove.append(download_id)
+                                    ui_print(f'[ui] removing from downloading list (already in library): {download_id}')
+                                    break
+                            except AttributeError:
+                                # Skip items that don't have required attributes for query()
+                                continue
                     for item in items_to_remove:
                         _debrid.downloading.remove(item)
                 
