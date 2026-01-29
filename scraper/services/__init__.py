@@ -15,7 +15,7 @@ except Exception as e:
     print(f"Warning: Could not import aiostreams: {e}")
     scrapers = [torrentio]
     active_default = ["torrentio"]
-    aiostreams = None
+    aiostreams = None  # type: ignore[assignment]
 
 # from scraper.services import rarbg
 # from scraper.services import x1337

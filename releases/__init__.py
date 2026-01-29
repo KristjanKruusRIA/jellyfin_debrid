@@ -1905,7 +1905,9 @@ class sort:
         def __eq__(self, __o: object) -> bool:
             if __o is None:
                 return False
-            return self.name == __o.name
+            if not hasattr(__o, "name"):
+                return False
+            return self.name == __o.name  # type: ignore[attr-defined]
 
         def applies(self, element):
             for trigger_data in self.triggers:
@@ -1973,8 +1975,8 @@ class sort:
                 rule.apply(scraped_releases)
             for rule in reversed(version.rules):
                 for subrule in sort.version.rule.__subclasses__():
-                    if subrule.name == rule[0]:
-                        rule = subrule(rule[0], rule[1], rule[2], rule[3])
+                    if subrule.name == rule[0]:  # type: ignore[index,attr-defined]
+                        rule = subrule(rule[0], rule[1], rule[2], rule[3])  # type: ignore[index]
                         break
                 try:
                     scraped_releases = rule.apply(scraped_releases)
@@ -2103,14 +2105,14 @@ class torrent2magnet:
             torrent2magnet.encode_func[type(v)](v, r)
         r.append(b"e")
 
-    encode_func = {}
-    encode_func[Bencached] = encode_bencached
-    encode_func[int] = encode_int
-    encode_func[str] = encode_string
-    encode_func[bytes] = encode_string
-    encode_func[list] = encode_list
-    encode_func[tuple] = encode_list
-    encode_func[dict] = encode_dict
+    encode_func = {}  # type: ignore[var-annotated]
+    encode_func[Bencached] = encode_bencached  # type: ignore[index]
+    encode_func[int] = encode_int  # type: ignore[index]
+    encode_func[str] = encode_string  # type: ignore[index]
+    encode_func[bytes] = encode_string  # type: ignore[index]
+    encode_func[list] = encode_list  # type: ignore[index]
+    encode_func[tuple] = encode_list  # type: ignore[index]
+    encode_func[dict] = encode_dict  # type: ignore[index]
 
     def bencode(x):
         r = []

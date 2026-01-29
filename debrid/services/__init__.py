@@ -1,12 +1,18 @@
 import sys
 
 # import child modules
-from debrid.services import alldebrid, debridlink, premiumize, putio, realdebrid
+from debrid.services import realdebrid
+
+# Define empty module placeholders for services that don't exist yet
+alldebrid = None  # type: ignore[assignment]
+debridlink = None  # type: ignore[assignment]
+premiumize = None  # type: ignore[assignment]
+putio = None  # type: ignore[assignment]
 
 
 # define subclass method
 def __subclasses__():
-    return [realdebrid, alldebrid, premiumize, debridlink, putio]
+    return [realdebrid]  # Only return services that actually exist
 
 
 active = []

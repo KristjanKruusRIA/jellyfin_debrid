@@ -238,8 +238,9 @@ class map:
 
     class anidb:
         titles: dict = {}
-        last_update = 0
+        last_update: float = 0.0
 
+        @staticmethod
         def construct():
             try:
                 response = requests.get(
@@ -279,13 +280,14 @@ class map:
                 if "tvdbid" in element and not element["tvdbid"] == "movie":
                     map.anidb.titles["tvdb://" + str(element["tvdbid"])] = aliases
 
-        def __new__(cls, self) -> list:
+        def __new__(cls, self):
             if time.time() - map.anidb.last_update > 3600:
                 map.anidb.construct()
                 map.anidb.last_update = time.time()
             for EID in self.EID:
                 if EID in map.anidb.titles:
                     return map.anidb.titles[EID]
+            return []
 
 
 class media:
@@ -326,42 +328,42 @@ class media:
     def __init__(self, other):
         self.__dict__.update(other.__dict__)
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other) -> bool:  # type: ignore[override,return]
         try:
             if other is None:
                 if self is None:
                     return True
                 return False
-            if not self.type == other.type:
+            if not self.type == other.type:  # type: ignore[attr-defined]
                 return False
-            if self.type == "movie" or self.type == "show":
+            if self.type == "movie" or self.type == "show":  # type: ignore[attr-defined]
                 if hasattr(self, "EID") and hasattr(other, "EID"):
-                    for EID in self.EID:
-                        if EID in other.EID:
+                    for EID in self.EID:  # type: ignore[attr-defined]
+                        if EID in other.EID:  # type: ignore[attr-defined]
                             return True
                     return False
-                return self.guid == other.guid
-            elif self.type == "season":
+                return self.guid == other.guid  # type: ignore[attr-defined]
+            elif self.type == "season":  # type: ignore[attr-defined]
                 if hasattr(self, "parentEID") and hasattr(other, "parentEID"):
-                    for EID in self.parentEID:
-                        if EID in other.parentEID and self.index == other.index:
+                    for EID in self.parentEID:  # type: ignore[attr-defined]
+                        if EID in other.parentEID and self.index == other.index:  # type: ignore[attr-defined]
                             return True
                     return False
-                return self.parentGuid == other.parentGuid and self.index == other.index
-            elif self.type == "episode":
+                return self.parentGuid == other.parentGuid and self.index == other.index  # type: ignore[attr-defined]
+            elif self.type == "episode":  # type: ignore[attr-defined]
                 if hasattr(self, "grandparentEID") and hasattr(other, "grandparentEID"):
-                    for EID in self.grandparentEID:
+                    for EID in self.grandparentEID:  # type: ignore[attr-defined]
                         if (
-                            EID in other.grandparentEID
-                            and self.parentIndex == other.parentIndex
-                            and self.index == other.index
+                            EID in other.grandparentEID  # type: ignore[attr-defined]
+                            and self.parentIndex == other.parentIndex  # type: ignore[attr-defined]
+                            and self.index == other.index  # type: ignore[attr-defined]
                         ):
                             return True
                     return False
                 return (
-                    self.grandparentGuid == other.grandparentGuid
-                    and self.parentIndex == other.parentIndex
-                    and self.index == other.index
+                    self.grandparentGuid == other.grandparentGuid  # type: ignore[attr-defined]
+                    and self.parentIndex == other.parentIndex  # type: ignore[attr-defined]
+                    and self.index == other.index  # type: ignore[attr-defined]
                 )
         except Exception:
             return False
@@ -832,9 +834,7 @@ class media:
                                                 else (
                                                     "IX"
                                                     if n == 9
-                                                    else "X"
-                                                    if n == 10
-                                                    else str(n)
+                                                    else "X" if n == 10 else str(n)
                                                 )
                                             )
                                         )
@@ -887,9 +887,7 @@ class media:
                                                 else (
                                                     "IX"
                                                     if n == 9
-                                                    else "X"
-                                                    if n == 10
-                                                    else str(n)
+                                                    else "X" if n == 10 else str(n)
                                                 )
                                             )
                                         )
