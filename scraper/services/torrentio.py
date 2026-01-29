@@ -229,14 +229,16 @@ def scrape(query, altquery):
                     ).group()
                 )
                 if regex.search(r"(?<=💾 )([0-9]+.?[0-9]+)(?= GB)", result.title)
-                else float(
-                    regex.search(
-                        r"(?<=💾 )([0-9]+.?[0-9]+)(?= MB)", result.title
-                    ).group()
+                else (
+                    float(
+                        regex.search(
+                            r"(?<=💾 )([0-9]+.?[0-9]+)(?= MB)", result.title
+                        ).group()
+                    )
+                    / 1000
+                    if regex.search(r"(?<=💾 )([0-9]+.?[0-9]+)(?= MB)", result.title)
+                    else 0
                 )
-                / 1000
-                if regex.search(r"(?<=💾 )([0-9]+.?[0-9]+)(?= MB)", result.title)
-                else 0
             )
             links = ["magnet:?xt=urn:btih:" + result.infoHash + "&dn=&tr="]
             seeds = (

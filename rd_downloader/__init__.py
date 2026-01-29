@@ -57,12 +57,14 @@ def download_from_existing_torrents(query_title, is_show=False):
                             if hasattr(file, "selected") and file.selected == 1:
                                 files_to_download.append(
                                     {
-                                        "name": file.path.split("/")[-1]
-                                        if hasattr(file, "path")
-                                        else torrent.filename,
-                                        "size": file.bytes
-                                        if hasattr(file, "bytes")
-                                        else 0,
+                                        "name": (
+                                            file.path.split("/")[-1]
+                                            if hasattr(file, "path")
+                                            else torrent.filename
+                                        ),
+                                        "size": (
+                                            file.bytes if hasattr(file, "bytes") else 0
+                                        ),
                                         "id": file.id,
                                         "url": None,
                                     }
@@ -72,9 +74,9 @@ def download_from_existing_torrents(query_title, is_show=False):
                         files_to_download.append(
                             {
                                 "name": torrent.filename,
-                                "size": torrent.bytes
-                                if hasattr(torrent, "bytes")
-                                else 0,
+                                "size": (
+                                    torrent.bytes if hasattr(torrent, "bytes") else 0
+                                ),
                                 "id": 0,
                                 "url": None,
                             }
@@ -113,9 +115,11 @@ def download_from_existing_torrents(query_title, is_show=False):
                     download_url = (
                         unrestricted_links[0]
                         if len(unrestricted_links) == 1
-                        else unrestricted_links[best_file.get("id", 0)]
-                        if best_file.get("id", 0) < len(unrestricted_links)
-                        else unrestricted_links[0]
+                        else (
+                            unrestricted_links[best_file.get("id", 0)]
+                            if best_file.get("id", 0) < len(unrestricted_links)
+                            else unrestricted_links[0]
+                        )
                     )
 
                     result = downloader.download_file(

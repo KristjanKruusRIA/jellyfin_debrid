@@ -9,7 +9,7 @@ This script automatically syncs your watched movies from Trakt to Jellyseerr's b
    pip install requests
    ```
 
-2. **Jellyseerr API Key**: 
+2. **Jellyseerr API Key**:
    - Log into Jellyseerr
    - Go to Settings → General
    - Copy your API Key
@@ -24,7 +24,7 @@ This script automatically syncs your watched movies from Trakt to Jellyseerr's b
      - Go to https://trakt.tv/users/settings/data
      - Request your data export
      - Download the `watched.json` file
-   
+
    - **Option B**: Trakt API credentials
      - Create an app at https://trakt.tv/oauth/applications
      - Get Client ID, Client Secret, and Access Token

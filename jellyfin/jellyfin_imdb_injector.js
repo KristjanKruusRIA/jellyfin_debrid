@@ -52,7 +52,7 @@
     async function getRatings(tmdbId, mediaType) {
         try {
             const ratings = {};
-            
+
             // Fetch main data for TMDB score
             const mainUrl = `${JELLYSEERR_BASE_URL}/api/v1/${mediaType}/${tmdbId}`;
             const mainResponse = await fetch(mainUrl, {
@@ -64,14 +64,14 @@
                 mode: 'cors',
                 credentials: 'omit'
             });
-            
+
             if (mainResponse.ok) {
                 const mainData = await mainResponse.json();
                 if (mainData.voteAverage) {
                     ratings.tmdb = mainData.voteAverage;
                 }
             }
-            
+
             // Fetch additional ratings based on media type
             if (mediaType === 'movie') {
                 // For movies: use ratingscombined endpoint for IMDB and RT
@@ -85,15 +85,15 @@
                     mode: 'cors',
                     credentials: 'omit'
                 });
-                
+
                 if (ratingsResponse.ok) {
                     const ratingsData = await ratingsResponse.json();
-                    
+
                     // Extract IMDB score
                     if (ratingsData.imdb && ratingsData.imdb.criticsScore) {
                         ratings.imdb = ratingsData.imdb.criticsScore;
                     }
-                    
+
                     // Extract Rotten Tomatoes score
                     if (ratingsData.rt && ratingsData.rt.criticsScore) {
                         ratings.rt = ratingsData.rt.criticsScore;
@@ -111,17 +111,17 @@
                     mode: 'cors',
                     credentials: 'omit'
                 });
-                
+
                 if (ratingsResponse.ok) {
                     const ratingsData = await ratingsResponse.json();
-                    
+
                     // Extract Rotten Tomatoes score
                     if (ratingsData.criticsScore) {
                         ratings.rt = ratingsData.criticsScore;
                     }
                 }
             }
-            
+
             return Object.keys(ratings).length > 0 ? ratings : null;
         } catch (error) {
             console.error(LOG_PREFIX, 'CORS Error - Jellyseerr needs to allow requests from', window.location.origin);
@@ -135,7 +135,7 @@
         if (!cardScalable) {
             return;
         }
-        
+
         // Remove existing container if present
         const existingContainer = cardScalable.querySelector('.rating-badges-container');
         if (existingContainer) {
@@ -145,7 +145,7 @@
         // Create container for all badges
         const container = document.createElement('div');
         container.className = 'rating-badges-container';
-        
+
         // Add TMDB badge if available
         if (ratings.tmdb) {
             const tmdbBadge = document.createElement('div');
@@ -154,7 +154,7 @@
             tmdbBadge.title = `TMDB Rating: ${ratings.tmdb.toFixed(1)}/10`;
             container.appendChild(tmdbBadge);
         }
-        
+
         // Add IMDB badge if available
         if (ratings.imdb) {
             const imdbBadge = document.createElement('div');
@@ -163,7 +163,7 @@
             imdbBadge.title = `IMDB Rating: ${ratings.imdb.toFixed(1)}/10`;
             container.appendChild(imdbBadge);
         }
-        
+
         // Add Rotten Tomatoes badge if available
         if (ratings.rt) {
             const rtBadge = document.createElement('div');
@@ -172,7 +172,7 @@
             rtBadge.title = `Rotten Tomatoes: ${ratings.rt}%`;
             container.appendChild(rtBadge);
         }
-        
+
         // Only add container if we have at least one rating
         if (container.children.length > 0) {
             cardScalable.style.position = 'relative';
@@ -184,7 +184,7 @@
     // Process a single discover card
     async function processCard(card) {
         const cardIndex = card.getAttribute('data-index');
-        
+
         const requestButton = card.querySelector('button.discover-requestbutton[data-id]');
         if (!requestButton) {
             return;
@@ -192,7 +192,7 @@
 
         const tmdbId = requestButton.getAttribute('data-id');
         const mediaType = requestButton.getAttribute('data-media-type');
-        
+
         if (!tmdbId || !mediaType) {
             return;
         }
@@ -200,10 +200,10 @@
         // Find parent section to make key truly unique across different sections
         const section = card.closest('.verticalSection');
         const sectionClass = section ? section.className : 'unknown';
-        
+
         // Create unique key combining section, mediaType, and index to avoid collisions
         const uniqueKey = `${sectionClass}-${mediaType}-${cardIndex}`;
-        
+
         if (processed.has(uniqueKey)) {
             return;
         }
@@ -220,7 +220,7 @@
     // Find and process all Jellyseerr discover cards
     function processAllCards() {
         const cards = document.querySelectorAll('.discover-card');
-        
+
         cards.forEach(card => {
             processCard(card);
         });
@@ -234,7 +234,7 @@
     // Initialize
     processAllCards();
     setInterval(processAllCards, CHECK_INTERVAL);
-    
+
     observer.observe(document.body, {
         childList: true,
         subtree: true

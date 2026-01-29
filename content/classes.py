@@ -808,25 +808,39 @@ class media:
                 roman = (
                     "I"
                     if n == 1
-                    else "II"
-                    if n == 2
-                    else "III"
-                    if n == 3
-                    else "IV"
-                    if n == 4
-                    else "V"
-                    if n == 5
-                    else "VI"
-                    if n == 6
-                    else "VII"
-                    if n == 7
-                    else "VIII"
-                    if n == 8
-                    else "IX"
-                    if n == 9
-                    else "X"
-                    if n == 10
-                    else str(n)
+                    else (
+                        "II"
+                        if n == 2
+                        else (
+                            "III"
+                            if n == 3
+                            else (
+                                "IV"
+                                if n == 4
+                                else (
+                                    "V"
+                                    if n == 5
+                                    else (
+                                        "VI"
+                                        if n == 6
+                                        else (
+                                            "VII"
+                                            if n == 7
+                                            else (
+                                                "VIII"
+                                                if n == 8
+                                                else (
+                                                    "IX"
+                                                    if n == 9
+                                                    else "X" if n == 10 else str(n)
+                                                )
+                                            )
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    )
                 )
                 title = title.replace("." + str(self.parentYear), "")
                 return (
@@ -847,25 +861,39 @@ class media:
                 roman = (
                     "I"
                     if n == 1
-                    else "II"
-                    if n == 2
-                    else "III"
-                    if n == 3
-                    else "IV"
-                    if n == 4
-                    else "V"
-                    if n == 5
-                    else "VI"
-                    if n == 6
-                    else "VII"
-                    if n == 7
-                    else "VIII"
-                    if n == 8
-                    else "IX"
-                    if n == 9
-                    else "X"
-                    if n == 10
-                    else str(n)
+                    else (
+                        "II"
+                        if n == 2
+                        else (
+                            "III"
+                            if n == 3
+                            else (
+                                "IV"
+                                if n == 4
+                                else (
+                                    "V"
+                                    if n == 5
+                                    else (
+                                        "VI"
+                                        if n == 6
+                                        else (
+                                            "VII"
+                                            if n == 7
+                                            else (
+                                                "VIII"
+                                                if n == 8
+                                                else (
+                                                    "IX"
+                                                    if n == 9
+                                                    else "X" if n == 10 else str(n)
+                                                )
+                                            )
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    )
                 )
                 title = title.replace("." + str(self.grandparentYear), "")
                 return (

@@ -1271,9 +1271,9 @@ def torrents_list(limit=50):
                     "id": t.id,
                     "status": t.status,
                     "filename": getattr(t, "filename", None),
-                    "files": len(getattr(t, "files", []))
-                    if hasattr(t, "files")
-                    else None,
+                    "files": (
+                        len(getattr(t, "files", [])) if hasattr(t, "files") else None
+                    ),
                 }
                 for t in response
             ]

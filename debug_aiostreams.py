@@ -1,10 +1,16 @@
 import importlib.util
+import os
 import sys
 import types
 from pathlib import Path
 
 repo_root = Path(__file__).resolve().parents[0]
 aiostreams_path = repo_root / "scraper" / "services" / "aiostreams.py"
+
+# Set environment variables before importing
+os.environ["AIOSTREAMS_UUID"] = "X"
+os.environ["AIOSTREAMS_B64CONFIG"] = "Y"
+
 # stubs
 releases_stub = types.SimpleNamespace()
 
@@ -33,10 +39,7 @@ sys.modules["scraper"] = types.SimpleNamespace(services=services_stub)
 spec = importlib.util.spec_from_file_location("aiostreams_test", str(aiostreams_path))
 aiostreams = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(aiostreams)
-import os
 
-os.environ["AIOSTREAMS_UUID"] = "X"
-os.environ["AIOSTREAMS_B64CONFIG"] = "Y"
 # monkeypatch get
 aiostreams.get = lambda url: types.SimpleNamespace(
     streams=[

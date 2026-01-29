@@ -60,7 +60,7 @@
         async function getRatings(tmdbId, mediaType) {
             try {
                 const ratings = {};
-                
+
                 // Helper to make XHR request
                 const makeRequest = (url) => {
                     return new Promise((resolve, reject) => {
@@ -84,32 +84,32 @@
                         xhr.send();
                     });
                 };
-                
+
                 // Fetch main data for TMDB score
                 const mainUrl = \`/api/v1/\${mediaType}/\${tmdbId}\`;
                 const mainResponse = await makeRequest(mainUrl);
-                
+
                 if (mainResponse.ok) {
                     const mainData = mainResponse.data;
                     if (mainData.voteAverage) {
                         ratings.tmdb = mainData.voteAverage;
                     }
                 }
-                
+
                 // Fetch additional ratings based on media type
                 if (mediaType === 'movie') {
                     // For movies: use ratingscombined endpoint for IMDB and RT
                     const ratingsUrl = \`/api/v1/\${mediaType}/\${tmdbId}/ratingscombined\`;
                     const ratingsResponse = await makeRequest(ratingsUrl);
-                    
+
                     if (ratingsResponse.ok) {
                         const ratingsData = ratingsResponse.data;
-                        
+
                         // Extract IMDB score
                         if (ratingsData.imdb && ratingsData.imdb.criticsScore) {
                             ratings.imdb = ratingsData.imdb.criticsScore;
                         }
-                        
+
                         // Extract Rotten Tomatoes score
                         if (ratingsData.rt && ratingsData.rt.criticsScore) {
                             ratings.rt = ratingsData.rt.criticsScore;
@@ -119,17 +119,17 @@
                     // For TV shows: use ratings endpoint for RT only
                     const ratingsUrl = \`/api/v1/\${mediaType}/\${tmdbId}/ratings\`;
                     const ratingsResponse = await makeRequest(ratingsUrl);
-                    
+
                     if (ratingsResponse.ok) {
                         const ratingsData = ratingsResponse.data;
-                        
+
                         // Extract Rotten Tomatoes score
                         if (ratingsData.criticsScore) {
                             ratings.rt = ratingsData.criticsScore;
                         }
                     }
                 }
-                
+
                 return Object.keys(ratings).length > 0 ? ratings : null;
             } catch (error) {
                 return null;
@@ -140,16 +140,16 @@
         function addRatingBadges(card, ratings) {
             // Try to find the container - different for discover cards vs title cards
             let targetContainer = card.querySelector('.cardScalable');
-            
+
             // If no cardScalable, look for the relative div in title cards
             if (!targetContainer) {
                 targetContainer = card.querySelector('div[class*="relative"][class*="transform-gpu"]');
             }
-            
+
             if (!targetContainer) {
                 return;
             }
-            
+
             // Remove existing container if present
             const existingContainer = targetContainer.querySelector('.rating-badges-container');
             if (existingContainer) {
@@ -159,7 +159,7 @@
             // Create container for all badges
             const container = document.createElement('div');
             container.className = 'rating-badges-container';
-            
+
             // Add TMDB badge if available
             if (ratings.tmdb) {
                 const tmdbBadge = document.createElement('div');
@@ -168,7 +168,7 @@
                 tmdbBadge.title = \`TMDB Rating: \${ratings.tmdb.toFixed(1)}/10\`;
                 container.appendChild(tmdbBadge);
             }
-            
+
             // Add IMDB badge if available
             if (ratings.imdb) {
                 const imdbBadge = document.createElement('div');
@@ -177,7 +177,7 @@
                 imdbBadge.title = \`IMDB Rating: \${ratings.imdb.toFixed(1)}/10\`;
                 container.appendChild(imdbBadge);
             }
-            
+
             // Add Rotten Tomatoes badge if available
             if (ratings.rt) {
                 const rtBadge = document.createElement('div');
@@ -186,7 +186,7 @@
                 rtBadge.title = \`Rotten Tomatoes: \${ratings.rt}%\`;
                 container.appendChild(rtBadge);
             }
-            
+
             // Only add container if we have at least one rating
             if (container.children.length > 0) {
                 targetContainer.style.position = 'relative';
@@ -228,7 +228,7 @@
         // Process a discover page card
         async function processDiscoverCard(card) {
             const cardIndex = card.getAttribute('data-index');
-            
+
             const requestButton = card.querySelector('button.discover-requestbutton[data-id]');
             if (!requestButton) {
                 return;
@@ -236,7 +236,7 @@
 
             const tmdbId = requestButton.getAttribute('data-id');
             const mediaType = requestButton.getAttribute('data-media-type');
-            
+
             if (!tmdbId || !mediaType) {
                 return;
             }
@@ -244,10 +244,10 @@
             // Find parent section to make key truly unique across different sections
             const section = card.closest('.verticalSection');
             const sectionClass = section ? section.className : 'unknown';
-            
+
             // Create unique key combining section, mediaType, and index to avoid collisions
             const uniqueKey = \`\${sectionClass}-\${mediaType}-\${cardIndex}\`;
-            
+
             if (processed.has(uniqueKey)) {
                 return;
             }
@@ -268,7 +268,7 @@
             titleCards.forEach(card => {
                 processTitleCard(card);
             });
-            
+
             // Process discover page cards
             const discoverCards = document.querySelectorAll('.discover-card');
             discoverCards.forEach(card => {
@@ -286,7 +286,7 @@
             if (document.body) {
                 processAllCards();
                 setInterval(processAllCards, CHECK_INTERVAL);
-                
+
                 observer.observe(document.body, {
                     childList: true,
                     subtree: true
@@ -300,7 +300,7 @@
         init();
     })();
     `;
-    
+
     document.documentElement.appendChild(script);
     script.remove();
 })();

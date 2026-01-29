@@ -1,8 +1,14 @@
+import copy
+import datetime
 import hashlib
 import time
 
-from base import *
-from ui.ui_print import *
+import regex
+import six
+
+from base import lan_ctr
+from ui import ui_settings
+from ui.ui_print import ui_cls, ui_print
 
 # Cache last printed sort and releases to avoid duplicate logging when functions are called multiple times in quick succession
 _last_sort_print = {}
@@ -476,9 +482,9 @@ class sort:
                         print()
                         choice3 = input("Please choose an operator: ")
                         if choice3 in indices:
-                            default[int(choice) - 1][
-                                int(choice2) - 1
-                            ] = subclass.operators[int(choice3) - 1]
+                            default[int(choice) - 1][int(choice2) - 1] = (
+                                subclass.operators[int(choice3) - 1]
+                            )
                         if new and not default[int(choice) - 1][0] == "media type":
                             choice2 = "3"
                         elif new:
@@ -632,9 +638,9 @@ class sort:
                         print()
                         choice3 = input("Please choose an operator: ")
                         if choice3 in indices:
-                            default[int(choice) - 1][
-                                int(choice2) - 1
-                            ] = subclass.operators[int(choice3) - 1]
+                            default[int(choice) - 1][int(choice2) - 1] = (
+                                subclass.operators[int(choice3) - 1]
+                            )
                         if (
                             new
                             and not default[int(choice) - 1][0] == "cache status"
@@ -823,7 +829,7 @@ class sort:
                             )
                             return scraped_releases
                     return scraped_releases
-                except:
+                except Exception:
                     ui_print(
                         "version rule exception - ignoring "
                         + self.attribute
@@ -859,7 +865,7 @@ class sort:
                 try:
                     float(self)
                     return True
-                except:
+                except Exception:
                     print()
                     print(
                         "This value is not in the correct format. Please enter a number (e.g. '420' or '69.69')"
@@ -876,7 +882,7 @@ class sort:
                 try:
                     float(self)
                     return True
-                except:
+                except Exception:
                     print()
                     print(
                         "This value is not in the correct format. Please enter a number (e.g. '420' or '69.69')"
@@ -984,7 +990,7 @@ class sort:
                             )
                             return scraped_releases
                     return scraped_releases
-                except:
+                except Exception:
                     ui_print(
                         "version rule exception - ignoring "
                         + self.attribute
@@ -1001,7 +1007,7 @@ class sort:
                 try:
                     float(self)
                     return True
-                except:
+                except Exception:
                     print()
                     print(
                         "This value is not in the correct format. Please enter a number (e.g. '420' or '69.69')"
@@ -1017,7 +1023,7 @@ class sort:
                 try:
                     float(self)
                     return True
-                except:
+                except Exception:
                     print()
                     print(
                         "This value is not in the correct format. Please enter a number (e.g. '420' or '69.69')"
@@ -1034,7 +1040,7 @@ class sort:
                 try:
                     regex.search(self, self, regex.I)
                     return True
-                except:
+                except Exception:
                     print()
                     print(
                         "This value is not in the correct format. Please make sure this value is a valid regex expression and no characters are escaped accidentally."
@@ -1050,7 +1056,7 @@ class sort:
                 try:
                     regex.search(self, self, regex.I)
                     return True
-                except:
+                except Exception:
                     print()
                     print(
                         "This value is not in the correct format. Please make sure this value is a valid regex expression and no characters are escaped accidentally."
@@ -1095,7 +1101,7 @@ class sort:
                             )
                             return scraped_releases
                     return scraped_releases
-                except:
+                except Exception:
                     ui_print(
                         "version rule exception - ignoring "
                         + self.attribute
@@ -1237,7 +1243,7 @@ class sort:
                             )
                             return scraped_releases
                     return scraped_releases
-                except:
+                except Exception:
                     ui_print(
                         "version rule exception - ignoring "
                         + self.attribute
@@ -1254,7 +1260,7 @@ class sort:
                 try:
                     regex.search(self, self, regex.I)
                     return True
-                except:
+                except Exception:
                     print()
                     print(
                         "This value is not in the correct format. Please make sure this value is a valid regex expression and no characters are escaped accidentally."
@@ -1414,7 +1420,7 @@ class sort:
                             )
                             return scraped_releases
                     return scraped_releases
-                except:
+                except Exception:
                     ui_print(
                         "version rule exception - ignoring "
                         + self.attribute
@@ -1431,7 +1437,7 @@ class sort:
                 try:
                     float(self)
                     return True
-                except:
+                except Exception:
                     print()
                     print(
                         "This value is not in the correct format. Please enter a number (e.g. '420' or '69.69')"
@@ -1454,7 +1460,7 @@ class sort:
                         )
                         print()
                         return False
-                except:
+                except Exception:
                     print()
                     print(
                         "This value is not in the correct format. Please enter a number larger than 0 (e.g. '420' or '69.69')"
@@ -1494,7 +1500,7 @@ class sort:
                 try:
                     float(self)
                     return True
-                except:
+                except Exception:
                     print()
                     print(
                         "This value is not in the correct format. Please enter a number (e.g. '420' or '69.69')"
@@ -1530,60 +1536,55 @@ class sort:
                     elif element.type == "show":
                         for season in element.Seasons:
                             if hasattr(season, "first_aired"):
-                                season.offset_airtime[
-                                    self.value
-                                ] = datetime.datetime.strptime(
-                                    season.first_aired, "%Y-%m-%dT%H:%M:%S.000Z"
-                                ) + datetime.timedelta(
-                                    hours=float(self.value)
+                                season.offset_airtime[self.value] = (
+                                    datetime.datetime.strptime(
+                                        season.first_aired, "%Y-%m-%dT%H:%M:%S.000Z"
+                                    )
+                                    + datetime.timedelta(hours=float(self.value))
                                 )
                             elif hasattr(season, "originallyAvailableAt"):
-                                season.offset_airtime[
-                                    self.value
-                                ] = datetime.datetime.strptime(
-                                    season.originallyAvailableAt, "%Y-%m-%d"
-                                ) + datetime.timedelta(
-                                    hours=float(self.value)
+                                season.offset_airtime[self.value] = (
+                                    datetime.datetime.strptime(
+                                        season.originallyAvailableAt, "%Y-%m-%d"
+                                    )
+                                    + datetime.timedelta(hours=float(self.value))
                                 )
                             for episode in season.Episodes:
                                 if hasattr(episode, "first_aired"):
-                                    episode.offset_airtime[
-                                        self.value
-                                    ] = datetime.datetime.strptime(
-                                        episode.first_aired, "%Y-%m-%dT%H:%M:%S.000Z"
-                                    ) + datetime.timedelta(
-                                        hours=float(self.value)
+                                    episode.offset_airtime[self.value] = (
+                                        datetime.datetime.strptime(
+                                            episode.first_aired,
+                                            "%Y-%m-%dT%H:%M:%S.000Z",
+                                        )
+                                        + datetime.timedelta(hours=float(self.value))
                                     )
                                 elif hasattr(episode, "originallyAvailableAt"):
-                                    episode.offset_airtime[
-                                        self.value
-                                    ] = datetime.datetime.strptime(
-                                        episode.originallyAvailableAt, "%Y-%m-%d"
-                                    ) + datetime.timedelta(
-                                        hours=float(self.value)
+                                    episode.offset_airtime[self.value] = (
+                                        datetime.datetime.strptime(
+                                            episode.originallyAvailableAt, "%Y-%m-%d"
+                                        )
+                                        + datetime.timedelta(hours=float(self.value))
                                     )
                     elif element.type == "season":
                         for episode in element.Episodes:
                             if hasattr(episode, "first_aired"):
-                                episode.offset_airtime[
-                                    self.value
-                                ] = datetime.datetime.strptime(
-                                    episode.first_aired, "%Y-%m-%dT%H:%M:%S.000Z"
-                                ) + datetime.timedelta(
-                                    hours=float(self.value)
+                                episode.offset_airtime[self.value] = (
+                                    datetime.datetime.strptime(
+                                        episode.first_aired, "%Y-%m-%dT%H:%M:%S.000Z"
+                                    )
+                                    + datetime.timedelta(hours=float(self.value))
                                 )
                             elif hasattr(episode, "originallyAvailableAt"):
-                                episode.offset_airtime[
-                                    self.value
-                                ] = datetime.datetime.strptime(
-                                    episode.originallyAvailableAt, "%Y-%m-%d"
-                                ) + datetime.timedelta(
-                                    hours=float(self.value)
+                                episode.offset_airtime[self.value] = (
+                                    datetime.datetime.strptime(
+                                        episode.originallyAvailableAt, "%Y-%m-%d"
+                                    )
+                                    + datetime.timedelta(hours=float(self.value))
                                 )
                     return (
                         element.offset_airtime[self.value] < datetime.datetime.utcnow()
                     )
-                except:
+                except Exception:
                     if element.type == "season":
                         return True
                     return False
@@ -1596,7 +1597,7 @@ class sort:
                 try:
                     float(self)
                     return True
-                except:
+                except Exception:
                     print()
                     print(
                         "This value is not in the correct format. Please enter a number (e.g. '420' or '69.69')"
@@ -1655,7 +1656,7 @@ class sort:
                 try:
                     regex.search(self, self, regex.I)
                     return True
-                except:
+                except Exception:
                     print()
                     print(
                         "This value is not in the correct format. Please make sure this value is a valid regex expression and no characters are escaped accidentally."
@@ -1684,7 +1685,7 @@ class sort:
                 try:
                     regex.search(self, self, regex.I)
                     return True
-                except:
+                except Exception:
                     print()
                     print(
                         "This value is not in the correct format. Please make sure this value is a valid regex expression and no characters are escaped accidentally."
@@ -1711,7 +1712,7 @@ class sort:
                             return True
                     elif hasattr(element, "user"):
                         if len(element.user) > 0:
-                            if type(element.user[0]) == list:
+                            if isinstance(element.user[0], list):
                                 for user in element.user:
                                     if self.operator == "==":
                                         if user[0] == self.value:
@@ -1740,7 +1741,7 @@ class sort:
                                         return False
                                     return True
                     return False
-                except:
+                except Exception:
                     return False
 
         class genre(trigger):
@@ -1795,7 +1796,7 @@ class sort:
                     )
                     print()
                     return False
-                except:
+                except Exception:
                     print()
                     print(
                         "This value is not in the correct format. Please enter a valid genre from this list:"
@@ -1820,7 +1821,7 @@ class sort:
                         if regex.search(self.value, str(element.genre()), regex.I):
                             return False
                         return True
-                except:
+                except Exception:
                     return False
 
         class scraper_sources(trigger):
@@ -1839,7 +1840,7 @@ class sort:
                     print(str(ss.active))
                     print()
                     return False
-                except:
+                except Exception:
                     print()
                     print(
                         "This value is not in the correct format. Please make sure this value is a valid regex expression and no characters are escaped accidentally."
@@ -1902,7 +1903,7 @@ class sort:
             self.rules = rules
 
         def __eq__(self, __o: object) -> bool:
-            if __o == None:
+            if __o is None:
                 return False
             return self.name == __o.name
 
@@ -1977,7 +1978,7 @@ class sort:
                         break
                 try:
                     scraped_releases = rule.apply(scraped_releases)
-                except:
+                except Exception:
                     ui_print(
                         "error: there seems to be an undefined rule in your version settings. skipping this rule."
                     )
@@ -2059,11 +2060,10 @@ class torrent2magnet:
 
     def bdecode(x):
         try:
-            r, l = torrent2magnet.decode_func[six.indexbytes(x, 0)](x, 0)
+            r, length = torrent2magnet.decode_func[six.indexbytes(x, 0)](x, 0)
         except (IndexError, KeyError, ValueError):
-            raise
-            raise BTFailure("not a valid bencoded string")
-        if l != len(x):
+            raise torrent2magnet.BTFailure("not a valid bencoded string")
+        if length != len(x):
             raise torrent2magnet.BTFailure(
                 "invalid bencoded value (data after valid prefix)"
             )
