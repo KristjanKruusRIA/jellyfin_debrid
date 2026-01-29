@@ -1,0 +1,30 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+  - repo: https://github.com/psf/black
+    rev: 23.9.1
+    hooks:
+      - id: black
+        # Use the installed Python runtime for hook environments (use generic 'python' so pre-commit
+        # uses whatever interpreter is available on the host rather than a hard-coded version)
+        language_version: python
+
+  # Note: The 'ruff-pre-commit' repo uses a mutable ref (rev: main). Run `pre-commit autoupdate`
+  # locally to pin it to a stable tag (recommended) to avoid the mutable reference warning.
+  - repo: https://github.com/pycqa/isort
+    rev: 5.12.0
+    hooks:
+      - id: isort
+  - repo: https://github.com/charliermarsh/ruff-pre-commit
+    rev: main
+    hooks:
+      - id: ruff
+        args: [--fix]
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.9.0
+    hooks:
+      - id: mypy

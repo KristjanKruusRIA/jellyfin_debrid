@@ -1,22 +1,26 @@
+import sys
 
-from base import *
-#import child modules
-from content.services import jellyseerr
-from content.services import jellyfin
+# import child modules
+from content.services import jellyfin as jellyfin
+from content.services import jellyseerr as jellyseerr
 
-#define subclass method
+
+# define subclass method
 def __subclasses__():
     return [jellyseerr]
 
-active = ['jellyseerr']
+
+active = ["jellyseerr"]
+
 
 def setup(cls, new=False):
     from settings import settings_list
+
     global active
     settings = []
     for category, allsettings in settings_list:
         for setting in allsettings:
-            if setting.cls == cls or setting.name == cls.name + ' auto remove':
+            if setting.cls == cls or setting.name == cls.name + " auto remove":
                 settings += [setting]
     back = False
     if not new:
@@ -24,25 +28,26 @@ def setup(cls, new=False):
             print("0) Back")
             indices = []
             for index, setting in enumerate(settings):
-                print(str(index + 1) + ') ' + setting.name)
+                print(str(index + 1) + ") " + setting.name)
                 indices += [str(index + 1)]
             print()
             choice = input("Choose an action: ")
             if choice in indices:
                 settings[int(choice) - 1].input()
-                if not cls.name in active:
+                if cls.name not in active:
                     active += [cls.name]
                 back = True
-            elif choice == '0':
+            elif choice == "0":
                 back = True
     else:
         print()
         indices = []
         for setting in settings:
-            if not setting.name == cls.name + ' auto remove':
+            if not setting.name == cls.name + " auto remove":
                 setting.setup()
-                if not cls.name in active:
+                if cls.name not in active:
                     active += [cls.name]
+
 
 def get():
     cls = sys.modules[__name__]

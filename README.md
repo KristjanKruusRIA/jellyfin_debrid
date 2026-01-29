@@ -1,7 +1,9 @@
-# jellyfin_debrid
+# Jellyfin_Debrid
 Jellyfin torrent downloading through Debrid Services, using Jellyseerr requests and watchlists.
 
 Using content services like Jellyseerr, your personal media server users can add movies/shows to their watchlist and they become available to stream in minutes.
+
+Based on [plex_debrid](https://github.com/itsToggle/plex_debrid)
 
 ## Quick Start (Windows)
 
@@ -26,7 +28,7 @@ Using content services like Jellyseerr, your personal media server users can add
 **For detailed Windows setup instructions, see [WINDOWS_SETUP.md](WINDOWS_SETUP.md)**
 
 ---
- 
+
 ### In Action:
 
 ![ezgif com-gif-maker](https://user-images.githubusercontent.com/71379623/185643627-45217303-75d8-4c9d-8c8b-41bb2e27fd87.gif)
@@ -47,7 +49,7 @@ How it works:
 - Validate downloads (size checks, ranged retries, progress reporting), sanitize and preserve filenames, then move files into organized Movies/Shows folders.
 - Trigger a Jellyfin library refresh (full or partial) so new content becomes available for playback.
 
-This workflow enables near-instant availability for cached content and robust, configurable automation for uncached downloads. 
+This workflow enables near-instant availability for cached content and robust, configurable automation for uncached downloads.
  
 ### Features:
 - Cross-platform: works on Windows, macOS, Linux and other Unix-like systems.
@@ -114,5 +116,16 @@ Several helper scripts and utilities are provided for setup, maintenance, and op
 - Verification & maintenance: `verify_setup.ps1` (Windows) helps validate your configuration after setup.
 
 Usage notes: These helper scripts are optional and documented in their respective folders (`jellyseer_sync/`, `scripts/`). Run `python jellyseer_sync/trakt_blacklist_sync.py --help` to view usage options for the Trakt sync tool.
+
+Developer / contributors: To enable local linting, formatting and pre-commit hooks, install dev dependencies and enable pre-commit:
+
+```bash
+python -m pip install --upgrade pip
+pip install -r requirements-dev.txt
+pre-commit install
+pre-commit run --all-files
+```
+
+The repository includes a GitHub Actions workflow (`.github/workflows/ci.yml`) that runs Ruff, Black, isort, mypy and pytest on each push/PR.
 
  

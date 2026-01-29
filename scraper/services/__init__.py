@@ -1,17 +1,20 @@
-from base import *
-#import child modules
+import sys
+import time
+
+# import child modules
 # FIXED: Only import scrapers that exist
 from scraper.services import torrentio
 
 try:
     from scraper.services import aiostreams
+
     scrapers = [torrentio, aiostreams]
     # AIOStreams provides direct HTTP cached download links
-    active_default = ['torrentio', 'aiostreams']
+    active_default = ["torrentio", "aiostreams"]
 except Exception as e:
     print(f"Warning: Could not import aiostreams: {e}")
     scrapers = [torrentio]
-    active_default = ['torrentio']
+    active_default = ["torrentio"]
     aiostreams = None
 
 # from scraper.services import rarbg
@@ -21,15 +24,19 @@ except Exception as e:
 # from scraper.services import orionoid
 # from scraper.services import nyaa
 
-#define subclass method
+
+# define subclass method
 def __subclasses__():
     return scrapers
+
 
 active = active_default
 overwrite = []
 
+
 def setup(cls, new=False):
     from settings import settings_list
+
     global active
     settings = []
     for category, allsettings in settings_list:
@@ -37,7 +44,7 @@ def setup(cls, new=False):
             if setting.cls == cls:
                 settings += [setting]
     if settings == []:
-        if not cls.name in active:
+        if cls.name not in active:
             active += [cls.name]
     back = False
     if not new:
@@ -45,7 +52,7 @@ def setup(cls, new=False):
             print("0) Back")
             indices = []
             for index, setting in enumerate(settings):
-                print(str(index + 1) + ') ' + setting.name)
+                print(str(index + 1) + ") " + setting.name)
                 indices += [str(index + 1)]
             print()
             if settings == []:
@@ -56,18 +63,19 @@ def setup(cls, new=False):
             choice = input("Choose an action: ")
             if choice in indices:
                 settings[int(choice) - 1].setup()
-                if not cls.name in active:
+                if cls.name not in active:
                     active += [cls.name]
                 back = True
-            elif choice == '0':
+            elif choice == "0":
                 back = True
     else:
         print()
         indices = []
         for setting in settings:
             setting.setup()
-            if not cls.name in active:
+            if cls.name not in active:
                 active += [cls.name]
+
 
 def get():
     cls = sys.modules[__name__]
@@ -77,6 +85,7 @@ def get():
             if service.name == servicename:
                 activeservices += [service]
     return activeservices
+
 
 def sequential():
     global overwrite

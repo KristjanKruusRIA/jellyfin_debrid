@@ -1,2 +1,2 @@
-from content import services
-from content import classes
+from content import classes as classes
+from content import services as services
