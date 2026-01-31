@@ -398,10 +398,27 @@ class show(classes.media):
             try:
                 episode_count = 0
                 # Try to get episode count from season object
+                ui_print(
+                    f"[jellyseerr] debug: season {season.seasonNumber} attributes: {dir(season)}",
+                    ui_settings.debug,
+                )
                 if hasattr(season, "episodeCount"):
                     episode_count = season.episodeCount
+                    ui_print(
+                        f"[jellyseerr] debug: found episodeCount={episode_count} for season {season.seasonNumber}",
+                        ui_settings.debug,
+                    )
                 elif hasattr(season, "episodes") and season.episodes:
                     episode_count = len(season.episodes)
+                    ui_print(
+                        f"[jellyseerr] debug: found {episode_count} episodes in episodes list for season {season.seasonNumber}",
+                        ui_settings.debug,
+                    )
+                else:
+                    ui_print(
+                        f"[jellyseerr] debug: no episodeCount or episodes found for season {season.seasonNumber}",
+                        ui_settings.debug,
+                    )
 
                 # Create episode objects for each episode in the season
                 for ep_num in range(1, episode_count + 1):
@@ -425,7 +442,55 @@ class show(classes.media):
 
                 if episode_count == 0:
                     ui_print(
-                        f"[jellyseerr] warning: season {season.seasonNumber} has no episode count, creating minimal episode",
+                        f"[jellyseerr] warning: season {season.seasonNumber} has no episode count, fetching from API",
+                        ui_settings.debug,
+                    )
+                    # Try to get episode count from the full season details API
+                    try:
+                        if hasattr(self.media, "tmdbId"):
+                            season_details = get(
+                                base_url
+                                + f"/api/v1/tv/{self.media.tmdbId}/season/{season.seasonNumber}"
+                            )
+                            if (
+                                season_details
+                                and hasattr(season_details, "episodes")
+                                and season_details.episodes
+                            ):
+                                episode_count = len(season_details.episodes)
+                                ui_print(
+                                    f"[jellyseerr] fetched {episode_count} episodes for season {season.seasonNumber} from API",
+                                    ui_settings.debug,
+                                )
+                                # Create episodes from the detailed episode list
+                                for ep in season_details.episodes:
+                                    episode = SimpleNamespace()
+                                    episode.type = "episode"
+                                    episode.index = ep.episodeNumber
+                                    episode.parentIndex = season.seasonNumber
+                                    episode.grandparentEID = self.EID
+                                    episode.grandparentTitle = self.title
+                                    episode.grandparentYear = self.year
+                                    episode.originallyAvailableAt = (
+                                        ep.airDate
+                                        if hasattr(ep, "airDate") and ep.airDate
+                                        else (
+                                            self.originallyAvailableAt
+                                            if hasattr(self, "originallyAvailableAt")
+                                            else "1990-01-01"
+                                        )
+                                    )
+                                    season.Episodes.append(episode)
+                    except Exception as e:
+                        ui_print(
+                            f"[jellyseerr] error fetching season details: {str(e)}",
+                            ui_settings.debug,
+                        )
+
+                # If still no episodes after trying API, create placeholder
+                if len(season.Episodes) == 0:
+                    ui_print(
+                        f"[jellyseerr] creating minimal episode placeholder for season {season.seasonNumber}",
                         ui_settings.debug,
                     )
                     # Create at least one placeholder episode if we don't know the count

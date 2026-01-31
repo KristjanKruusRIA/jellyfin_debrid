@@ -401,9 +401,15 @@ class setting:
                 new_versions += [[profile, triggers, lang, rules]]
             setattr(self.cls, self.key, new_versions)
             return
+        # Skip setting if class is None (service not implemented)
+        if self.cls is None:
+            return
         setattr(self.cls, self.key, value)
 
     def get(self):
+        # Return None if class is None (service not implemented)
+        if self.cls is None:
+            return None
         return getattr(self.cls, self.key)
 
 

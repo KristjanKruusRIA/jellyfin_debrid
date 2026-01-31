@@ -127,8 +127,7 @@ def scrape(query, altquery):
         )
         if s is None or int(s) == 0:
             s = 1
-        if e is None or int(e) == 0:
-            e = 1
+        # Keep e as None if not specified - will query for season pack
 
     # Get IMDB ID from query or resolve it
     plain_text = ""
@@ -220,21 +219,42 @@ def scrape(query, altquery):
                     return scraped_releases
 
     if type == "show":
-        url = (
-            base_url
-            + "/stremio/"
-            + uuid
-            + "/"
-            + b64config
-            + "/stream/series/"
-            + query
-            + ":"
-            + str(int(s))
-            + ":"
-            + str(int(e))
-            + ".json"
-        )
-        ui_print("[aiostreams] debug: querying show API: " + url, ui_settings.debug)
+        # If episode number specified, query specific episode
+        if e is not None and int(e) > 0:
+            url = (
+                base_url
+                + "/stremio/"
+                + uuid
+                + "/"
+                + b64config
+                + "/stream/series/"
+                + query
+                + ":"
+                + str(int(s))
+                + ":"
+                + str(int(e))
+                + ".json"
+            )
+            ui_print(
+                "[aiostreams] debug: querying show API (specific episode): " + url,
+                ui_settings.debug,
+            )
+        else:
+            # No episode specified - query for season pack
+            url = (
+                base_url
+                + "/stremio/"
+                + uuid
+                + "/"
+                + b64config
+                + "/stream/series/"
+                + query
+                + ".json"
+            )
+            ui_print(
+                "[aiostreams] debug: querying show API (season pack): " + url,
+                ui_settings.debug,
+            )
         response = get(url)
         ui_print(
             "[aiostreams] debug: show response: " + str(response), ui_settings.debug

@@ -49,7 +49,7 @@ def ignored():
                 return
             library = library_services[0]()
             if len(library) > 0:
-                jellyseerr_requests = content.services.jellyseerr.requests()
+                jellyseerr_requests = content.services.jellyseerr.jellyseerr_requests()
                 print("checking new content ...")
                 for iterator in itertools.zip_longest([jellyseerr_requests]):
                     for element in iterator:
@@ -501,7 +501,7 @@ def threaded(stop):
         return
     library = library_services[0]()
     # get all jellyseerr request
-    jellyseerr_requests = content.services.jellyseerr.requests()
+    jellyseerr_requests = content.services.jellyseerr.jellyseerr_requests()
     # use only jellyseerr requests
     watchlists = jellyseerr_requests
     try:
@@ -725,7 +725,7 @@ def threaded(stop):
 
             # Scheduled check - runs every regular_check seconds
             if timeout_counter >= regular_check:
-                jellyseerr_requests = content.services.jellyseerr.requests()
+                jellyseerr_requests = content.services.jellyseerr.jellyseerr_requests()
                 watchlists = jellyseerr_requests
                 try:
                     watchlists.data.sort(key=lambda s: s.watchlistedAt, reverse=True)
