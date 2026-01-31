@@ -8,14 +8,32 @@ from scraper.services import torrentio
 try:
     from scraper.services import aiostreams
 
-    scrapers = [torrentio, aiostreams]
-    # AIOStreams provides direct HTTP cached download links
-    active_default = ["torrentio", "aiostreams"]
+    aiostreams_available = True
 except Exception as e:
     print(f"Warning: Could not import aiostreams: {e}")
-    scrapers = [torrentio]
-    active_default = ["torrentio"]
+    aiostreams_available = False
     aiostreams = None  # type: ignore[assignment]
+
+try:
+    from scraper.services import comet
+
+    comet_available = True
+except Exception as e:
+    print(f"Warning: Could not import comet: {e}")
+    comet_available = False
+    comet = None  # type: ignore[assignment]
+
+# Build scrapers list and active_default based on available scrapers
+scrapers = [torrentio]
+active_default = ["torrentio"]
+
+if aiostreams_available:
+    scrapers.append(aiostreams)
+    active_default.append("aiostreams")
+
+if comet_available:
+    scrapers.append(comet)
+    active_default.append("comet")
 
 # from scraper.services import rarbg
 # from scraper.services import x1337

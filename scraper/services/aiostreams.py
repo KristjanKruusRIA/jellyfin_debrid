@@ -5,8 +5,10 @@ from ui.ui_print import ui_print, ui_settings
 
 name = "aiostreams"
 
-# AIOStreams configuration - loaded from .env file at runtime
+# AIOStreams configuration - set by settings system from settings.json
 base_url = "https://aiostreamsfortheweebs.midnightignite.me"
+uuid = ""
+b64config = ""
 
 session = custom_session()
 # Use a browser-like User-Agent
@@ -69,17 +71,7 @@ def setup(cls, new=False):
 
 
 def scrape(query, altquery):
-    from os import getenv
-
-    from dotenv import load_dotenv
-
     from scraper.services import active
-
-    load_dotenv()
-
-    # Load AIOStreams config from environment
-    uuid = getenv("AIOSTREAMS_UUID", "")
-    b64config = getenv("AIOSTREAMS_B64CONFIG", "")
 
     ui_print(
         '[aiostreams] debug: scrape called with query="' + str(query) + '"',
@@ -88,7 +80,7 @@ def scrape(query, altquery):
 
     if not uuid or not b64config:
         ui_print(
-            "[aiostreams] error: AIOSTREAMS_UUID or AIOSTREAMS_B64CONFIG not set in .env",
+            "[aiostreams] error: AIOStreams UUID or B64Config not set in settings.json",
             ui_settings.debug,
         )
         return []

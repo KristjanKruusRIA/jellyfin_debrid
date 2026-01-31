@@ -15,7 +15,8 @@
     "Jellyfin server address": "${JELLYFIN_BASE_URL}",
     "Sources": [
         "torrentio",
-        "aiostreams"
+        "aiostreams",
+        "comet"
     ],
     "Versions": {
         "4k": {
@@ -152,6 +153,7 @@
     "Torrentio Scraper Parameters": "https://torrentio.strem.fun/qualityfilter=threed,720p,480p,scr,cam|limit=5/manifest.json",
     "AIOStreams UUID": "${AIOSTREAMS_UUID}",
     "AIOStreams B64Config": "${AIOSTREAMS_B64CONFIG}",
+    "Comet B64Config": "${COMET_B64CONFIG}",
     "Debrid Services": ["Real Debrid"],
     "Tracker specific Debrid Services": [],
     "Real Debrid API Key": "${REALDEBRID_API_KEY}",

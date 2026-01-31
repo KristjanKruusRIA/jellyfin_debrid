@@ -56,7 +56,7 @@ This workflow enables near-instant availability for cached content and robust, c
 - Fast, configurable scanning: default polling interval is every 5 seconds (configurable) to pick up new Jellyseerr requests quickly.
 - Sources:
   - Primary: Jellyseerr (requests/watchlists). Overseerr is supported as well.
-  - Scrapers: Torrentio and AIOStreams (AIOStreams used for Easynews / direct HTTP sources).
+  - Scrapers: Torrentio, AIOStreams (for Easynews / direct HTTP sources), and Comet (for debrid-cached torrents).
 - Debrid integration: supports RealDebrid.
 - Download robustness: supports direct HTTP downloads and debrid APIs, temp-file downloads with progress reporting, ranged retries for partial responses, and size validation against expected size.
 - Filenames and organization: sanitizes filenames for Windows, preserves extensions (including fixes for certain Easynews URL cases), and organizes files into:
@@ -64,7 +64,7 @@ This workflow enables near-instant availability for cached content and robust, c
   - Shows/Show Name/Season XX/filename
 - Quality selection: selects best candidate release,
 - Integrations: triggers Jellyfin library refreshes after downloads and monitors Jellyseerr for requests.
-- Configuration & logging: primary settings in `config/settings.json` (template at `settings.json.template`), AIOStreams requires env vars `AIOSTREAMS_UUID` and `AIOSTREAMS_B64CONFIG`, and detailed logs are written to `config/jellyfin_debrid.log`.
+- Configuration & logging: primary settings in `config/settings.json` (template at `settings.json.template`), and detailed logs are written to `config/jellyfin_debrid.log`.
 
 ### Example minimal `settings.json` ✅
 
@@ -81,7 +81,7 @@ Below is a minimal example to get you started with Jellyfin + Jellyseerr + RealD
   "Real Debrid API Key": "YOUR_REALDEBRID_API_KEY",
   "Jellyfin server address": "http://jellyfin.local:8096",
   "Jellyfin API Key": "YOUR_JELLYFIN_API_KEY",
-  "Sources": ["torrentio", "aiostreams"],
+  "Sources": ["torrentio", "aiostreams", "comet"],
   "Versions": [
     [
       "4k",
@@ -100,7 +100,31 @@ Below is a minimal example to get you started with Jellyfin + Jellyseerr + RealD
 }
 ```
 
-Note: If you want to enable Easynews/AIOStreams scraping, set the environment variables `AIOSTREAMS_UUID` and `AIOSTREAMS_B64CONFIG` (see `settings.json.template`).
+Note: To enable AIOStreams or Comet scrapers, configure them in your `config/settings.json` file (see Configuration section below).
+
+### Configuration for Scrapers
+
+**Comet Scraper:**
+To use the Comet scraper, add the "Comet B64Config" field to your `config/settings.json`.
+
+The Comet URL format is: `https://cometnet.elfhosted.com/{BASE64_CONFIG}/manifest.json`
+
+To extract the BASE64_CONFIG from your Comet URL:
+1. Get your Comet configuration URL (includes your debrid API key and preferences)
+2. Extract the base64 string between the domain and `/manifest.json`
+3. Add it to your `config/settings.json`
+
+Example settings.json entry:
+```json
+"Comet B64Config": "eyJtYXhSZXN1bHRzUGVyUmVzb2x1dGlvbiI6MTAsIm1heFNpemUiOjAsImNhY2hlZE9ubHkiOnRydWUsInNvcnRDYWNoZWRVbmNhY2hlZFRvZ2V0aGVyIjpmYWxzZSwicmVtb3ZlVHJhc2giOnRydWUsInJlc3VsdEZvcm1hdCI6WyJhbGwiXSwiZGVicmlkU2VydmljZXMiOlt7InNlcnZpY2UiOiJyZWFsZGVicmlkIiwiYXBpS2V5IjoiWU9VUl9BUElfS0VZIn1dLCJlbmFibGVUb3JyZW50IjpmYWxzZSwiZGVkdXBsaWNhdGVTdHJlYW1zIjp0cnVlLCJkZWJyaWRTdHJlYW1Qcm94eVBhc3N3b3JkIjoiIiwibGFuZ3VhZ2VzIjp7InJlcXVpcmVkIjpbXSwiYWxsb3dlZCI6W10sImV4Y2x1ZGUiOltdLCJwcmVmZXJyZWQiOltdfSwicmVzb2x1dGlvbnMiOnsicjcyMHAiOmZhbHNlLCJyNTc2cCI6ZmFsc2UsInI0ODBwIjpmYWxzZSwicjM2MHAiOmZhbHNlLCJyMjQwcCI6ZmFsc2V9LCJvcHRpb25zIjp7InJlbW92ZV9yYW5rc191bmRlciI6LTEwMDAwMDAwMDAwLCJhbGxvd19lbmdsaXNoX2luX2xhbmd1YWdlcyI6ZmFsc2UsInJlbW92ZV91bmtub3duX2xhbmd1YWdlcyI6ZmFsc2V9fQ"
+```
+
+**AIOStreams Scraper:**
+For AIOStreams (Easynews), add both UUID and B64Config to your `config/settings.json`:
+```json
+"AIOStreams UUID": "your-uuid-here",
+"AIOStreams B64Config": "your-base64-config-here"
+```
 
 ### Helper scripts & utilities
 
