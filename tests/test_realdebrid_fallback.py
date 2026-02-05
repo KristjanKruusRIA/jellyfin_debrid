@@ -379,7 +379,9 @@ def test_batch_check_error_object_triggers_fallback(monkeypatch):
     fallback_logs = [
         log for log in ui_print_logs if "checking hashes individually" in str(log[0])
     ]
-    assert len(fallback_logs) == 1, "Should log fallback message when batch returns error"
+    assert (
+        len(fallback_logs) == 1
+    ), "Should log fallback message when batch returns error"
 
     # Verify individual checks were made
     individual_calls = [
@@ -394,7 +396,9 @@ def test_batch_check_error_object_triggers_fallback(monkeypatch):
 
     # Verify both releases have cached results
     cached_releases = [r for r in element.Releases if len(r.cached) > 0]
-    assert len(cached_releases) == 2, "Both releases should be marked as cached after fallback"
+    assert (
+        len(cached_releases) == 2
+    ), "Both releases should be marked as cached after fallback"
 
 
 def test_response_namespace_accumulation(monkeypatch):
