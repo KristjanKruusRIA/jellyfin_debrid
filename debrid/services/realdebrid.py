@@ -1193,7 +1193,8 @@ def check(element, force=False):
         )
 
         # Fallback to individual hash checks if batch check failed
-        if response is None and len(hashes) > 0:
+        # Check for None or error responses (403 returns {"error": "...", "error_code": 37})
+        if (response is None or hasattr(response, "error")) and len(hashes) > 0:
             import time
 
             ui_print(
