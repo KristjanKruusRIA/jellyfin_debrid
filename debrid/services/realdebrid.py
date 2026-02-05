@@ -410,11 +410,19 @@ def download(element, stream=True, query="", force=False):
                         # Only attempt to add if it looks like a magnet
                         try:
                             if magnet_candidate.startswith("magnet:"):
-                                response = post(
-                                    "https://api.real-debrid.com/rest/1.0/torrents/addMagnet",
-                                    {"magnet": magnet_candidate},
-                                    context=context,
-                                )
+                                try:
+                                    response = post(
+                                        "https://api.real-debrid.com/rest/1.0/torrents/addMagnet",
+                                        {"magnet": magnet_candidate},
+                                        context=context,
+                                    )
+                                except Exception as add_magnet_error:
+                                    ui_print(
+                                        f"[realdebrid] error adding magnet (will try next release): {str(add_magnet_error)}",
+                                        ui_settings.debug,
+                                    )
+                                    continue  # Try next release instead of failing completely
+
                                 # Check if response has an error or missing id
                                 if (
                                     not response
