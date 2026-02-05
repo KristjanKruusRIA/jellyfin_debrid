@@ -1924,20 +1924,34 @@ class media:
                         release,
                     ]
                     if hasattr(release, "cached") and len(release.cached) > 0:
-                        if debrid.download(self, stream=True, force=force):
-                            self.downloaded()
-                            downloaded += [True]
-                            ver_dld = True
-                            break
+                        try:
+                            if debrid.download(self, stream=True, force=force):
+                                self.downloaded()
+                                downloaded += [True]
+                                ver_dld = True
+                                break
+                        except Exception as e:
+                            ui_print(
+                                f"[debrid_download] Release failed, trying next: {str(e)[:100]}",
+                                ui_settings.debug,
+                            )
+                            continue
                     elif not self.type == "show" and debrid_uncached:
-                        if debrid.download(self, stream=False, force=force):
-                            self.downloaded()
-                            debrid.downloading += [
-                                self.query() + " [" + self.version.name + "]"
-                            ]
-                            downloaded += [True]
-                            ver_dld = True
-                            break
+                        try:
+                            if debrid.download(self, stream=False, force=force):
+                                self.downloaded()
+                                debrid.downloading += [
+                                    self.query() + " [" + self.version.name + "]"
+                                ]
+                                downloaded += [True]
+                                ver_dld = True
+                                break
+                        except Exception as e:
+                            ui_print(
+                                f"[debrid_download] Uncached release failed, trying next: {str(e)[:100]}",
+                                ui_settings.debug,
+                            )
+                            continue
                 if not ver_dld:
                     downloaded += [False]
         return True in downloaded, (False in downloaded or len(downloaded) == 0)

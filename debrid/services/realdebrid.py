@@ -1191,6 +1191,59 @@ def check(element, force=False):
             + "/".join(hashes),
             context=element.query(),
         )
+
+        # Fallback to individual hash checks if batch check failed
+        if response is None and len(hashes) > 0:
+            import time
+
+            ui_print(
+                "[realdebrid] batch check failed, checking hashes individually...",
+                ui_settings.debug,
+            )
+
+            # Create new response namespace to accumulate individual results
+            response = SimpleNamespace()
+
+            # Check each hash individually with error isolation
+            for release in element.Releases[:]:
+                if len(release.hash) != 40:
+                    continue
+
+                try:
+                    individual_response = get(
+                        "https://api.real-debrid.com/rest/1.0/torrents/instantAvailability/"
+                        + release.hash,
+                        context=element.query(),
+                    )
+
+                    if individual_response is not None:
+                        release_hash = release.hash.lower()
+                        if hasattr(individual_response, release_hash):
+                            # Accumulate individual response into main response
+                            setattr(
+                                response,
+                                release_hash,
+                                getattr(individual_response, release_hash),
+                            )
+                        else:
+                            ui_print(
+                                f"[realdebrid] skipping '{release.title}': no cache info in response",
+                                ui_settings.debug,
+                            )
+                    else:
+                        ui_print(
+                            f"[realdebrid] skipping '{release.title}': individual check returned None",
+                            ui_settings.debug,
+                        )
+                except Exception as e:
+                    ui_print(
+                        f"[realdebrid] error checking '{release.title}': {str(e)}",
+                        ui_settings.debug,
+                    )
+
+                # 1 second delay between individual checks
+                time.sleep(1)
+
         ui_print(
             "[realdebrid] checking and sorting all release files ...", ui_settings.debug
         )
