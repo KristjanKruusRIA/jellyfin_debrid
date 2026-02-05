@@ -300,6 +300,103 @@ def test_individual_checks_isolate_failures(monkeypatch):
     ), "Should delay 1 second after each individual check"
 
 
+def test_batch_check_error_object_triggers_fallback(monkeypatch):
+    """Verify fallback triggered when batch returns error object (not None)."""
+    realdebrid, ui_print_logs = _load_realdebrid_module(monkeypatch)
+
+    # Create mock element with releases
+    element = SimpleNamespace()
+    element.Releases = [
+        SimpleNamespace(hash="a" * 40, title="Release 1", files=[], cached=[]),
+        SimpleNamespace(hash="b" * 40, title="Release 2", files=[], cached=[]),
+    ]
+    element.query = lambda: "test context"
+    element.files = lambda: [".*"]  # Return wanted files pattern
+
+    # Track get calls
+    get_calls = []
+
+    def mock_get(url, context=None):
+        get_calls.append(url)
+        # Return error object for batch (simulating 403 with error response)
+        if "/" + "a" * 40 + "/" + "b" * 40 in url:
+            # This simulates what happens when API returns {"error": "...", "error_code": 37}
+            return SimpleNamespace(error="permission denied", error_code=37)
+        # Return valid response for individual checks
+        if url.endswith("a" * 40):
+            response = SimpleNamespace()
+            setattr(
+                response,
+                "a" * 40,
+                SimpleNamespace(
+                    rd=[
+                        SimpleNamespace(
+                            file1=SimpleNamespace(filename="test.mkv", filesize=1000)
+                        )
+                    ]
+                ),
+            )
+            return response
+        if url.endswith("b" * 40):
+            response = SimpleNamespace()
+            setattr(
+                response,
+                "b" * 40,
+                SimpleNamespace(
+                    rd=[
+                        SimpleNamespace(
+                            file1=SimpleNamespace(filename="test2.mkv", filesize=2000)
+                        )
+                    ]
+                ),
+            )
+            return response
+        return None
+
+    monkeypatch.setattr(realdebrid, "get", mock_get)
+
+    # Mock time.sleep to track delay calls
+    import time
+
+    sleep_calls = []
+
+    def mock_sleep(seconds):
+        sleep_calls.append(seconds)
+
+    monkeypatch.setattr(time, "sleep", mock_sleep)
+
+    # Clear logs before check
+    ui_print_logs.clear()
+
+    # Run check
+    realdebrid.check(element)
+
+    # Verify batch endpoint was called first
+    assert len(get_calls) >= 1
+    assert "a" * 40 + "/" + "b" * 40 in get_calls[0]
+
+    # Verify fallback message was logged
+    fallback_logs = [
+        log for log in ui_print_logs if "checking hashes individually" in str(log[0])
+    ]
+    assert len(fallback_logs) == 1, "Should log fallback message when batch returns error"
+
+    # Verify individual checks were made
+    individual_calls = [
+        url for url in get_calls[1:] if url.endswith("a" * 40) or url.endswith("b" * 40)
+    ]
+    assert len(individual_calls) == 2, "Should check both hashes individually"
+
+    # Verify 1-second delay was called twice (after each individual check)
+    assert (
+        sleep_calls.count(1) == 2
+    ), "Should delay 1 second after each individual check"
+
+    # Verify both releases have cached results
+    cached_releases = [r for r in element.Releases if len(r.cached) > 0]
+    assert len(cached_releases) == 2, "Both releases should be marked as cached after fallback"
+
+
 def test_response_namespace_accumulation(monkeypatch):
     """Verify individual responses accumulate correctly into response namespace."""
     realdebrid, ui_print_logs = _load_realdebrid_module(monkeypatch)
