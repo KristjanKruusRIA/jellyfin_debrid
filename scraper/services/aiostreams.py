@@ -278,6 +278,19 @@ def scrape(query, altquery):
             else:
                 continue
 
+            # Extract torrent hash from Stremio URLs for season pack magnet conversion
+            import re
+            from urllib.parse import quote
+
+            torrent_hash = None
+            hash_match = re.search(r"/rd/([a-f0-9]{40})/", stream_url)
+            if hash_match:
+                torrent_hash = hash_match.group(1)
+                ui_print(
+                    f"[aiostreams] debug: extracted torrent hash {torrent_hash} from Stremio URL",
+                    ui_settings.debug,
+                )
+
             # Extract filename - Sootio/AIOStreams provides filename in behaviorHints
             filename = None
             filename_from_url = None
@@ -440,8 +453,26 @@ def scrape(query, altquery):
                 except Exception:
                     size = 0
 
-            # AIOStreams provides direct HTTP links (cached/debrid)
-            release_type = "http"
+            # Determine if this is a season pack request (episode was None or 0)
+            # For season packs with embedded torrent hash, convert to magnet for multi-file handling
+            is_season_pack = (
+                (e is None or (isinstance(e, (int, str)) and int(e) <= 0))
+                if "e" in locals()
+                else False
+            )
+
+            if is_season_pack and torrent_hash:
+                # Convert to magnet link for proper multi-file handling by Real-Debrid
+                encoded_name = quote(filename) if filename else "Season.Pack"
+                stream_url = f"magnet:?xt=urn:btih:{torrent_hash}&dn={encoded_name}"
+                release_type = "magnet"
+                ui_print(
+                    f"[aiostreams] debug: converted season pack to magnet link (hash: {torrent_hash}, name: {encoded_name})",
+                    ui_settings.debug,
+                )
+            else:
+                # AIOStreams provides direct HTTP links (cached/debrid)
+                release_type = "http"
 
             # Extract seeders if present
             seeds = 0
@@ -508,8 +539,8 @@ def scrape(query, altquery):
                 seeds,
             )
 
-            # Ensure type attribute is set for HTTP releases
-            release.type = "http"
+            # Ensure type attribute matches release_type (http or magnet)
+            release.type = release_type
             # Store actual filename (including extension) for downloader fallback
             real_filename = filename.split("?")[0]
             release.filenames = [real_filename]

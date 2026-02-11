@@ -6,7 +6,7 @@ from ui.ui_print import ui_print, ui_settings
 name = "comet"
 
 # Comet configuration - set by settings system from settings.json
-base_url = "https://cometnet.elfhosted.com"
+base_url = ""
 b64config = ""
 
 session = custom_session()
@@ -195,30 +195,41 @@ def scrape(query, altquery):
                     return scraped_releases
 
     if type == "show":
-        # ElfHosted Comet requires episode numbers - default to E01 for season packs
-        episode_num = e if e is not None and int(e) > 0 else 1
+        # Check if this is a season pack request (e is None or 0) or specific episode
+        if e is None or int(e) == 0:
+            # Season pack query - use plain IMDB ID without episode suffix
+            url = base_url + "/" + b64config + "/stream/series/" + query + ".json"
+            ui_print(
+                "[comet] debug: querying show API (season pack S"
+                + str(s).zfill(2)
+                + "): "
+                + url,
+                ui_settings.debug,
+            )
+        else:
+            # Specific episode query - include season and episode numbers
+            url = (
+                base_url
+                + "/"
+                + b64config
+                + "/stream/series/"
+                + query
+                + ":"
+                + str(int(s))
+                + ":"
+                + str(int(e))
+                + ".json"
+            )
+            ui_print(
+                "[comet] debug: querying show API (S"
+                + str(s).zfill(2)
+                + "E"
+                + str(e).zfill(2)
+                + "): "
+                + url,
+                ui_settings.debug,
+            )
 
-        url = (
-            base_url
-            + "/"
-            + b64config
-            + "/stream/series/"
-            + query
-            + ":"
-            + str(int(s))
-            + ":"
-            + str(int(episode_num))
-            + ".json"
-        )
-        ui_print(
-            "[comet] debug: querying show API (S"
-            + str(s).zfill(2)
-            + "E"
-            + str(episode_num).zfill(2)
-            + "): "
-            + url,
-            ui_settings.debug,
-        )
         response = get(url)
         ui_print("[comet] debug: show response: " + str(response), ui_settings.debug)
 
@@ -348,8 +359,11 @@ def scrape(query, altquery):
                 except Exception:
                     seeds = 0
 
-            # Build magnet link from info hash
-            magnet_link = "magnet:?xt=urn:btih:" + info_hash
+            # Build magnet link from info hash with display name parameter
+            # The &dn= parameter is required for the release class regex to extract the hash
+            from urllib.parse import quote
+
+            magnet_link = "magnet:?xt=urn:btih:" + info_hash + "&dn=" + quote(title)
 
             # Create release object with the magnet link
             links = [magnet_link]

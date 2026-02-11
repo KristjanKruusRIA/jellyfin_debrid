@@ -210,29 +210,37 @@ def download(element, stream=True, query="", force=False):
             alternative_query = f"S{parent_index:02d}"
 
     for release in cached[:]:
-        # if release matches query OR alternative query OR force OR is cached
+        # Detect HTTP type releases FIRST - before any matching logic
+        is_http_release = False
+        if release.download and len(release.download) > 0:
+            download_str = str(release.download[0])
+            # Check both type attribute AND download URL format
+            if (
+                (hasattr(release, "type") and release.type == "http")
+                or download_str.startswith("http://")
+                or download_str.startswith("https://")
+            ):
+                is_http_release = True
+                release.type = "http"
+
+        # Now check if release matches query OR alternative query OR force OR is cached
         matches_primary = regex.match(query, release.title, regex.I)
-        matches_alternative = (
-            alternative_query and alternative_query.lower() in release.title.lower()
-        )
+
+        # For HTTP releases, SKIP alternative_query matching
+        # HTTP season packs are single files and shouldn't match individual episode queries
+        # Only torrents (multi-file season packs) should match via alternative_query
+        if is_http_release:
+            matches_alternative = False
+        else:
+            matches_alternative = (
+                alternative_query and alternative_query.lower() in release.title.lower()
+            )
+
         is_cached = hasattr(release, "cached") and release.cached
 
         if matches_primary or matches_alternative or force or is_cached:
             if stream:
                 release.size = 0
-
-                # Detect HTTP type releases FIRST - before any processing
-                is_http_release = False
-                if release.download and len(release.download) > 0:
-                    download_str = str(release.download[0])
-                    # Check both type attribute AND download URL format
-                    if (
-                        (hasattr(release, "type") and release.type == "http")
-                        or download_str.startswith("http://")
-                        or download_str.startswith("https://")
-                    ):
-                        is_http_release = True
-                        release.type = "http"
 
                 # Debug: Log release attributes for HTTP detection
                 release_type = getattr(release, "type", None)
