@@ -282,8 +282,8 @@
             display: grid;
             grid-template-columns: minmax(120px, 3fr) 1fr 1fr 1fr 1fr 1fr auto;
             align-items: center;
-            gap: 8px;
-            padding: 6px 10px;
+            gap: 0;
+            padding: 6px 0;
             color: #888;
             font-size: 11px;
             text-transform: uppercase;
@@ -292,13 +292,24 @@
             margin-bottom: 4px;
         }
 
+        .release-header > span,
+        .release-item > * {
+            padding: 0 10px;
+            border-right: 1px solid #2e2e2e;
+        }
+
+        .release-header > span:last-child,
+        .release-item > *:last-child {
+            border-right: none;
+        }
+
         .release-item {
             display: grid;
             grid-template-columns: minmax(120px, 3fr) 1fr 1fr 1fr 1fr 1fr auto;
             align-items: center;
-            gap: 8px;
+            gap: 0;
             background: #1e1e1e;
-            padding: 8px 10px;
+            padding: 8px 0;
             border-bottom: 1px solid #2e2e2e;
         }
 
