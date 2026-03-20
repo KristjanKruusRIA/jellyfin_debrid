@@ -32,9 +32,13 @@ def _load_frontend_module(monkeypatch):
     def _render_template_string(template):
         return template
 
+    class _Request:
+        args = {}
+
     setattr(flask_stub, "Flask", _Flask)
     setattr(flask_stub, "jsonify", _jsonify)
     setattr(flask_stub, "render_template_string", _render_template_string)
+    setattr(flask_stub, "request", _Request())
 
     monkeypatch.setitem(sys.modules, "flask", flask_stub)
 

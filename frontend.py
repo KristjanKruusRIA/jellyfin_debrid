@@ -5,7 +5,7 @@ Serves UI on http://localhost:7654
 
 import os
 
-from flask import Flask, jsonify, render_template_string
+from flask import Flask, jsonify, render_template_string, request
 
 app = Flask(__name__)
 
@@ -140,6 +140,53 @@ def get_logs():
             return jsonify({"content": logs})
     except Exception as e:
         return jsonify({"content": f"Error reading log file: {str(e)}\n"})
+
+
+@app.route("/api/search")
+def search_api():
+    """Search TMDB for movies and TV series."""
+    q = request.args.get("q", "").strip()
+    if not q:
+        return (
+            jsonify(
+                {
+                    "query": "",
+                    "results": [],
+                    "count": 0,
+                    "error": "Missing required parameter: q",
+                }
+            ),
+            400,
+        )
+
+    media_type = request.args.get("type")
+    if media_type not in (None, "all", "movie", "tv"):
+        media_type = None
+    if media_type == "all":
+        media_type = None
+
+    try:
+        from content.services import tmdb
+
+        result = tmdb.search(q, media_type=media_type)
+        results = result.get("results", [])
+        return jsonify(
+            {
+                "query": q,
+                "results": results,
+                "count": len(results),
+                "error": result.get("error"),
+            }
+        )
+    except Exception:
+        return jsonify(
+            {
+                "query": q,
+                "results": [],
+                "count": 0,
+                "error": "Search service unavailable",
+            }
+        )
 
 
 def start_frontend():
