@@ -45,7 +45,7 @@ def sanitize_filename(filename):
     return filename
 
 
-def download_file(url, filename, is_show=False, expected_size=None):
+def download_file(url, filename, is_show=False, expected_size=None, element=None):
     """
     Download a file from URL using requests library
 
@@ -231,8 +231,8 @@ def download_file(url, filename, is_show=False, expected_size=None):
         except Exception as e:
             ui_print(f"[downloader] Error during size validation: {e}", debug="true")
 
-        # Get organized destination path (no element parameter here since this is generic download_file)
-        dest_path = organize_path(filename, is_show)
+        # Get organized destination path
+        dest_path = organize_path(filename, is_show, element)
 
         # Move from temp to final location
         ui_print(f"[downloader] Moving file to: {dest_path}", debug="true")
@@ -649,10 +649,12 @@ def download_from_realdebrid(release, element):
 
                 # Download the file - we use custom path organization in download_from_realdebrid
                 # So we'll organize the path here before calling download_file
-                organize_path(file["name"], is_show, element)
-                # Extract just the filename from dest_path for download_file
                 result = download_file(
-                    download_url, file["name"], is_show, expected_size=file.get("size")
+                    download_url,
+                    file["name"],
+                    is_show,
+                    expected_size=file.get("size"),
+                    element=element,
                 )
                 if result is None:
                     all_success = False
@@ -678,15 +680,13 @@ def download_from_realdebrid(release, element):
                 ui_print("[downloader] No download URL available", debug="true")
                 return False
 
-            # Pre-calculate the organized path so the file goes to the right folder
-            organize_path(best_file["name"], is_show, element)
-
             # Download the file
             result = download_file(
                 download_url,
                 best_file["name"],
                 is_show,
                 expected_size=best_file.get("size"),
+                element=element,
             )
 
             return result is not None
