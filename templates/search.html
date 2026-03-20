@@ -659,7 +659,7 @@
             .then(res => res.json())
             .then(data => {
                 if (data.status === 'started' || data.status === 'success') {
-                    button.textContent = 'Started!';
+                    button.textContent = 'Downloaded';
                     button.style.background = '#4ec9b0';
                     button.style.color = '#1e1e1e';
                 } else {
