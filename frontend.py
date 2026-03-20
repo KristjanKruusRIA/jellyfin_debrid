@@ -5,121 +5,21 @@ Serves UI on http://localhost:7654
 
 import os
 
-from flask import Flask, jsonify, render_template_string, request
+from flask import Flask, jsonify, render_template, request
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder="templates")
 
 LOG_FILE = "config/jellyfin_debrid.log"
-
-HTML_TEMPLATE = """
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Jellyfin Debrid Logs</title>
-    <style>
-        body {
-            background: #1e1e1e;
-            color: #d4d4d4;
-            font-family: 'Consolas', 'Monaco', monospace;
-            margin: 0;
-            padding: 20px;
-        }
-        #logs {
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            font-size: 13px;
-            line-height: 1.4;
-            background: #252526;
-            padding: 15px;
-            border-radius: 4px;
-            max-height: 80vh;
-            overflow-y: auto;
-            border: 1px solid #3e3e3e;
-        }
-        .header {
-            margin-bottom: 20px;
-        }
-        .status {
-            color: #4ec9b0;
-            font-size: 12px;
-        }
-        h1 {
-            margin: 0 0 10px 0;
-            font-size: 18px;
-            color: #4ec9b0;
-        }
-    </style>
-    <script>
-        let lastUpdate = 0;
-        let autoScroll = true;
-
-        function updateLogs() {
-            console.log('Fetching logs...');
-            const logsDiv = document.getElementById('logs');
-            const statusDiv = document.getElementById('status');
-
-            fetch('/api/logs?t=' + Date.now())
-                .then(response => {
-                    if (!response.ok) throw new Error('Network error');
-                    return response.json();
-                })
-                .then(data => {
-                    console.log('Got logs, length:', data.content.length);
-
-                    // Check if we're scrolled to the bottom
-                    const isAtBottom = logsDiv.scrollHeight - logsDiv.scrollTop - logsDiv.clientHeight < 50;
-
-                    logsDiv.textContent = data.content;
-
-                    // Only auto-scroll if user is at bottom or auto-scroll is enabled
-                    if (isAtBottom || autoScroll) {
-                        logsDiv.scrollTop = logsDiv.scrollHeight;
-                    }
-
-                    statusDiv.textContent = 'Connected - Last updated: ' + new Date().toLocaleTimeString() + (autoScroll ? ' [Auto-scroll ON]' : ' [Auto-scroll OFF - scroll to bottom to re-enable]');
-                    statusDiv.style.color = '#4ec9b0';
-                })
-                .catch(error => {
-                    console.error('Fetch error:', error);
-                    statusDiv.textContent = 'Connection error - retrying...';
-                    statusDiv.style.color = '#f48771';
-                });
-
-            // Update every 2 seconds
-            setTimeout(updateLogs, 2000);
-        }
-
-        window.addEventListener('load', function() {
-            const logsDiv = document.getElementById('logs');
-
-            // Disable auto-scroll when user scrolls up
-            logsDiv.addEventListener('scroll', function() {
-                const isAtBottom = logsDiv.scrollHeight - logsDiv.scrollTop - logsDiv.clientHeight < 50;
-                if (!isAtBottom) {
-                    autoScroll = false;
-                } else {
-                    autoScroll = true;
-                }
-            });
-
-            updateLogs();
-        });
-    </script>
-</head>
-<body>
-    <div class="header">
-        <h1>🎬 Jellyfin Debrid Logs</h1>
-        <div class="status" id="status">Loading...</div>
-    </div>
-    <div id="logs">Loading logs...</div>
-</body>
-</html>
-"""
 
 
 @app.route("/")
 def index():
-    return render_template_string(HTML_TEMPLATE)
+    return render_template("logs.html")
+
+
+@app.route("/search")
+def search_page():
+    return render_template("search.html")
 
 
 @app.route("/api/logs")

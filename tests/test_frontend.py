@@ -14,7 +14,7 @@ def _load_frontend_module(monkeypatch):
     flask_stub = ModuleType("flask")
 
     class _Flask:
-        def __init__(self, name):
+        def __init__(self, name, **kwargs):
             self.name = name
 
         def route(self, *_args, **_kwargs):
@@ -32,11 +32,15 @@ def _load_frontend_module(monkeypatch):
     def _render_template_string(template):
         return template
 
+    def _render_template(template):
+        return template
+
     class _Request:
         args = {}
 
     setattr(flask_stub, "Flask", _Flask)
     setattr(flask_stub, "jsonify", _jsonify)
+    setattr(flask_stub, "render_template", _render_template)
     setattr(flask_stub, "render_template_string", _render_template_string)
     setattr(flask_stub, "request", _Request())
 

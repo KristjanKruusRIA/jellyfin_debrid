@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Jellyfin Debrid Search</title>
+    <style>
+        body {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            font-family: 'Consolas', 'Monaco', monospace;
+            margin: 0;
+            padding: 20px;
+        }
+        .header {
+            margin-bottom: 20px;
+        }
+        h1 {
+            margin: 0 0 10px 0;
+            font-size: 18px;
+            color: #4ec9b0;
+        }
+        .nav-links {
+            margin-bottom: 10px;
+        }
+        .nav-links a {
+            color: #4ec9b0;
+            text-decoration: none;
+            margin-right: 15px;
+        }
+        .nav-links a.active {
+            font-weight: bold;
+            text-decoration: underline;
+        }
+
+        .search-container {
+            margin-bottom: 30px;
+            background: #252526;
+            padding: 15px;
+            border-radius: 4px;
+            border: 1px solid #3e3e3e;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        input[type="text"] {
+            flex-grow: 1;
+            padding: 8px 12px;
+            background: #1e1e1e;
+            border: 1px solid #3e3e3e;
+            color: #d4d4d4;
+            border-radius: 4px;
+            font-family: inherit;
+        }
+
+        select {
+            padding: 8px;
+            background: #1e1e1e;
+            border: 1px solid #3e3e3e;
+            color: #d4d4d4;
+            border-radius: 4px;
+            font-family: inherit;
+        }
+
+        button {
+            padding: 8px 16px;
+            background: #4ec9b0;
+            border: none;
+            color: #1e1e1e;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            font-family: inherit;
+        }
+
+        button:hover {
+            background: #3da892;
+        }
+
+        .status {
+            color: #4ec9b0;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+
+        .error {
+            color: #f48771;
+            margin-bottom: 15px;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+        }
+
+        .card {
+            background: #252526;
+            border: 1px solid #3e3e3e;
+            border-radius: 8px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+        }
+
+        .card-image-container {
+            width: 100%;
+            height: 420px;
+            background: #1e1e1e;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .card-image {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .poster-placeholder {
+            padding: 20px;
+            text-align: center;
+            color: #888;
+            font-style: italic;
+        }
+
+        .card-content {
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+        }
+
+        .card-title {
+            font-weight: bold;
+            font-size: 16px;
+            margin-bottom: 5px;
+            color: #4ec9b0;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            align-self: flex-start;
+        }
+
+        .badge.movie { background: #0e639c; color: white; }
+        .badge.tv { background: #3c7d0f; color: white; }
+
+        .card-overview {
+            font-size: 12px;
+            color: #a0a0a0;
+            line-height: 1.4;
+            display: -webkit-box;
+            -webkit-line-clamp: 4;
+            line-clamp: 4;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="nav-links">
+            <a href="/">📋 Logs</a> | <a href="/search" class="active">🔍 Search</a>
+        </div>
+        <h1>🔍 Jellyfin Debrid Search</h1>
+    </div>
+
+    <div class="search-container">
+        <form id="search-form" style="display:flex; width: 100%; gap: 10px; margin:0;" onsubmit="performSearch(event)">
+            <input type="text" id="search-query" placeholder="Search movies & TV series..." required>
+            <select id="search-type">
+                <option value="all">All</option>
+                <option value="movie">Movies</option>
+                <option value="tv">TV Series</option>
+            </select>
+            <button type="submit">Search</button>
+        </form>
+    </div>
+
+    <div id="status-message" class="status">Enter a search query above to begin.</div>
+    <div id="results-grid" class="results-grid"></div>
+
+    <script>
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function performSearch(event) {
+            if (event) {
+                event.preventDefault();
+            }
+
+            const query = document.getElementById('search-query').value.trim();
+            const type = document.getElementById('search-type').value;
+            const statusDiv = document.getElementById('status-message');
+            const gridDiv = document.getElementById('results-grid');
+
+            if (!query) return;
+
+            statusDiv.className = 'status';
+            statusDiv.textContent = 'Searching...';
+            gridDiv.innerHTML = '';
+
+            let url = `/api/search?q=${encodeURIComponent(query)}`;
+            if (type !== 'all') {
+                url += `&type=${type}`;
+            }
+
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.error) {
+                        statusDiv.className = 'error';
+                        statusDiv.textContent = `Error: ${data.error}`;
+                        return;
+                    }
+
+                    if (!data.results || data.results.length === 0) {
+                        statusDiv.className = 'status';
+                        statusDiv.textContent = 'No results found.';
+                        return;
+                    }
+
+                    statusDiv.textContent = `Found ${data.count} result(s).`;
+
+                    data.results.forEach(item => {
+                        const card = document.createElement('div');
+                        card.className = 'card';
+
+                        const isMovie = item.media_type === 'movie';
+                        const prefix = isMovie ? 'movie-' : 'series-';
+
+                        // RPDB free key 't0-free-rpdb'
+                        const imgUrl = `https://api.ratingposterdb.com/t0-free-rpdb/tmdb/poster-default/${prefix}${item.id}.jpg?fallback=true`;
+
+                        const yearSuffix = item.year ? ` (${item.year})` : '';
+                        const title = (item.title || 'Unknown') + yearSuffix;
+
+                        const overview = item.overview || 'No overview available.';
+                        const badgeClass = isMovie ? 'movie' : 'tv';
+                        const badgeText = isMovie ? 'Movie' : 'TV Series';
+
+                        const safeTitle = escapeHtml(title);
+                        const safeOverview = escapeHtml(overview);
+
+                        card.innerHTML = `
+                            <div class="card-image-container">
+                                <img src="${imgUrl}" alt="Poster" class="card-image" onerror="this.onerror=null; this.parentNode.innerHTML='<div class=\\'poster-placeholder\\'>${safeTitle.replace(/'/g, "&#39;")}</div>';">
+                            </div>
+                            <div class="card-content">
+                                <div class="badge ${badgeClass}">${badgeText}</div>
+                                <div class="card-title">${safeTitle}</div>
+                                <div class="card-overview" title="${safeOverview.replace(/"/g, '&quot;')}">${safeOverview}</div>
+                            </div>
+                        `;
+
+                        gridDiv.appendChild(card);
+                    });
+                })
+                .catch(error => {
+                    console.error('Fetch error:', error);
+                    statusDiv.className = 'error';
+                    statusDiv.textContent = 'Failed to fetch search results. Check the console for details.';
+                });
+        }
+    </script>
+</body>
+</html>
