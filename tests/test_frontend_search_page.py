@@ -42,9 +42,10 @@ def test_search_page_marks_result_cards_as_actionable(client):
 def test_search_page_contains_release_panel_or_modal_container(client):
     response = client.get("/search")
     html = response.data.decode("utf-8")
-    assert "release-panel" in html
-    assert "release-list" in html
+    assert "modal-overlay" in html
+    assert "modal-releases" in html
     assert "release-status" in html
+    assert "release-list" in html
 
 
 def test_search_page_shows_scraping_state_text(client):

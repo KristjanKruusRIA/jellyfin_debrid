@@ -178,19 +178,79 @@
             margin-bottom: 10px;
         }
 
-        .release-panel {
-            background: #1e1e1e;
-            border-top: 1px solid #3e3e3e;
-            padding: 10px;
-            font-size: 12px;
-            max-height: 250px;
+        /* Modal overlay */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: #252526;
+            border: 1px solid #4ec9b0;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 960px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 18px;
+            border-bottom: 1px solid #3e3e3e;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            font-size: 16px;
+            color: #4ec9b0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: #d4d4d4;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 0 4px;
+            line-height: 1;
+        }
+
+        .modal-close:hover {
+            color: #f48771;
+            background: none;
+        }
+
+        .modal-body {
+            padding: 14px 18px;
             overflow-y: auto;
+            flex: 1;
+            font-size: 13px;
         }
 
         .release-status {
             color: #4ec9b0;
             text-align: center;
-            padding: 10px;
+            padding: 20px 10px;
             font-style: italic;
             display: flex;
             align-items: center;
@@ -220,11 +280,11 @@
 
         .release-item {
             display: grid;
-            grid-template-columns: minmax(80px, 2fr) 1fr 1fr 1fr 1fr 1fr auto;
+            grid-template-columns: minmax(120px, 3fr) 1fr 1fr 1fr 1fr 1fr auto;
             align-items: center;
             gap: 8px;
-            background: #252526;
-            padding: 8px;
+            background: #1e1e1e;
+            padding: 8px 10px;
             border: 1px solid #3e3e3e;
             border-radius: 4px;
         }
@@ -280,6 +340,20 @@
     <div id="status-message" class="status">Enter a search query above to begin.</div>
     <div id="results-grid" class="results-grid"></div>
 
+    <!-- Release modal -->
+    <div id="release-modal" class="modal-overlay" onclick="if(event.target===this)closeModal()">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="modal-title">Releases</h2>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="modal-status" class="release-status"><div class="spinner"></div>Searching for releases...</div>
+                <div id="modal-releases" class="release-list"></div>
+            </div>
+        </div>
+    </div>
+
     <script>
         function escapeHtml(text) {
             const div = document.createElement('div');
@@ -287,33 +361,47 @@
             return div.innerHTML;
         }
 
+        let activeJobId = null;
+
+        function closeModal() {
+            document.getElementById('release-modal').classList.remove('active');
+            document.querySelectorAll('.card.selected').forEach(c => c.classList.remove('selected'));
+            activeJobId = null;
+        }
+
         function collapseAllPanels() {
-            document.querySelectorAll('.card.selected').forEach(card => {
-                card.classList.remove('selected');
-                const panel = card.querySelector('.release-panel');
-                if (panel) panel.style.display = 'none';
-            });
+            closeModal();
         }
 
         function handleCardClick(item, cardElement) {
             if (cardElement.classList.contains('selected')) {
-                collapseAllPanels();
+                closeModal();
                 return;
             }
 
-            collapseAllPanels();
-
+            document.querySelectorAll('.card.selected').forEach(c => c.classList.remove('selected'));
             cardElement.classList.add('selected');
-            const panel = cardElement.querySelector('.release-panel');
-            panel.style.display = 'block';
 
-            const status = panel.querySelector('.release-status');
-            const list = panel.querySelector('.release-list');
+            const yearSuffix = item.year ? ' (' + item.year + ')' : '';
+            const titleText = (item.title || 'Unknown') + yearSuffix;
 
-            // Show loading state
+            const modal = document.getElementById('release-modal');
+            const modalTitle = document.getElementById('modal-title');
+            const status = document.getElementById('modal-status');
+            const list = document.getElementById('modal-releases');
+
+            modalTitle.textContent = titleText;
             status.style.display = 'flex';
-            status.innerHTML = '<div class="spinner"></div>Searching for releases...';
+            status.className = 'release-status';
+            status.innerHTML = '';
+            const spinner = document.createElement('div');
+            spinner.className = 'spinner';
+            status.appendChild(spinner);
+            const txt = document.createElement('span');
+            txt.textContent = 'Searching for releases...';
+            status.appendChild(txt);
             list.innerHTML = '';
+            modal.classList.add('active');
 
             fetch('/api/scrapes', {
                 method: 'POST',
@@ -325,7 +413,8 @@
                 return res.json();
             })
             .then(data => {
-                pollScrapeJob(data.job_id, cardElement);
+                activeJobId = data.job_id;
+                pollScrapeJob(data.job_id);
             })
             .catch(err => {
                 status.style.display = 'block';
@@ -334,20 +423,20 @@
             });
         }
 
-        function pollScrapeJob(jobId, cardElement) {
-            if (!cardElement.classList.contains('selected')) {
-                return; // User clicked another card, stop polling for UI updates
-            }
+        function pollScrapeJob(jobId) {
+            if (activeJobId !== jobId) return;
 
-            const panel = cardElement.querySelector('.release-panel');
-            const status = panel.querySelector('.release-status');
-            const list = panel.querySelector('.release-list');
+            const status = document.getElementById('modal-status');
+            const list = document.getElementById('modal-releases');
 
             fetch(`/api/scrapes/${jobId}`)
                 .then(res => res.json())
                 .then(data => {
+                    if (activeJobId !== jobId) return;
+
                     if (data.status === 'running' || data.status === 'pending') {
                         status.style.display = 'flex';
+                        status.className = 'release-status';
                         const countText = data.count > 0 ? ' (' + String(data.count) + ' found so far)' : '';
                         status.innerHTML = '';
                         const spinner = document.createElement('div');
@@ -356,7 +445,7 @@
                         const statusText = document.createElement('span');
                         statusText.textContent = 'Searching for releases...' + countText;
                         status.appendChild(statusText);
-                        setTimeout(() => pollScrapeJob(jobId, cardElement), 2000);
+                        setTimeout(() => pollScrapeJob(jobId), 2000);
                     } else if (data.status === 'complete' || data.status === 'failed') {
                         if (data.status === 'failed' && (!data.results || data.results.length === 0)) {
                             status.style.display = 'block';
@@ -367,7 +456,7 @@
 
                         if (data.results && data.results.length > 0) {
                             status.style.display = 'none';
-                            renderReleases(data.results, jobId, list);
+                            renderReleases(data.results, jobId);
                         } else {
                             status.style.display = 'block';
                             status.className = 'release-status error';
@@ -376,13 +465,15 @@
                     }
                 })
                 .catch(err => {
+                    if (activeJobId !== jobId) return;
                     status.style.display = 'block';
                     status.className = 'release-status error';
                     status.textContent = 'Failed to fetch status: ' + err.message;
                 });
         }
 
-        function renderReleases(results, jobId, panelList) {
+        function renderReleases(results, jobId) {
+            const panelList = document.getElementById('modal-releases');
             panelList.innerHTML = '';
 
             // Header row could be nice but let's stick to simple columns
@@ -553,10 +644,6 @@
                                 <div class="badge ${badgeClass}">${badgeText}</div>
                                 <div class="card-title">${safeTitle}</div>
                                 <div class="card-overview" title="${safeOverview.replace(/"/g, '&quot;')}">${safeOverview}</div>
-                            </div>
-                            <div class="release-panel" style="display:none" onclick="event.stopPropagation()">
-                                <div class="release-status"><div class="spinner"></div>Searching for releases...</div>
-                                <div class="release-list"></div>
                             </div>
                         `;
 
