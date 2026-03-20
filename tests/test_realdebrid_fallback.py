@@ -169,3 +169,38 @@ def test_check_makes_no_network_calls(monkeypatch):
     # Should not raise
     realdebrid.check(element)
     assert "RD" in element.Releases[0].cached
+
+
+def test_download_preserves_http_release_size_for_downloader(monkeypatch):
+    """HTTP releases should keep their scraped size when handed to downloader."""
+    realdebrid, _ui_print_logs = _load_realdebrid_module(monkeypatch)
+    captured: dict[str, float] = {}
+
+    def fake_download_from_realdebrid(release, element):
+        captured["size"] = release.size
+        return False
+
+    monkeypatch.setattr(
+        realdebrid.downloader,
+        "download_from_realdebrid",
+        fake_download_from_realdebrid,
+        raising=False,
+    )
+
+    release = SimpleNamespace(
+        title="HTTP Release",
+        type="http",
+        size=11.9,
+        files=[],
+        download=["https://example.invalid/video.mkv"],
+        cached=["RD"],
+    )
+    element = SimpleNamespace(
+        Releases=[release],
+        deviation=lambda: r"(.*)",
+    )
+
+    result = realdebrid.download(element, force=True)
+
+    assert result is False
+    assert captured["size"] == 11.9

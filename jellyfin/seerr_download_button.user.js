@@ -22,23 +22,32 @@
         const style = document.createElement('style');
         style.textContent = \`
             .jd-search-btn {
-                background: #4ec9b0 !important;
-                color: #1e1e1e !important;
-                border: none !important;
-                border-radius: 9999px !important;
-                padding: 8px 16px !important;
-                font-weight: 600 !important;
-                font-size: 14px !important;
-                cursor: pointer !important;
+                position: relative !important;
+                z-index: 10 !important;
                 display: inline-flex !important;
+                height: 100% !important;
                 align-items: center !important;
-                justify-content: center !important;
+                padding: 8px 16px !important;
+                font-size: 14px !important;
+                font-weight: 500 !important;
+                line-height: 1.25rem !important;
+                color: #fff !important;
+                background: rgba(79, 70, 229, 0.8) !important;
+                border: 1px solid rgb(99, 102, 241) !important;
+                border-radius: 0.375rem !important;
+                margin-left: 8px !important;
+                cursor: pointer !important;
+                transition: all 150ms ease-in-out !important;
                 gap: 6px !important;
-                transition: opacity 0.2s !important;
-                box-shadow: 0 1px 3px rgba(0,0,0,0.2) !important;
             }
             .jd-search-btn:hover {
-                opacity: 0.9 !important;
+                background: rgb(79, 70, 229) !important;
+                border-color: rgb(99, 102, 241) !important;
+                z-index: 20 !important;
+            }
+            .jd-search-btn:active {
+                background: rgb(67, 56, 202) !important;
+                border-color: rgb(67, 56, 202) !important;
             }
         \`;
         document.head.appendChild(style);

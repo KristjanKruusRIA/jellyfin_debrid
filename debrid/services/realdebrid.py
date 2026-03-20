@@ -201,9 +201,6 @@ def download(element, query="", force=False):
         is_cached = hasattr(release, "cached") and release.cached
 
         if matches_primary or matches_alternative or force or is_cached:
-
-            release.size = 0
-
             if is_http_release:
                 ui_print(
                     "[realdebrid] downloading http release: " + release.title,
@@ -218,6 +215,8 @@ def download(element, query="", force=False):
                         _post_download_cleanup(element)
                         return True
                 continue
+
+            release.size = 0
 
             # Check if files are available, if not we need to add magnet to get file list
             if not release.files or all(

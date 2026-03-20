@@ -222,14 +222,20 @@ def resolve_imdb_id(query, media_type="movie"):
     """Resolve a text query to an IMDB ID via TMDB search + details.
 
     Args:
-        query: Title text to search for.
+        query: Title text to search for (may be dotted like "war.of.the.worlds.2025").
         media_type: "movie" or "show".
 
     Returns:
         IMDB ID string (e.g. "tt1234567") or None if not found.
     """
+    import re
+
+    # Normalize dotted scraper queries: "war.of.the.worlds.2025" → "war of the worlds"
+    clean = query.replace(".", " ").strip()
+    clean = re.sub(r"\s+(19|20)\d{2}\s*$", "", clean).strip()
+
     tmdb_type = "tv" if media_type == "show" else "movie"
-    result = search(query, media_type=tmdb_type)
+    result = search(clean, media_type=tmdb_type)
     results = result.get("results", [])
     if not results:
         return None

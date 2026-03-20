@@ -213,16 +213,49 @@ def _scrape(instance, query, altquery):
 
         response = get(url)
 
-    if not response or not hasattr(response, "streams"):
-        try:
-            if response is not None:
-                ui_print("[" + instance.name + "] error: " + str(response))
-        except Exception:
-            ui_print("[" + instance.name + "] error: unknown error")
-        return scraped_releases
-    elif len(response.streams) == 1 and not hasattr(response.streams[0], "title"):
-        ui_print("[" + instance.name + "] error: no streams found or API error")
-        return scraped_releases
+    # Retry logic: Comet selfhosted may return a "First search" placeholder on
+    # cold queries while it indexes.  Detect it and retry once after a delay.
+    for _attempt in range(2):
+        if not response or not hasattr(response, "streams"):
+            try:
+                if response is not None:
+                    ui_print("[" + instance.name + "] error: " + str(response))
+            except Exception:
+                ui_print("[" + instance.name + "] error: unknown error")
+            return scraped_releases
+
+        if len(response.streams) == 1 and not hasattr(response.streams[0], "title"):
+            err_stream = response.streams[0]
+            err_text = ""
+            if hasattr(err_stream, "name"):
+                err_text += str(err_stream.name)
+            if hasattr(err_stream, "description"):
+                err_text += " " + str(err_stream.description)
+
+            if "first search" in err_text.lower() and _attempt == 0:
+                ui_print(
+                    "[" + instance.name + "] indexing in progress, retrying in 8s...",
+                    ui_settings.debug,
+                )
+                time.sleep(8)
+                response = get(url)
+                continue
+
+            err_detail = ""
+            if hasattr(err_stream, "name"):
+                err_detail += str(err_stream.name)
+            if hasattr(err_stream, "description"):
+                err_detail += " | " + str(err_stream.description)
+            ui_print(
+                "["
+                + instance.name
+                + "] error: no streams found or API error"
+                + (" — " + err_detail if err_detail else ""),
+            )
+            return scraped_releases
+
+        # Valid response — break out of retry loop
+        break
 
     # Parse the stream results - Comet returns torrent info hashes
     # Streams are ordered by quality/size (best first), so prioritize stream 0
