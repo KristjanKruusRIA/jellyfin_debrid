@@ -39,6 +39,7 @@ Based on [plex_debrid](https://github.com/itsToggle/plex_debrid)
 The service auto-starts ~3 minutes after boot (delayed start + Docker wait). You can also manage it via `servy-cli start/stop/restart --name=jellyfin-debrid` or the Servy Manager GUI.
 
 Log viewer: http://localhost:7654
+Manual search: http://localhost:7654/search — Search for movies and TV series using TMDB. Requires a `TMDB API Key` in your `config/settings.json` (get one free at https://developer.themoviedb.org).
 
 **For detailed Windows setup instructions, see [WINDOWS_SETUP.md](WINDOWS_SETUP.md)**
 
@@ -73,6 +74,11 @@ This workflow enables near-instant availability for cached content and robust, c
   - Primary: Seerr (requests/watchlists). Overseerr is supported as well.
   - Scrapers: AIOStreams (for Easynews / direct HTTP sources) and Comet (for debrid-cached torrents).
 - Debrid integration: supports RealDebrid.
+- Manual search page: `/search` lets you manually search for movies and TV series.
+- Search backend: uses TMDB directly (no Seerr dependency for search).
+- Search results: include RPDB rating posters.
+- Current scope: search-only for now (no download queue yet).
+- Manual search config: requires a `TMDB API Key` in `config/settings.json`.
 - Download robustness: supports direct HTTP downloads and debrid APIs, temp-file downloads with progress reporting, ranged retries for partial responses, and size validation against expected size.
 - Filenames and organization: sanitizes filenames for Windows, preserves extensions (including fixes for certain Easynews URL cases), and organizes files into:
   - Movies/Movie Name (Year)/filename
