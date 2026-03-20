@@ -216,3 +216,31 @@ def get_show_details(tmdb_id):
         "poster_path": payload.get("poster_path"),
         "overview": payload.get("overview") or "",
     }
+
+
+def resolve_imdb_id(query, media_type="movie"):
+    """Resolve a text query to an IMDB ID via TMDB search + details.
+
+    Args:
+        query: Title text to search for.
+        media_type: "movie" or "show".
+
+    Returns:
+        IMDB ID string (e.g. "tt1234567") or None if not found.
+    """
+    tmdb_type = "tv" if media_type == "show" else "movie"
+    result = search(query, media_type=tmdb_type)
+    results = result.get("results", [])
+    if not results:
+        return None
+
+    tmdb_id = results[0].get("id")
+    if not tmdb_id:
+        return None
+
+    if tmdb_type == "movie":
+        details = get_movie_details(tmdb_id)
+    else:
+        details = get_show_details(tmdb_id)
+
+    return details.get("imdb_id") or None

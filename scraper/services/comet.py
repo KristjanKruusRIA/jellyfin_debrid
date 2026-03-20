@@ -140,52 +140,19 @@ def _scrape(instance, query, altquery):
             s = 1
         # Keep e as None if not specified - will query for season pack
 
-    # Get IMDB ID from query or resolve it
+    # Get IMDB ID from query or resolve via TMDB
     plain_text = ""
     if regex.search(r"(tt[0-9]+)", altquery, regex.I):
         query = regex.search(r"(tt[0-9]+)", altquery, regex.I).group()
     else:
         plain_text = copy.deepcopy(query)
-        try:
-            if type == "show":
-                url = (
-                    "https://v3-cinemeta.strem.io/catalog/series/top/search="
-                    + query
-                    + ".json"
-                )
-                meta = get(url)
-            else:
-                url = (
-                    "https://v3-cinemeta.strem.io/catalog/movie/top/search="
-                    + query
-                    + ".json"
-                )
-                meta = get(url)
-            query = meta.metas[0].imdb_id
-        except Exception:
-            try:
-                if type == "movie":
-                    type = "show"
-                    s = 1
-                    e = 1
-                    url = (
-                        "https://v3-cinemeta.strem.io/catalog/series/top/search="
-                        + query
-                        + ".json"
-                    )
-                    meta = get(url)
-                else:
-                    type = "movie"
-                    url = (
-                        "https://v3-cinemeta.strem.io/catalog/movie/top/search="
-                        + query
-                        + ".json"
-                    )
-                    meta = get(url)
-                query = meta.metas[0].imdb_id
-            except Exception:
-                ui_print("[" + instance.name + "] error: could not find IMDB ID")
-                return scraped_releases
+        from content.services import tmdb
+
+        imdb_id = tmdb.resolve_imdb_id(query, media_type=type)
+        if not imdb_id:
+            ui_print("[" + instance.name + "] error: could not find IMDB ID via TMDB")
+            return scraped_releases
+        query = imdb_id
 
     # Query the Comet service
     if type == "movie":
@@ -207,22 +174,15 @@ def _scrape(instance, query, altquery):
             s = 1
             e = 1
             if plain_text != "":
-                try:
-                    url = (
-                        "https://v3-cinemeta.strem.io/catalog/series/top/search="
-                        + plain_text
-                        + ".json"
-                    )
-                    meta = get(url)
-                    query = meta.metas[0].imdb_id
-                except Exception as e:
+                from content.services import tmdb
+
+                imdb_id = tmdb.resolve_imdb_id(plain_text, media_type="show")
+                if not imdb_id:
                     ui_print(
-                        "["
-                        + instance.name
-                        + "] error: could not find IMDB ID: "
-                        + str(e)
+                        "[" + instance.name + "] error: could not find IMDB ID via TMDB"
                     )
                     return scraped_releases
+                query = imdb_id
 
     if type == "show":
         # Check if this is a season pack request (e is None or 0) or specific episode
