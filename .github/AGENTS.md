@@ -14,7 +14,7 @@ Seerr Requests → Scraper Services → Debrid Cache Check → Downloader → Fi
 |--------|---------|-----------|
 | `main.py` | Entry point — delegates to `ui.run()` | — |
 | `ui/` | Interactive CLI, logging (`ui_print()`), settings UI | `ui_print.py`, `ui_settings.py` |
-| `content/` | Media classes (movie/show/season/episode), Seerr integration | `classes.py`, `services/seerr.py` |
+| `content/` | Media classes (movie/show/season/episode), Seerr integration, TMDB manual hydration adapter | `classes.py`, `services/seerr.py`, `services/manual_media.py` |
 | `scraper/` | Pluggable scraper services (AIOStreams, Comet) | `services/__init__.py`, `services/aiostreams.py`, `services/comet.py` |
 | `debrid/` | Debrid provider integrations (RealDebrid) | `services/__init__.py`, `services/realdebrid.py` |
 | `releases/` | Release model, quality/version selection, scoring/sorting rules | `__init__.py` |

@@ -225,3 +225,71 @@ def test_tmdb_search_handles_http_error_status(monkeypatch):
     assert result["results"] == []
     assert result["error"] is not None
     assert "401" in result["error"]
+
+
+def test_tmdb_movie_details_include_external_ids(monkeypatch):
+    payload = {
+        "id": 550,
+        "title": "Fight Club",
+        "release_date": "1999-10-15",
+        "external_ids": {"imdb_id": "tt0137523"},
+    }
+
+    tmdb, _ = _import_tmdb(
+        monkeypatch,
+        responder=lambda _url, _timeout: _make_response(payload),
+    )
+    tmdb.api_key = "abc123"
+
+    details = tmdb.get_movie_details(550)
+
+    assert details["id"] == 550
+    assert details["title"] == "Fight Club"
+    assert details["imdb_id"] == "tt0137523"
+    assert details["release_date"] == "1999-10-15"
+
+    called_url = tmdb.session.calls[0]["url"]
+    parsed = urlparse(called_url)
+    query = parse_qs(parsed.query)
+
+    assert parsed.path == "/3/movie/550"
+    assert query["append_to_response"] == ["external_ids"]
+
+
+def test_tmdb_show_details_include_seasons_or_required_fields(monkeypatch):
+    payload = {
+        "id": 100,
+        "name": "Dark",
+        "first_air_date": "2017-12-01",
+        "external_ids": {"imdb_id": "tt5753856"},
+        "seasons": [
+            {
+                "season_number": 1,
+                "episode_count": 2,
+                "air_date": "2017-12-01",
+            }
+        ],
+    }
+
+    tmdb, _ = _import_tmdb(
+        monkeypatch,
+        responder=lambda _url, _timeout: _make_response(payload),
+    )
+    tmdb.api_key = "abc123"
+
+    details = tmdb.get_show_details(100)
+
+    assert details["id"] == 100
+    assert details["title"] == "Dark"
+    assert details["imdb_id"] == "tt5753856"
+    assert details["first_air_date"] == "2017-12-01"
+    assert details["seasons"][0]["season_number"] == 1
+    assert len(details["seasons"][0]["episodes"]) == 2
+    assert details["seasons"][0]["episodes"][0]["episode_number"] == 1
+
+    called_url = tmdb.session.calls[0]["url"]
+    parsed = urlparse(called_url)
+    query = parse_qs(parsed.query)
+
+    assert parsed.path == "/3/tv/100"
+    assert query["append_to_response"] == ["external_ids"]
