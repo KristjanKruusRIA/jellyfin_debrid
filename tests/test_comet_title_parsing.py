@@ -254,3 +254,41 @@ def test_instance_title_from_behavior_hints(monkeypatch):
     assert len(results) == 1
     assert results[0].title == "Some.Movie.2026.2160p.REMUX"
     assert results[0].source == "[comet-selfhosted]"
+
+
+def test_comet_suppresses_verbose_debug_logs(monkeypatch):
+    comet, logs = _import_comet(monkeypatch)
+    comet.base_url = "http://localhost"
+    comet.b64config = "test"
+
+    stream = _make_stream(
+        infoHash="a" * 40,
+        title="[RD] Comet 2160p",
+        name="[RD+] Comet\n2160p | 14.6 GB",
+        behaviorHints=SimpleNamespace(filename="Movie.2026.2160p.REMUX.mkv"),
+        size="15695765913",
+    )
+    response = SimpleNamespace(streams=[stream])
+    monkeypatch.setattr(comet, "get", lambda url: response)
+
+    results = comet.scrape("tt1234567", "tt1234567")
+    assert len(results) == 1
+
+    messages = [str(args[0]) for args, _ in logs if args]
+    assert any("[comet] debug: found 1 streams" in msg for msg in messages)
+
+    forbidden_substrings = [
+        "[comet] debug: scrape called with query=",
+        "[comet] debug: B64Config loaded successfully",
+        "[comet] debug: comet is active, proceeding",
+        "[comet] debug: querying movie API:",
+        "[comet] debug: movie response:",
+        "[comet] debug: no movie results, trying as show",
+        "[comet] debug: stream 0 has no info hash, skipping",
+        "[comet] debug: stream 0 title:",
+        "[comet] debug: stream 0 size from API:",
+        "[comet] debug: added release:",
+        "[comet] debug: returning 1 releases",
+    ]
+    for forbidden in forbidden_substrings:
+        assert not any(forbidden in msg for msg in messages), messages

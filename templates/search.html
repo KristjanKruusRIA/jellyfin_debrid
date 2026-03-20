@@ -280,8 +280,8 @@
 
         .release-header {
             display: grid;
-            grid-template-columns: minmax(120px, 3fr) 1fr 1fr 1fr 1fr auto;
-            align-items: center;
+            grid-template-columns: minmax(120px, 3fr) 1fr 1fr 1fr 1fr 100px;
+            align-items: stretch;
             gap: 0;
             padding: 0;
             color: #888;
@@ -296,6 +296,8 @@
         .release-item > * {
             padding: 8px 10px;
             border-right: 1px solid #2e2e2e;
+            display: flex;
+            align-items: center;
         }
 
         .release-header > span:last-child,
@@ -325,8 +327,8 @@
 
         .release-item {
             display: grid;
-            grid-template-columns: minmax(120px, 3fr) 1fr 1fr 1fr 1fr auto;
-            align-items: center;
+            grid-template-columns: minmax(120px, 3fr) 1fr 1fr 1fr 1fr 100px;
+            align-items: stretch;
             gap: 0;
             background: #1e1e1e;
             padding: 0;

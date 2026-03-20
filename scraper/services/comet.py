@@ -97,22 +97,12 @@ def _setup(cls, new=False):
 def _scrape(instance, query, altquery):
     from scraper.services import active
 
-    ui_print(
-        "[" + instance.name + '] debug: scrape called with query="' + str(query) + '"',
-        ui_settings.debug,
-    )
-
     if not instance.b64config:
         ui_print(
             "[" + instance.name + "] error: Comet B64Config not set in settings.json",
             ui_settings.debug,
         )
         return []
-
-    ui_print(
-        "[" + instance.name + "] debug: B64Config loaded successfully",
-        ui_settings.debug,
-    )
 
     scraped_releases = []
     if instance.name not in active:
@@ -126,10 +116,6 @@ def _scrape(instance, query, altquery):
         )
         return scraped_releases
 
-    ui_print(
-        "[" + instance.name + "] debug: " + instance.name + " is active, proceeding",
-        ui_settings.debug,
-    )
     if altquery == "(.*)":
         altquery = query
     type = (
@@ -211,24 +197,12 @@ def _scrape(instance, query, altquery):
             + query
             + ".json"
         )
-        ui_print(
-            "[" + instance.name + "] debug: querying movie API: " + url,
-            ui_settings.debug,
-        )
         response = get(url)
-        ui_print(
-            "[" + instance.name + "] debug: movie response: " + str(response),
-            ui_settings.debug,
-        )
         if (
             not response
             or not hasattr(response, "streams")
             or len(response.streams) == 0
         ):
-            ui_print(
-                "[" + instance.name + "] debug: no movie results, trying as show",
-                ui_settings.debug,
-            )
             type = "show"
             s = 1
             e = 1
@@ -262,15 +236,6 @@ def _scrape(instance, query, altquery):
                 + query
                 + ".json"
             )
-            ui_print(
-                "["
-                + instance.name
-                + "] debug: querying show API (season pack S"
-                + str(s).zfill(2)
-                + "): "
-                + url,
-                ui_settings.debug,
-            )
         else:
             # Specific episode query - include season and episode numbers
             url = (
@@ -285,23 +250,8 @@ def _scrape(instance, query, altquery):
                 + str(int(e))
                 + ".json"
             )
-            ui_print(
-                "["
-                + instance.name
-                + "] debug: querying show API (S"
-                + str(s).zfill(2)
-                + "E"
-                + str(e).zfill(2)
-                + "): "
-                + url,
-                ui_settings.debug,
-            )
 
         response = get(url)
-        ui_print(
-            "[" + instance.name + "] debug: show response: " + str(response),
-            ui_settings.debug,
-        )
 
     if not response or not hasattr(response, "streams"):
         try:
@@ -365,14 +315,6 @@ def _scrape(instance, query, altquery):
                         info_hash = bg_match.group(1)
 
             if not info_hash:
-                ui_print(
-                    "["
-                    + instance.name
-                    + "] debug: stream "
-                    + str(idx)
-                    + " has no info hash, skipping",
-                    ui_settings.debug,
-                )
                 continue
 
             # Extract title from the result
@@ -413,32 +355,12 @@ def _scrape(instance, query, altquery):
             if not title:
                 title = "Unknown"
 
-            ui_print(
-                "["
-                + instance.name
-                + "] debug: stream "
-                + str(idx)
-                + " title: "
-                + str(title),
-                ui_settings.debug,
-            )
-
             # Extract size from the result (Comet typically provides this in description or size field)
             size = 0
             if hasattr(result, "size") and result.size:
                 try:
                     size_bytes = float(result.size)
                     size = size_bytes / (1024 * 1024 * 1024)  # Convert bytes to GB
-                    ui_print(
-                        "["
-                        + instance.name
-                        + "] debug: stream "
-                        + str(idx)
-                        + " size from API: "
-                        + str(size)
-                        + "GB",
-                        ui_settings.debug,
-                    )
                 except Exception:
                     size = 0
 
@@ -512,20 +434,6 @@ def _scrape(instance, query, altquery):
                 links,
                 seeds,
             )
-
-            ui_print(
-                "["
-                + instance.name
-                + "] debug: added release: "
-                + title
-                + " | size: "
-                + str(size)
-                + "GB | seeders: "
-                + str(seeds)
-                + " | hash: "
-                + info_hash,
-                ui_settings.debug,
-            )
             scraped_releases += [release]
 
         except Exception as e:
@@ -541,12 +449,4 @@ def _scrape(instance, query, altquery):
             )
             continue
 
-    ui_print(
-        "["
-        + instance.name
-        + "] debug: returning "
-        + str(len(scraped_releases))
-        + " releases",
-        ui_settings.debug,
-    )
     return scraped_releases

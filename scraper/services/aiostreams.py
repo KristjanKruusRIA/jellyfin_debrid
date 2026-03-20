@@ -73,21 +73,12 @@ def setup(cls, new=False):
 def scrape(query, altquery):
     from scraper.services import active
 
-    ui_print(
-        '[aiostreams] debug: scrape called with query="' + str(query) + '"',
-        ui_settings.debug,
-    )
-
     if not uuid or not b64config:
         ui_print(
             "[aiostreams] error: AIOStreams UUID or B64Config not set in settings.json",
             ui_settings.debug,
         )
         return []
-
-    ui_print(
-        "[aiostreams] debug: UUID and B64Config loaded successfully", ui_settings.debug
-    )
 
     scraped_releases = []
     if "aiostreams" not in active:
@@ -96,7 +87,6 @@ def scrape(query, altquery):
         )
         return scraped_releases
 
-    ui_print("[aiostreams] debug: aiostreams is active, proceeding", ui_settings.debug)
     if altquery == "(.*)":
         altquery = query
     type = (
@@ -180,20 +170,12 @@ def scrape(query, altquery):
             + query
             + ".json"
         )
-        ui_print("[aiostreams] debug: querying movie API: " + url, ui_settings.debug)
         response = get(url)
-        ui_print(
-            "[aiostreams] debug: movie response: " + str(response), ui_settings.debug
-        )
         if (
             not response
             or not hasattr(response, "streams")
             or len(response.streams) == 0
         ):
-            ui_print(
-                "[aiostreams] debug: no movie results, trying as show",
-                ui_settings.debug,
-            )
             type = "show"
             s = 1
             e = 1
@@ -227,10 +209,6 @@ def scrape(query, altquery):
                 + str(int(e))
                 + ".json"
             )
-            ui_print(
-                "[aiostreams] debug: querying show API (specific episode): " + url,
-                ui_settings.debug,
-            )
         else:
             # No episode specified - query for season pack
             url = (
@@ -243,14 +221,7 @@ def scrape(query, altquery):
                 + query
                 + ".json"
             )
-            ui_print(
-                "[aiostreams] debug: querying show API (season pack): " + url,
-                ui_settings.debug,
-            )
         response = get(url)
-        ui_print(
-            "[aiostreams] debug: show response: " + str(response), ui_settings.debug
-        )
 
     if not response or not hasattr(response, "streams"):
         try:
@@ -286,10 +257,6 @@ def scrape(query, altquery):
             hash_match = re.search(r"/rd/([a-f0-9]{40})/", stream_url)
             if hash_match:
                 torrent_hash = hash_match.group(1)
-                ui_print(
-                    f"[aiostreams] debug: extracted torrent hash {torrent_hash} from Stremio URL",
-                    ui_settings.debug,
-                )
 
             # Extract filename - Sootio/AIOStreams provides filename in behaviorHints
             filename = None
@@ -399,14 +366,6 @@ def scrape(query, altquery):
                 ]:
                     filename = filename + url_ext
 
-            ui_print(
-                "[aiostreams] debug: stream "
-                + str(idx)
-                + " filename: "
-                + str(filename),
-                ui_settings.debug,
-            )
-
             # Clean up title for display - remove query string parameters and file extensions
             title = filename.split("?")[0]  # Remove query string (?name=..., etc)
             title = (
@@ -422,14 +381,6 @@ def scrape(query, altquery):
                 try:
                     size_bytes = float(result.size)
                     size = size_bytes / (1024 * 1024 * 1024)  # Convert bytes to GB
-                    ui_print(
-                        "[aiostreams] debug: stream "
-                        + str(idx)
-                        + " size from API: "
-                        + str(size)
-                        + "GB",
-                        ui_settings.debug,
-                    )
                 except Exception:
                     size = 0
 
@@ -466,10 +417,6 @@ def scrape(query, altquery):
                 encoded_name = quote(filename) if filename else "Season.Pack"
                 stream_url = f"magnet:?xt=urn:btih:{torrent_hash}&dn={encoded_name}"
                 release_type = "magnet"
-                ui_print(
-                    f"[aiostreams] debug: converted season pack to magnet link (hash: {torrent_hash}, name: {encoded_name})",
-                    ui_settings.debug,
-                )
             else:
                 # AIOStreams provides direct HTTP links (cached/debrid)
                 release_type = "http"
@@ -544,21 +491,6 @@ def scrape(query, altquery):
             # Store actual filename (including extension) for downloader fallback
             real_filename = filename.split("?")[0]
             release.filenames = [real_filename]
-
-            ui_print(
-                "[aiostreams] debug: added release: "
-                + title
-                + " | size: "
-                + str(size)
-                + "GB | seeders: "
-                + str(seeds)
-                + " | type: "
-                + str(release.type)
-                + " | download[0]: "
-                + str(stream_url[:80])
-                + "...",
-                ui_settings.debug,
-            )
             scraped_releases += [release]
 
         except Exception as e:
@@ -570,8 +502,4 @@ def scrape(query, altquery):
             )
             continue
 
-    ui_print(
-        "[aiostreams] debug: returning " + str(len(scraped_releases)) + " releases",
-        ui_settings.debug,
-    )
     return scraped_releases

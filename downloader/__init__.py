@@ -79,13 +79,7 @@ def download_file(url, filename, is_show=False, expected_size=None, element=None
         )
 
         with session.get(url, stream=True, timeout=30) as response:
-            # Add diagnostics: log status, content-length and content-type to help debug small or non-video downloads
             content_length = response.headers.get("content-length", "None")
-            content_type = response.headers.get("content-type", "None")
-            ui_print(
-                f"[downloader] HTTP status: {response.status_code}; Content-Length: {content_length}; Content-Type: {content_type}",
-                debug="true",
-            )
             response.raise_for_status()
             total_size = (
                 int(content_length)
@@ -124,15 +118,6 @@ def download_file(url, filename, is_show=False, expected_size=None, element=None
                 f"[downloader] Error: downloaded 0 bytes for URL: {url} (status: {response.status_code}); not moving temp file",
                 debug="true",
             )
-            # Try to capture small response for debugging
-            try:
-                snippet = response.content[:2048]
-                ui_print(
-                    f"[downloader] Response snippet (first 2KB): {snippet!r}",
-                    debug="true",
-                )
-            except Exception:
-                pass
             # Clean up temp file if it exists
             if os.path.exists(temp_file):
                 try:
@@ -140,73 +125,6 @@ def download_file(url, filename, is_show=False, expected_size=None, element=None
                 except Exception:
                     pass
             return None
-
-        # If the downloaded file is suspiciously small, capture diagnostics (headers and snippet)
-        if downloaded < 5 * 1024 * 1024:  # less than 5MB
-            ui_print(
-                f"[downloader] Warning: small download size ({downloaded} bytes). Content-Type: {content_type}",
-                debug="true",
-            )
-            try:
-                snippet = open(temp_file, "rb").read(2048)
-                ui_print(
-                    f"[downloader] Small response snippet (first 2KB): {snippet!r}",
-                    debug="true",
-                )
-            except Exception:
-                pass
-
-            # If content-type is not a video type, warn
-            if not (isinstance(content_type, str) and content_type.startswith("video")):
-                ui_print(
-                    "[downloader] Warning: content-type does not look like a video file, might be an error page",
-                    debug="true",
-                )
-
-            # If it's a video but too small compared to expected streaming sizes, try a single ranged retry
-            if isinstance(content_type, str) and content_type.startswith("video"):
-                ui_print(
-                    "[downloader] Attempting ranged retry (Range: bytes=0-) to fetch a larger file",
-                    debug="true",
-                )
-                try:
-                    # Remove previous partial temp file
-                    if os.path.exists(temp_file):
-                        os.remove(temp_file)
-                    # Use Range header to request full content from start
-                    ranged_headers = {"Range": "bytes=0-"}
-                    with session.get(
-                        url,
-                        stream=True,
-                        timeout=60,
-                        headers=ranged_headers,
-                        allow_redirects=True,
-                    ) as resp2:
-                        ui_print(
-                            f"[downloader] Range HTTP status: {resp2.status_code}; Content-Length: {resp2.headers.get('content-length', 'None')}; Content-Range: {resp2.headers.get('content-range', 'None')}",
-                            debug="true",
-                        )
-                        if resp2.status_code in (200, 206):
-                            downloaded2 = 0
-                            with open(temp_file, "wb") as f2:
-                                for chunk in resp2.iter_content(
-                                    chunk_size=chunk_size, decode_unicode=False
-                                ):
-                                    if chunk:
-                                        f2.write(chunk)
-                                        downloaded2 += len(chunk)
-                            ui_print(
-                                f"[downloader] Ranged request downloaded {downloaded2} bytes",
-                                debug="true",
-                            )
-                            downloaded = downloaded2
-                        else:
-                            ui_print(
-                                "[downloader] Ranged request returned non-206/200 status, skipping",
-                                debug="true",
-                            )
-                except Exception as e:
-                    ui_print(f"[downloader] Ranged retry failed: {e}", debug="true")
 
         # Size validation against expected_size (if provided)
         try:
@@ -558,10 +476,6 @@ def download_from_realdebrid(release, element):
             or getattr(element, "type", "") == "season"
             or getattr(element, "type", "") == "episode"
         )
-        ui_print(
-            f"[downloader] Processing element type: {getattr(element, 'type', 'unknown')} (is_show: {is_show})",
-            debug="true",
-        )
 
         # Get all files from the release
         files_to_download = []
@@ -627,11 +541,6 @@ def download_from_realdebrid(release, element):
                 quality_score = get_quality_score(info["quality"])
                 if quality_score == max_quality_score:
                     files_to_download_final.append(file)
-                    ui_print(
-                        f"[downloader] Queuing file: {file.get('name')} "
-                        f"(Quality: {info['quality']}, Size: {file.get('size', 0) / (1024**3):.2f} GB)",
-                        debug="true",
-                    )
 
             # Download all selected files
             all_success = True
