@@ -37,7 +37,7 @@ Write-Host ""
 servy-cli install `
     --name="jellyfin-debrid" `
     --displayName="Jellyfin Debrid" `
-    --description="Monitors Jellyseerr requests, scrapes torrent sources, checks debrid caching, and downloads content." `
+    --description="Monitors Seerr requests, scrapes torrent sources, checks debrid caching, and downloads content." `
     --path="$PythonExe" `
     --params="main.py --config-dir config -service" `
     --startupDir="$ProjectRoot" `
@@ -47,6 +47,8 @@ servy-cli install `
     --stderr="$StderrLog" `
     --enableSizeRotation `
     --rotationSize=10 `
+    --enableDateRotation `
+    --dateRotationType="Daily" `
     --maxRotations=3 `
     --enableHealth `
     --heartbeatInterval=30 `

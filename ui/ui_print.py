@@ -35,6 +35,13 @@ def logo(path="", update=""):
 def set_log_dir(config):
     global config_dir
     config_dir = config
+    # Clear the log file on each application start
+    log_path = config_dir + "/jellyfin_debrid.log"
+    try:
+        with open(log_path, "w") as f:
+            f.write("")
+    except OSError:
+        pass
 
 
 def ui_print(string: str, debug="true"):
