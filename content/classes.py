@@ -1894,14 +1894,6 @@ class media:
                     ui_settings.debug,
                 )
             for version in self.versions():
-                debrid_uncached = True
-                for i, rule in enumerate(version.rules):
-                    if (
-                        rule[0] == "cache status"
-                        and rule[1] == "requirement"
-                        and rule[2] == "cached"
-                    ):
-                        debrid_uncached = False
                 self.version = version
                 self.Releases = copy.deepcopy(scraped_releases)
                 releases.sort(self.Releases, self.version)
@@ -1914,7 +1906,7 @@ class media:
                     ]
                     if hasattr(release, "cached") and len(release.cached) > 0:
                         try:
-                            if debrid.download(self, stream=True, force=force):
+                            if debrid.download(self, force=force):
                                 self.downloaded()
                                 downloaded += [True]
                                 ver_dld = True
@@ -1922,22 +1914,6 @@ class media:
                         except Exception as e:
                             ui_print(
                                 f"[debrid_download] Release failed, trying next: {str(e)[:100]}",
-                                ui_settings.debug,
-                            )
-                            continue
-                    elif not self.type == "show" and debrid_uncached:
-                        try:
-                            if debrid.download(self, stream=False, force=force):
-                                self.downloaded()
-                                debrid.downloading += [
-                                    self.query() + " [" + self.version.name + "]"
-                                ]
-                                downloaded += [True]
-                                ver_dld = True
-                                break
-                        except Exception as e:
-                            ui_print(
-                                f"[debrid_download] Uncached release failed, trying next: {str(e)[:100]}",
                                 ui_settings.debug,
                             )
                             continue

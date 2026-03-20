@@ -166,29 +166,16 @@ def scrape():
                             )
                             else "movie"
                         )
-                        if debrid.download(
-                            release, stream=True, query=query, force=True
-                        ):
+                        if debrid.download(release, query=query, force=True):
                             content.classes.media.collect(release)
                             scraped_releases.remove(scraped_releases[0])
                             time.sleep(3)
                         else:
                             print()
                             print(
-                                "These releases do not seem to be cached on your debrid services. Add uncached torrent?"
+                                "This release could not be downloaded. It may not be cached on your debrid services."
                             )
-                            print()
-                            print("0) Back")
-                            print("1) Add uncached torrent")
-                            print()
-                            choice = input("Choose an action: ")
-                            if choice == "1":
-                                debrid.download(
-                                    release, stream=False, query=query, force=True
-                                )
-                                content.classes.media.collect(release)
-                                scraped_releases.remove(scraped_releases[0])
-                                time.sleep(3)
+                            time.sleep(3)
                     elif int(choice) <= len(scraped_releases) and not int(choice) <= 0:
                         release = scraped_releases[int(choice) - 1]
                         release.Releases = [
@@ -203,36 +190,16 @@ def scrape():
                             )
                             else "movie"
                         )
-                        if debrid.download(
-                            release, stream=True, query=release.title, force=True
-                        ):
+                        if debrid.download(release, query=release.title, force=True):
                             content.classes.media.collect(release)
                             scraped_releases.remove(scraped_releases[int(choice) - 1])
                             time.sleep(3)
                         else:
                             print()
                             print(
-                                "This release does not seem to be cached on your debrid services. Add uncached torrent?"
+                                "This release could not be downloaded. It may not be cached on your debrid services."
                             )
-                            print()
-                            print("0) Back")
-                            print("1) Add uncached torrent")
-                            print()
-                            choice2 = input("Choose an action: ")
-                            if choice2 == "1":
-                                if debrid.download(
-                                    release, stream=False, query=query, force=True
-                                ):
-                                    content.classes.media.collect(release)
-                                    scraped_releases.remove(
-                                        scraped_releases[int(choice) - 1]
-                                    )
-                                    time.sleep(3)
-                                else:
-                                    print()
-                                    print(
-                                        "There was an error adding this uncached torrent to your debrid service. Choose another release?"
-                                    )
+                            time.sleep(3)
                     elif choice == "0":
                         back = True
                 except Exception:

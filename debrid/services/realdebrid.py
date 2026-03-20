@@ -165,7 +165,7 @@ def _post_download_cleanup(element):
 
 
 # (required) Download Function.
-def download(element, stream=True, query="", force=False):
+def download(element, query="", force=False):
     import time
 
     cached = element.Releases
@@ -201,13 +201,6 @@ def download(element, stream=True, query="", force=False):
         is_cached = hasattr(release, "cached") and release.cached
 
         if matches_primary or matches_alternative or force or is_cached:
-            if not stream:
-                ui_print(
-                    "[realdebrid] uncached downloads are no longer supported, skipping: "
-                    + release.title,
-                    ui_settings.debug,
-                )
-                return False
 
             release.size = 0
 

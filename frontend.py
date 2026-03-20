@@ -280,7 +280,7 @@ def download_scrape_release(job_id):
             media_obj = manual_media.build_show(details)
 
         media_obj.Releases = [selected_release]
-        debrid.download(media_obj, stream=True, query=media_obj.query(), force=True)
+        debrid.download(media_obj, query=media_obj.query(), force=True)
 
         cached_via = _normalize_cached_via(getattr(selected_release, "cached", []))
         release_title = str(getattr(selected_release, "title", "selected release"))

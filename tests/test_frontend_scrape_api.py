@@ -235,11 +235,10 @@ def test_download_endpoint_calls_debrid_download_backend(monkeypatch):
         build_show=lambda _details: _FakeMedia(),
     )
 
-    def _download(element, stream=True, query="", force=False):
+    def _download(element, query="", force=False):
         calls.append(
             {
                 "element": element,
-                "stream": stream,
                 "query": query,
                 "force": force,
             }
@@ -288,7 +287,6 @@ def test_download_endpoint_calls_debrid_download_backend(monkeypatch):
     assert payload["error"] is None
 
     assert len(calls) == 1
-    assert calls[0]["stream"] is True
     assert calls[0]["force"] is True
     assert calls[0]["query"] == "fight.club.1999"
     assert len(calls[0]["element"].Releases) == 1
