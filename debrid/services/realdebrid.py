@@ -458,7 +458,15 @@ def download(element, stream=True, query="", force=False):
                                     str(f.id)
                                     for f in response.files
                                     if any(
-                                        getattr(f, "filename", getattr(f, "name", ""))
+                                        getattr(
+                                            f,
+                                            "path",
+                                            getattr(
+                                                f,
+                                                "filename",
+                                                getattr(f, "name", ""),
+                                            ),
+                                        )
                                         .lower()
                                         .endswith(ext)
                                         for ext in video_extensions
@@ -486,17 +494,26 @@ def download(element, stream=True, query="", force=False):
                                     context=context,
                                 )
 
-                                # Wait a bit more and get updated info
-                                time.sleep(2)
-                                response = get(
-                                    "https://api.real-debrid.com/rest/1.0/torrents/info/"
-                                    + torrent_id,
-                                    context=context,
-                                )
-                                ui_print(
-                                    "[realdebrid] updated status: " + response.status,
-                                    ui_settings.debug,
-                                )
+                                # Poll for torrent to become ready (cached torrents need a moment)
+                                max_polls = 5
+                                for poll in range(max_polls):
+                                    time.sleep(2)
+                                    response = get(
+                                        "https://api.real-debrid.com/rest/1.0/torrents/info/"
+                                        + torrent_id,
+                                        context=context,
+                                    )
+                                    ui_print(
+                                        "[realdebrid] updated status: "
+                                        + response.status
+                                        + f" (poll {poll + 1}/{max_polls})",
+                                        ui_settings.debug,
+                                    )
+                                    if response.status == "downloaded" or (
+                                        hasattr(response, "links")
+                                        and len(response.links) > 0
+                                    ):
+                                        break
 
                                 # Get unrestricted links - use response.links which contains links for all selected files
                                 unrestricted_links = []
