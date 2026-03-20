@@ -105,18 +105,27 @@ Note: To enable AIOStreams or Comet scrapers, configure them in your `config/set
 ### Configuration for Scrapers
 
 **Comet Scraper:**
-To use the Comet scraper, add the "Comet B64Config" field to your `config/settings.json`.
+Three Comet instances are available, each pointing to a different server:
+- **comet-selfhosted** — your self-hosted Comet instance
+- **comet-elfhosted** — ElfHosted Comet (`https://cometnet.elfhosted.com`)
+- **comet-base** — any other Comet server
 
-The Comet URL format is: `https://cometnet.elfhosted.com/{BASE64_CONFIG}/manifest.json`
+Each instance has its own Base URL and B64Config in `config/settings.json`. Add the instances you want to the `"Sources"` list, then configure their URL and B64Config.
+
+The Comet URL format is: `https://<host>/{BASE64_CONFIG}/manifest.json`
 
 To extract the BASE64_CONFIG from your Comet URL:
 1. Get your Comet configuration URL (includes your debrid API key and preferences)
 2. Extract the base64 string between the domain and `/manifest.json`
 3. Add it to your `config/settings.json`
 
-Example settings.json entry:
+Example settings.json entries:
 ```json
-"Comet B64Config": "eyJtYXhSZXN1bHRzUGVyUmVzb2x1dGlvbiI6MTAsIm1heFNpemUiOjAsImNhY2hlZE9ubHkiOnRydWUsInNvcnRDYWNoZWRVbmNhY2hlZFRvZ2V0aGVyIjpmYWxzZSwicmVtb3ZlVHJhc2giOnRydWUsInJlc3VsdEZvcm1hdCI6WyJhbGwiXSwiZGVicmlkU2VydmljZXMiOlt7InNlcnZpY2UiOiJyZWFsZGVicmlkIiwiYXBpS2V5IjoiWU9VUl9BUElfS0VZIn1dLCJlbmFibGVUb3JyZW50IjpmYWxzZSwiZGVkdXBsaWNhdGVTdHJlYW1zIjp0cnVlLCJkZWJyaWRTdHJlYW1Qcm94eVBhc3N3b3JkIjoiIiwibGFuZ3VhZ2VzIjp7InJlcXVpcmVkIjpbXSwiYWxsb3dlZCI6W10sImV4Y2x1ZGUiOltdLCJwcmVmZXJyZWQiOltdfSwicmVzb2x1dGlvbnMiOnsicjcyMHAiOmZhbHNlLCJyNTc2cCI6ZmFsc2UsInI0ODBwIjpmYWxzZSwicjM2MHAiOmZhbHNlLCJyMjQwcCI6ZmFsc2V9LCJvcHRpb25zIjp7InJlbW92ZV9yYW5rc191bmRlciI6LTEwMDAwMDAwMDAwLCJhbGxvd19lbmdsaXNoX2luX2xhbmd1YWdlcyI6ZmFsc2UsInJlbW92ZV91bmtub3duX2xhbmd1YWdlcyI6ZmFsc2V9fQ"
+"Sources": ["aiostreams", "comet-selfhosted", "comet-elfhosted"],
+"Comet Selfhosted Base URL": "http://your-server:8000",
+"Comet Selfhosted B64Config": "eyJ...",
+"Comet Elfhosted Base URL": "https://cometnet.elfhosted.com",
+"Comet Elfhosted B64Config": "eyJ..."
 ```
 
 **AIOStreams Scraper:**

@@ -30,7 +30,32 @@ def get(url):
         return None
 
 
+def create_instance(instance_name):
+    instance = SimpleNamespace(
+        name=instance_name,
+        base_url="",
+        b64config="",
+    )
+    instance.scrape = lambda query, altquery="(.*)": _scrape(instance, query, altquery)
+    instance.setup = lambda cls, new=False: _setup(cls, new)
+    return instance
+
+
+# Backward-compatibility callables for legacy code/tests that still invoke
+# scraper.services.comet.scrape/setup directly.
+def scrape(query, altquery="(.*)"):
+    return _scrape(
+        SimpleNamespace(name=name, base_url=base_url, b64config=b64config),
+        query,
+        altquery,
+    )
+
+
 def setup(cls, new=False):
+    return _setup(cls, new)
+
+
+def _setup(cls, new=False):
     from scraper.services import active
     from settings import settings_list
 
@@ -69,29 +94,42 @@ def setup(cls, new=False):
             active += [cls.name]
 
 
-def scrape(query, altquery):
+def _scrape(instance, query, altquery):
     from scraper.services import active
 
     ui_print(
-        '[comet] debug: scrape called with query="' + str(query) + '"',
+        "[" + instance.name + '] debug: scrape called with query="' + str(query) + '"',
         ui_settings.debug,
     )
 
-    if not b64config:
+    if not instance.b64config:
         ui_print(
-            "[comet] error: Comet B64Config not set in settings.json",
+            "[" + instance.name + "] error: Comet B64Config not set in settings.json",
             ui_settings.debug,
         )
         return []
 
-    ui_print("[comet] debug: B64Config loaded successfully", ui_settings.debug)
+    ui_print(
+        "[" + instance.name + "] debug: B64Config loaded successfully",
+        ui_settings.debug,
+    )
 
     scraped_releases = []
-    if "comet" not in active:
-        ui_print("[comet] debug: comet not in active scrapers", ui_settings.debug)
+    if instance.name not in active:
+        ui_print(
+            "["
+            + instance.name
+            + "] debug: "
+            + instance.name
+            + " not in active scrapers",
+            ui_settings.debug,
+        )
         return scraped_releases
 
-    ui_print("[comet] debug: comet is active, proceeding", ui_settings.debug)
+    ui_print(
+        "[" + instance.name + "] debug: " + instance.name + " is active, proceeding",
+        ui_settings.debug,
+    )
     if altquery == "(.*)":
         altquery = query
     type = (
@@ -160,22 +198,35 @@ def scrape(query, altquery):
                     meta = get(url)
                 query = meta.metas[0].imdb_id
             except Exception:
-                ui_print("[comet] error: could not find IMDB ID")
+                ui_print("[" + instance.name + "] error: could not find IMDB ID")
                 return scraped_releases
 
     # Query the Comet service
     if type == "movie":
-        url = base_url + "/" + b64config + "/stream/movie/" + query + ".json"
-        ui_print("[comet] debug: querying movie API: " + url, ui_settings.debug)
+        url = (
+            instance.base_url
+            + "/"
+            + instance.b64config
+            + "/stream/movie/"
+            + query
+            + ".json"
+        )
+        ui_print(
+            "[" + instance.name + "] debug: querying movie API: " + url,
+            ui_settings.debug,
+        )
         response = get(url)
-        ui_print("[comet] debug: movie response: " + str(response), ui_settings.debug)
+        ui_print(
+            "[" + instance.name + "] debug: movie response: " + str(response),
+            ui_settings.debug,
+        )
         if (
             not response
             or not hasattr(response, "streams")
             or len(response.streams) == 0
         ):
             ui_print(
-                "[comet] debug: no movie results, trying as show",
+                "[" + instance.name + "] debug: no movie results, trying as show",
                 ui_settings.debug,
             )
             type = "show"
@@ -191,16 +242,30 @@ def scrape(query, altquery):
                     meta = get(url)
                     query = meta.metas[0].imdb_id
                 except Exception as e:
-                    ui_print("[comet] error: could not find IMDB ID: " + str(e))
+                    ui_print(
+                        "["
+                        + instance.name
+                        + "] error: could not find IMDB ID: "
+                        + str(e)
+                    )
                     return scraped_releases
 
     if type == "show":
         # Check if this is a season pack request (e is None or 0) or specific episode
         if e is None or int(e) == 0:
             # Season pack query - use plain IMDB ID without episode suffix
-            url = base_url + "/" + b64config + "/stream/series/" + query + ".json"
+            url = (
+                instance.base_url
+                + "/"
+                + instance.b64config
+                + "/stream/series/"
+                + query
+                + ".json"
+            )
             ui_print(
-                "[comet] debug: querying show API (season pack S"
+                "["
+                + instance.name
+                + "] debug: querying show API (season pack S"
                 + str(s).zfill(2)
                 + "): "
                 + url,
@@ -209,9 +274,9 @@ def scrape(query, altquery):
         else:
             # Specific episode query - include season and episode numbers
             url = (
-                base_url
+                instance.base_url
                 + "/"
-                + b64config
+                + instance.b64config
                 + "/stream/series/"
                 + query
                 + ":"
@@ -221,7 +286,9 @@ def scrape(query, altquery):
                 + ".json"
             )
             ui_print(
-                "[comet] debug: querying show API (S"
+                "["
+                + instance.name
+                + "] debug: querying show API (S"
                 + str(s).zfill(2)
                 + "E"
                 + str(e).zfill(2)
@@ -231,23 +298,30 @@ def scrape(query, altquery):
             )
 
         response = get(url)
-        ui_print("[comet] debug: show response: " + str(response), ui_settings.debug)
+        ui_print(
+            "[" + instance.name + "] debug: show response: " + str(response),
+            ui_settings.debug,
+        )
 
     if not response or not hasattr(response, "streams"):
         try:
             if response is not None:
-                ui_print("[comet] error: " + str(response))
+                ui_print("[" + instance.name + "] error: " + str(response))
         except Exception:
-            ui_print("[comet] error: unknown error")
+            ui_print("[" + instance.name + "] error: unknown error")
         return scraped_releases
     elif len(response.streams) == 1 and not hasattr(response.streams[0], "title"):
-        ui_print("[comet] error: no streams found or API error")
+        ui_print("[" + instance.name + "] error: no streams found or API error")
         return scraped_releases
 
     # Parse the stream results - Comet returns torrent info hashes
     # Streams are ordered by quality/size (best first), so prioritize stream 0
     ui_print(
-        "[comet] debug: found " + str(len(response.streams)) + " streams",
+        "["
+        + instance.name
+        + "] debug: found "
+        + str(len(response.streams))
+        + " streams",
         ui_settings.debug,
     )
     for idx, result in enumerate(response.streams):
@@ -259,7 +333,9 @@ def scrape(query, altquery):
                 in str(result.description if hasattr(result, "description") else "")
             ):
                 ui_print(
-                    "[comet] warning: "
+                    "["
+                    + instance.name
+                    + "] warning: "
                     + str(result.name)
                     + " - "
                     + str(result.description if hasattr(result, "description") else ""),
@@ -279,22 +355,60 @@ def scrape(query, altquery):
 
             if not info_hash:
                 ui_print(
-                    "[comet] debug: stream " + str(idx) + " has no info hash, skipping",
+                    "["
+                    + instance.name
+                    + "] debug: stream "
+                    + str(idx)
+                    + " has no info hash, skipping",
                     ui_settings.debug,
                 )
                 continue
 
             # Extract title from the result
+            # Comet returns Stremio stream objects where:
+            #   - behaviorHints.filename has the actual torrent filename
+            #   - description first line often has the torrent release name
+            #   - title/name are short display labels like "[RD] Comet 2160p"
             title = None
-            if hasattr(result, "title") and result.title:
+
+            # Method 1: behaviorHints.filename (most reliable)
+            if (
+                hasattr(result, "behaviorHints")
+                and hasattr(result.behaviorHints, "filename")
+                and result.behaviorHints.filename
+            ):
+                raw_filename = str(result.behaviorHints.filename).strip()
+                # Strip file extension for display
+                for ext in [".mkv", ".mp4", ".avi", ".mov", ".ts", ".m2ts", ".webm"]:
+                    if raw_filename.lower().endswith(ext):
+                        raw_filename = raw_filename[: -len(ext)]
+                        break
+                if raw_filename:
+                    title = raw_filename
+
+            # Method 2: first line of description (often the torrent release name)
+            if not title and hasattr(result, "description") and result.description:
+                desc_first = str(result.description).split("\n")[0].strip()
+                # Only use if it looks like a release name (has dots or hyphens typical of torrent names)
+                if desc_first and ("." in desc_first or "-" in desc_first):
+                    title = desc_first
+
+            # Method 3: title field (short display label, least informative)
+            if not title and hasattr(result, "title") and result.title:
                 title = str(result.title).strip()
-            elif hasattr(result, "name") and result.name:
+            elif not title and hasattr(result, "name") and result.name:
                 title = str(result.name).strip()
-            else:
+
+            if not title:
                 title = "Unknown"
 
             ui_print(
-                "[comet] debug: stream " + str(idx) + " title: " + str(title),
+                "["
+                + instance.name
+                + "] debug: stream "
+                + str(idx)
+                + " title: "
+                + str(title),
                 ui_settings.debug,
             )
 
@@ -305,7 +419,9 @@ def scrape(query, altquery):
                     size_bytes = float(result.size)
                     size = size_bytes / (1024 * 1024 * 1024)  # Convert bytes to GB
                     ui_print(
-                        "[comet] debug: stream "
+                        "["
+                        + instance.name
+                        + "] debug: stream "
                         + str(idx)
                         + " size from API: "
                         + str(size)
@@ -368,7 +484,7 @@ def scrape(query, altquery):
             # Create release object with the magnet link
             links = [magnet_link]
             release = releases.release(
-                "[comet]",
+                "[" + instance.name + "]",
                 release_type,
                 title,
                 [info_hash],
@@ -378,7 +494,9 @@ def scrape(query, altquery):
             )
 
             ui_print(
-                "[comet] debug: added release: "
+                "["
+                + instance.name
+                + "] debug: added release: "
                 + title
                 + " | size: "
                 + str(size)
@@ -391,14 +509,24 @@ def scrape(query, altquery):
             scraped_releases += [release]
 
         except Exception as e:
-            ui_print("[comet] error parsing stream: " + str(e), ui_settings.debug)
+            ui_print(
+                "[" + instance.name + "] error parsing stream: " + str(e),
+                ui_settings.debug,
+            )
             import traceback
 
-            ui_print("[comet] traceback: " + traceback.format_exc(), ui_settings.debug)
+            ui_print(
+                "[" + instance.name + "] traceback: " + traceback.format_exc(),
+                ui_settings.debug,
+            )
             continue
 
     ui_print(
-        "[comet] debug: returning " + str(len(scraped_releases)) + " releases",
+        "["
+        + instance.name
+        + "] debug: returning "
+        + str(len(scraped_releases))
+        + " releases",
         ui_settings.debug,
     )
     return scraped_releases

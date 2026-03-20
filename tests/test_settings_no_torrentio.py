@@ -59,6 +59,13 @@ def _import_settings_with_stubs(monkeypatch):
             active=[],
             aiostreams=SimpleNamespace(uuid="", b64config="", name="aiostreams"),
             comet=SimpleNamespace(base_url="", b64config="", name="comet"),
+            comet_selfhosted=SimpleNamespace(
+                base_url="", b64config="", name="comet-selfhosted"
+            ),
+            comet_elfhosted=SimpleNamespace(
+                base_url="", b64config="", name="comet-elfhosted"
+            ),
+            comet_base=SimpleNamespace(base_url="", b64config="", name="comet-base"),
         ),
     )
 

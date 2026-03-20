@@ -33,8 +33,16 @@ if aiostreams_available:
     active_default.append("aiostreams")
 
 if comet_available:
-    scrapers.append(comet)
-    active_default.append("comet")
+    assert comet is not None
+    if hasattr(comet, "create_instance"):
+        comet_selfhosted = comet.create_instance("comet-selfhosted")
+        comet_elfhosted = comet.create_instance("comet-elfhosted")
+        comet_base = comet.create_instance("comet-base")
+        scrapers.extend([comet_selfhosted, comet_elfhosted, comet_base])
+        active_default.extend(["comet-selfhosted", "comet-elfhosted", "comet-base"])
+    else:
+        scrapers.append(comet)
+        active_default.append("comet")
 
 # from scraper.services import rarbg
 # from scraper.services import x1337

@@ -15,7 +15,9 @@
     "Jellyfin server address": "${JELLYFIN_BASE_URL}",
     "Sources": [
         "aiostreams",
-        "comet"
+        "comet-selfhosted",
+        "comet-elfhosted",
+        "comet-base"
     ],
     "Versions": {
         "4k": {
@@ -151,8 +153,12 @@
     ],
     "AIOStreams UUID": "${AIOSTREAMS_UUID}",
     "AIOStreams B64Config": "${AIOSTREAMS_B64CONFIG}",
-    "Comet Base URL": "https://cometnet.elfhosted.com",
-    "Comet B64Config": "${COMET_B64CONFIG}",
+    "Comet Selfhosted Base URL": "${COMET_SELFHOSTED_BASE_URL}",
+    "Comet Selfhosted B64Config": "${COMET_SELFHOSTED_B64CONFIG}",
+    "Comet Elfhosted Base URL": "https://cometnet.elfhosted.com",
+    "Comet Elfhosted B64Config": "${COMET_ELFHOSTED_B64CONFIG}",
+    "Comet Base Base URL": "${COMET_BASE_BASE_URL}",
+    "Comet Base B64Config": "${COMET_BASE_B64CONFIG}",
     "Debrid Services": ["Real Debrid"],
     "Tracker specific Debrid Services": [],
     "Real Debrid API Key": "${REALDEBRID_API_KEY}",
