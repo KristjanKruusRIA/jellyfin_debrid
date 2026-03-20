@@ -4,6 +4,7 @@ import content
 import debrid
 import releases
 import scraper
+from content.services import tmdb as tmdb
 from ui import ui_settings
 
 
@@ -430,7 +431,7 @@ settings_list = [
                 help="Please choose at least one content service that jellyfin_debrid should monitor for new content.",
             ),
             setting(
-                "seerr users",
+                "Seerr users",
                 ["Please choose a user: "],
                 content.services.seerr,
                 "users",
@@ -439,15 +440,15 @@ settings_list = [
                 hidden=True,
             ),
             setting(
-                "seerr API Key",
-                "Please specify your seerr API Key: ",
+                "Seerr API Key",
+                "Please specify your Seerr API Key: ",
                 content.services.seerr,
                 "api_key",
                 hidden=True,
             ),
             setting(
-                "seerr Base URL",
-                "Please specify your seerr base URL: ",
+                "Seerr Base URL",
+                "Please specify your Seerr base URL: ",
                 content.services.seerr,
                 "base_url",
                 hidden=True,
@@ -629,6 +630,19 @@ settings_list = [
                 debrid.services.realdebrid,
                 "api_key",
                 hidden=True,
+            ),
+        ],
+    ],
+    [
+        "Search Settings",
+        [
+            setting(
+                "TMDB API Key",
+                "Please enter your TMDB API Key: ",
+                tmdb,
+                "api_key",
+                hidden=True,
+                help="Get a free TMDB API key from https://developer.themoviedb.org",
             ),
         ],
     ],

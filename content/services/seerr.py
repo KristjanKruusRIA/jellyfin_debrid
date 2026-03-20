@@ -31,7 +31,7 @@ def setup(self):
     global session
     from settings import settings_list
 
-    ui_cls("Options/Settings/Content Services/Content Services/seerr")
+    ui_cls("Options/Settings/Content Services/Content Services/Seerr")
     working_key = False
     working_url = False
     try:
@@ -93,12 +93,12 @@ def setup(self):
     while not working_key:
         if api_key == "":
             print(
-                "To setup seerr, please provide your seerr API Key. Press enter to return to the main menu."
+                "To setup seerr, please provide your Seerr API Key. Press enter to return to the main menu."
             )
         else:
             print("Looks like your current API Key ('" + api_key + "') doesnt work.")
         print()
-        api_key = input("Please enter your seerr API Key: ")
+        api_key = input("Please enter your Seerr API Key: ")
         if api_key == "":
             return
         working_key = False
@@ -133,7 +133,7 @@ def setup(self):
         if user.displayName not in users:
             new_users += [user.displayName]
     back = False
-    ui_cls("Options/Settings/Content Services/Content Services/seerr")
+    ui_cls("Options/Settings/Content Services/Content Services/Seerr")
     while not back:
         print("0) Back")
         indices = []
@@ -143,13 +143,13 @@ def setup(self):
         print()
         choice = input("Choose an action: ")
         if choice in indices:
-            if settings[int(choice) - 1].name == "seerr users":
+            if settings[int(choice) - 1].name == "Seerr users":
                 print()
                 print(
                     "You can define which users approved requests should be downloaded by jellyfin_debrid."
                 )
                 print()
-                print('Currently monitored seerr users: "' + str(users) + '"')
+                print('Currently monitored Seerr users: "' + str(users) + '"')
                 print()
                 print("0) Back")
                 print("1) Always monitor all users")
@@ -761,7 +761,7 @@ class library:
                 )
                 print()
                 for setting in settings:
-                    if setting.name == "seerr API Key":
+                    if setting.name == "Seerr API Key":
                         setting.setup()
             if not new:
                 if library.refresh.name not in classes.refresh.active:

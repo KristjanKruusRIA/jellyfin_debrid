@@ -13,15 +13,17 @@ def _import_settings_with_stubs(monkeypatch):
     sys.modules.pop("settings", None)
 
     content_stub = ModuleType("content")
+    content_stub.__path__ = []
+    services_stub = ModuleType("content.services")
+    setattr(services_stub, "active", [])
+    setattr(services_stub, "seerr", SimpleNamespace(users=[], api_key="", base_url=""))
     setattr(
-        content_stub,
-        "services",
-        SimpleNamespace(
-            active=[],
-            seerr=SimpleNamespace(users=[], api_key="", base_url=""),
-            jellyfin=SimpleNamespace(api_key="", library=SimpleNamespace(url="")),
-        ),
+        services_stub,
+        "jellyfin",
+        SimpleNamespace(api_key="", library=SimpleNamespace(url="")),
     )
+    setattr(services_stub, "tmdb", SimpleNamespace(api_key=""))
+    setattr(content_stub, "services", services_stub)
     setattr(
         content_stub,
         "classes",
@@ -78,6 +80,7 @@ def _import_settings_with_stubs(monkeypatch):
     setattr(ui_package_stub, "ui_settings", ui_settings_stub)
 
     monkeypatch.setitem(sys.modules, "content", content_stub)
+    monkeypatch.setitem(sys.modules, "content.services", services_stub)
     monkeypatch.setitem(sys.modules, "debrid", debrid_stub)
     monkeypatch.setitem(sys.modules, "releases", releases_stub)
     monkeypatch.setitem(sys.modules, "scraper", scraper_stub)

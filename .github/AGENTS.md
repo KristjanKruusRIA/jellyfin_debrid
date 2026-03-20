@@ -130,6 +130,34 @@ store.save(data, "module_name", "variable_name")       # Save pickle
 - **`content.classes.media`**: Base media object — extended by `seerr.movie`, `seerr.show`; has `EID`, `type`, `title`, `Seasons`/`Episodes` for shows
 - **`releases.sort.version`**: Quality version — `name`, `triggers`, `lang`, `rules`; applied via `releases.sort(scraped_releases, version)`
 
+## Self-Improvement & Learnings (`.learnings/`)
+
+Agents use the **self-improving-agent** skill to log errors, corrections, and insights during development. This creates a feedback loop that improves future tasks.
+
+### Files
+| File | Purpose |
+|------|---------|
+| `.learnings/LEARNINGS.md` | Corrections, insights, knowledge gaps, best practices |
+| `.learnings/ERRORS.md` | Command failures, exceptions, unexpected behavior |
+| `.learnings/FEATURE_REQUESTS.md` | Capabilities requested or identified during work |
+| `.learnings/examples.md` | Reference examples for entry formatting |
+
+### When to Log
+- **Command/operation fails** → `ERRORS.md`
+- **User corrects the agent** → `LEARNINGS.md` (category: `correction`)
+- **Knowledge was outdated or wrong** → `LEARNINGS.md` (category: `knowledge_gap`)
+- **Better approach discovered** → `LEARNINGS.md` (category: `best_practice`)
+- **User wants a missing capability** → `FEATURE_REQUESTS.md`
+
+### Promotion
+When a learning is broadly applicable, **promote** it:
+- To **this file** (`AGENTS.md`) if it affects agent workflows or project conventions.
+- To `/memories/repo/` if it's a codebase fact useful for future tasks.
+- Mark the original entry `**Status**: promoted`.
+
+### Review
+Agents should review `.learnings/` before starting major tasks to avoid repeating past mistakes.
+
 ## Memory & Documentation Maintenance
 
 **Agents must keep memory and this file up to date as the project evolves.**

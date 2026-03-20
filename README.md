@@ -87,9 +87,9 @@ Below is a minimal example to get you started with Jellyfin + Seerr + RealDebrid
 
 ```json
 {
-  "Content Services": ["seerr"],
-  "seerr API Key": "YOUR_SEERR_API_KEY",
-  "seerr Base URL": "http://seerr.local:5055",
+  "Content Services": ["Seerr"],
+  "Seerr API Key": "YOUR_SEERR_API_KEY",
+  "Seerr Base URL": "http://seerr.local:5055",
   "Library collection service": "seerr Library",
   "Library update services": ["Seerr Requests"],
   "Debrid Services": ["Real Debrid"],

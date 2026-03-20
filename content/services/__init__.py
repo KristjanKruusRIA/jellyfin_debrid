@@ -3,6 +3,7 @@ import sys
 # import child modules
 from content.services import jellyfin as jellyfin
 from content.services import seerr as seerr
+from content.services import tmdb as tmdb
 
 
 # define subclass method

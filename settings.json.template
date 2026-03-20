@@ -1,15 +1,16 @@
 {
     "Content Services": [
-        "seerr"
+        "Seerr"
     ],
-    "seerr users": ["${SEERR_USERS}"],
-    "seerr API Key": "${SEERR_API_KEY}",
-    "seerr Base URL": "${SEERR_BASE_URL}",
-    "Library collection service": "seerr Library",
+    "Seerr users": ["${SEERR_USERS}"],
+    "Seerr API Key": "${SEERR_API_KEY}",
+    "TMDB API Key": "",
+    "Seerr Base URL": "${SEERR_BASE_URL}",
+    "Library collection service": "Seerr Library",
     "Library update services": [
         "Seerr Requests"
     ],
-    "Library ignore services": ["seerr ignore status"],
+    "Library ignore services": ["Seerr ignore status"],
     "Local ignore list path": "",
     "Jellyfin API Key": "${JELLYFIN_API_KEY}",
     "Jellyfin server address": "${JELLYFIN_BASE_URL}",
