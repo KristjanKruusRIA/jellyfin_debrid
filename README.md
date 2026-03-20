@@ -41,6 +41,15 @@ The service auto-starts ~3 minutes after boot (delayed start + Docker wait). You
 Log viewer: http://localhost:7654
 Manual search: http://localhost:7654/search — Search for movies and TV series using TMDB. Requires a `TMDB API Key` in your `config/settings.json` (get one free at https://developer.themoviedb.org).
 
+### Manual Search & Click-to-Download (`/search`)
+
+The `/search` page supports a full manual flow: search TMDB for a movie/show, scrape configured sources for releases, and start a download for a selected release.
+
+- **Search** uses TMDB directly.
+- **Scrape/Download** uses your configured scraper and debrid services.
+- **No Seerr required** for this manual flow.
+- **Job state is in-memory only** (scrape job/release state is not persisted across app restarts).
+
 **For detailed Windows setup instructions, see [WINDOWS_SETUP.md](WINDOWS_SETUP.md)**
 
 ---
@@ -74,10 +83,9 @@ This workflow enables near-instant availability for cached content and robust, c
   - Primary: Seerr (requests/watchlists). Overseerr is supported as well.
   - Scrapers: AIOStreams (for Easynews / direct HTTP sources) and Comet (for debrid-cached torrents).
 - Debrid integration: supports RealDebrid.
-- Manual search page: `/search` lets you manually search for movies and TV series.
-- Search backend: uses TMDB directly (no Seerr dependency for search).
+- Manual search page: `/search` lets you manually search for movies and TV series, scrape releases, and click to start downloads.
+- Search backend: uses TMDB directly (no Seerr dependency for manual search/scrape/download).
 - Search results: include RPDB rating posters.
-- Current scope: search-only for now (no download queue yet).
 - Manual search config: requires a `TMDB API Key` in `config/settings.json`.
 - Download robustness: supports direct HTTP downloads and debrid APIs, temp-file downloads with progress reporting, ranged retries for partial responses, and size validation against expected size.
 - Filenames and organization: sanitizes filenames for Windows, preserves extensions (including fixes for certain Easynews URL cases), and organizes files into:

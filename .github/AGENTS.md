@@ -71,10 +71,23 @@ Versions in `settings.json` define structured quality criteria. `releases.sort` 
 
 | Service | Base URL | Auth | Key Status Codes |
 |---------|----------|------|-----------------|
+| Frontend (Flask manual search) | `http://localhost:7654/` | None | `POST /api/scrapes` → 202 running, `GET /api/scrapes/<job_id>` → 200/404, `POST /api/scrapes/<job_id>/downloads` → 200 started / structured 4xx/5xx errors |
 | Seerr | `{base_url}/api/v1/` | `X-Api-Key` header | 1=Pending, 2=Approved, 3=Declined, 4=Processing, 5=Available |
 | RealDebrid | `api.real-debrid.com/rest/1.0/` | `Bearer` token | 202=already done, 403=permission denied/premium, 401=bad key |
 | AIOStreams | `{base_url}/stremio/{uuid}/{b64config}/` | Embedded in URL | Stremio addon format |
 | Comet | `{base_url}/{b64config}/` | Embedded in URL | Stremio addon format |
+
+### Frontend Manual Search API Notes
+
+- `GET /api/search?q=<query>[&type=movie|tv|all]` returns TMDB-backed JSON results for the `/search` page.
+- Manual scrape/download endpoints are designed to work without Seerr configuration.
+- Scrape jobs are stored in memory (`frontend_jobs.JobRegistry`) and are not persisted across process restarts.
+
+### Server-side Release State Convention
+
+- Keep full release objects server-side in `frontend_jobs.JobRegistry`.
+- Browser responses must use safe release summaries (`serialize_release` / `serialize_releases`) with opaque `release_id` indices.
+- Never expose raw release internals in frontend API payloads (e.g., direct `download` URLs, hashes, or raw file payload structures).
 
 ## Build & Test
 
