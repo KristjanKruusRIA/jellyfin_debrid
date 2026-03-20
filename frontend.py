@@ -4,12 +4,71 @@ Serves UI on http://localhost:7654
 """
 
 import os
+import threading
 
 from flask import Flask, jsonify, render_template, request
+
+from frontend_jobs import JobRegistry, serialize_releases
 
 app = Flask(__name__, template_folder="templates")
 
 LOG_FILE = "config/jellyfin_debrid.log"
+registry = JobRegistry()
+
+
+def _json_error(message, status_code, **data):
+    payload = {
+        "status": "error",
+        "error": message,
+    }
+    payload.update(data)
+    return jsonify(payload), status_code
+
+
+def _log_frontend(message):
+    try:
+        from ui import ui_settings
+        from ui.ui_print import ui_print
+
+        ui_print(f"[frontend] {message}", debug=ui_settings.debug)
+    except Exception:
+        pass
+
+
+def _normalize_cached_via(cached_value):
+    if isinstance(cached_value, list):
+        return [str(item) for item in cached_value]
+    if isinstance(cached_value, tuple):
+        return [str(item) for item in cached_value]
+    return []
+
+
+def _run_scrape_job(job_registry, job_id, tmdb_id, media_type):
+    try:
+        job_registry.update_job(job_id, "running")
+
+        import debrid
+        import scraper
+        from content.services import manual_media, tmdb
+
+        if media_type == "movie":
+            details = tmdb.get_movie_details(tmdb_id)
+            media_obj = manual_media.build_movie(details)
+        else:
+            details = tmdb.get_show_details(tmdb_id)
+            media_obj = manual_media.build_show(details)
+
+        query = media_obj.query()
+        altquery = media_obj.deviation()
+        releases = scraper.scrape(query, altquery) or []
+
+        media_obj.Releases = list(releases)
+        debrid.check(media_obj, force=True)
+
+        job_registry.update_job(job_id, "complete", releases=media_obj.Releases)
+    except Exception as e:
+        _log_frontend(f"scrape job {job_id} failed: {str(e)}")
+        job_registry.update_job(job_id, "failed", error="Scrape failed")
 
 
 @app.route("/")
@@ -87,6 +146,158 @@ def search_api():
                 "error": "Search service unavailable",
             }
         )
+
+
+@app.route("/api/scrapes", methods=["POST"])
+def create_scrape():
+    try:
+        body = request.get_json(silent=True) or {}
+        tmdb_id_raw = body.get("tmdb_id")
+        media_type = body.get("media_type")
+        media_title = (body.get("title") or "").strip()
+
+        try:
+            tmdb_id = int(tmdb_id_raw)
+        except (TypeError, ValueError):
+            return _json_error(
+                "Invalid or missing required field: tmdb_id",
+                400,
+                job_id=None,
+            )
+
+        if media_type not in ("movie", "tv"):
+            return _json_error(
+                "Invalid or missing required field: media_type",
+                400,
+                job_id=None,
+            )
+
+        if not media_title:
+            media_title = f"TMDB {tmdb_id}"
+
+        job_id = registry.create_job(
+            tmdb_id=tmdb_id,
+            media_type=media_type,
+            media_title=media_title,
+        )
+
+        thread = threading.Thread(
+            target=_run_scrape_job,
+            args=(registry, job_id, tmdb_id, media_type),
+            daemon=True,
+        )
+        thread.start()
+
+        return (
+            jsonify(
+                {
+                    "status": "running",
+                    "error": None,
+                    "job_id": job_id,
+                }
+            ),
+            202,
+        )
+    except Exception as e:
+        _log_frontend(f"failed to create scrape job: {str(e)}")
+        return _json_error("Failed to start scrape job", 500, job_id=None)
+
+
+@app.route("/api/scrapes/<job_id>", methods=["GET"])
+def get_scrape_status(job_id):
+    try:
+        job = registry.get_job(job_id)
+        if job is None:
+            return _json_error(
+                "Scrape job not found",
+                404,
+                job_id=job_id,
+                media=None,
+                results=[],
+                count=0,
+            )
+
+        results = serialize_releases(job.releases)
+        return jsonify(
+            {
+                "status": job.status,
+                "error": job.error,
+                "job_id": job.job_id,
+                "media": {
+                    "title": job.media_title,
+                    "type": job.media_type,
+                    "tmdb_id": job.tmdb_id,
+                },
+                "results": results,
+                "count": len(results),
+            }
+        )
+    except Exception as e:
+        _log_frontend(f"failed to fetch scrape status for {job_id}: {str(e)}")
+        return _json_error(
+            "Failed to fetch scrape status",
+            500,
+            job_id=job_id,
+            media=None,
+            results=[],
+            count=0,
+        )
+
+
+@app.route("/api/scrapes/<job_id>/downloads", methods=["POST"])
+def download_scrape_release(job_id):
+    try:
+        body = request.get_json(silent=True) or {}
+        release_id = body.get("release_id")
+        if release_id is None or str(release_id).strip() == "":
+            return _json_error(
+                "Missing required field: release_id",
+                400,
+                job_id=job_id,
+            )
+
+        job = registry.get_job(job_id)
+        if job is None:
+            return _json_error("Scrape job not found", 404, job_id=job_id)
+
+        selected_release = registry.get_release(job_id, str(release_id))
+        if selected_release is None:
+            return _json_error(
+                "Release not found for scrape job",
+                404,
+                job_id=job_id,
+                release_id=str(release_id),
+            )
+
+        import debrid
+        from content.services import manual_media, tmdb
+
+        if job.media_type == "movie":
+            details = tmdb.get_movie_details(job.tmdb_id)
+            media_obj = manual_media.build_movie(details)
+        else:
+            details = tmdb.get_show_details(job.tmdb_id)
+            media_obj = manual_media.build_show(details)
+
+        media_obj.Releases = [selected_release]
+        debrid.download(media_obj, stream=True, query=media_obj.query(), force=True)
+
+        cached_via = _normalize_cached_via(getattr(selected_release, "cached", []))
+        release_title = str(getattr(selected_release, "title", "selected release"))
+        return jsonify(
+            {
+                "status": "started",
+                "error": None,
+                "job_id": job_id,
+                "release_id": str(release_id),
+                "message": f"Download started for: {release_title}",
+                "cached": len(cached_via) > 0,
+                "cached_via": cached_via,
+            }
+        )
+    except Exception as e:
+        _log_frontend(f"failed to start download for job {job_id}: {str(e)}")
+        return _json_error("Download failed", 500, job_id=job_id)
 
 
 def start_frontend():

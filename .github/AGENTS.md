@@ -13,7 +13,7 @@ Seerr Requests → Scraper Services → Debrid Cache Check → Downloader → Fi
 | Module | Purpose | Key Files |
 |--------|---------|-----------|
 | `main.py` | Entry point — delegates to `ui.run()` | — |
-| `frontend.py` / `frontend_jobs.py` | Flask routes plus in-memory scrape-job registry and safe release serialization for browser-facing APIs | `frontend.py`, `frontend_jobs.py` |
+| `frontend.py` / `frontend_jobs.py` | Flask routes for logs/search/manual scrape/download APIs plus in-memory scrape-job registry and safe release serialization for browser-facing APIs | `frontend.py`, `frontend_jobs.py` |
 | `ui/` | Interactive CLI, logging (`ui_print()`), settings UI | `ui_print.py`, `ui_settings.py` |
 | `content/` | Media classes (movie/show/season/episode), Seerr integration, TMDB manual hydration adapter | `classes.py`, `services/seerr.py`, `services/manual_media.py` |
 | `scraper/` | Pluggable scraper services (AIOStreams, Comet) | `services/__init__.py`, `services/aiostreams.py`, `services/comet.py` |
