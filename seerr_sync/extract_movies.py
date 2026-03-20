@@ -74,7 +74,7 @@ def main():
     print(f"\n✓ Saved {len(movies)} unique movies to {output_file}")
     print("\nNow run:")
     print(
-        f"python trakt_blacklist_sync.py --mode json --json-file {output_file} --jellyseerr-api-key YOUR_API_KEY --user-id 1 --dry-run"
+        f"python trakt_blacklist_sync.py --mode json --json-file {output_file} --seerr-api-key YOUR_API_KEY --user-id 1 --dry-run"
     )
 
 

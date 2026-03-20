@@ -10,7 +10,7 @@ for /L %%Y in (2015,1,2025) do (
     echo ========================================
     echo Processing years %%Y to !NEXT_YEAR!
     echo ========================================
-    python blacklist_low_rated.py --jellyseerr-api-key MTc2ODM4MjQxODQ1NjE3NmM2ZTUzLTFmNzgtNDAwMS04ZDkwLWU5YzdiMTY5NWQzOQ== --user-id 1 --genre 27 --year-gte %%Y --year-lte !NEXT_YEAR! --max-pages 500 --blacklist-countries IN --skip-blacklist-check
+    python blacklist_low_rated.py --seerr-api-key MTc2ODM4MjQxODQ1NjE3NmM2ZTUzLTFmNzgtNDAwMS04ZDkwLWU5YzdiMTY5NWQzOQ== --user-id 1 --genre 27 --year-gte %%Y --year-lte !NEXT_YEAR! --max-pages 500 --blacklist-countries IN --skip-blacklist-check
 
     if !ERRORLEVEL! NEQ 0 (
         echo.

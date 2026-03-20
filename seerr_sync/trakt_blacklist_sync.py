@@ -1,7 +1,7 @@
 """
-Trakt to Jellyseerr Blacklist Sync Script
+Trakt to Seerr Blacklist Sync Script
 
-This script syncs your Trakt watched movies to Jellyseerr's blacklist to prevent
+This script syncs your Trakt watched movies to Seerr's blacklist to prevent
 already-watched content from being requested.
 
 Supports two modes:
@@ -34,18 +34,18 @@ except ImportError:
 class TraktBlacklistSync:
     def __init__(
         self,
-        jellyseerr_url: str,
-        jellyseerr_api_key: str,
+        seerr_url: str,
+        seerr_api_key: str,
         user_id: int,
         dry_run: bool = False,
     ):
-        self.jellyseerr_url = jellyseerr_url.rstrip("/")
-        self.jellyseerr_api_key = jellyseerr_api_key
+        self.seerr_url = seerr_url.rstrip("/")
+        self.seerr_api_key = seerr_api_key
         self.user_id = user_id
         self.dry_run = dry_run
         self.session = requests.Session()
         self.session.headers.update(
-            {"X-Api-Key": jellyseerr_api_key, "Content-Type": "application/json"}
+            {"X-Api-Key": seerr_api_key, "Content-Type": "application/json"}
         )
 
     def get_trakt_watched_from_api(
@@ -129,11 +129,11 @@ class TraktBlacklistSync:
         return item.get("title", "Unknown")
 
     def search_tmdb_by_imdb(self, imdb_id: str) -> Optional[int]:
-        """Search TMDB for a movie by IMDB ID using Jellyseerr's API"""
+        """Search TMDB for a movie by IMDB ID using Seerr's API"""
         try:
-            # Use Jellyseerr's built-in TMDB search
+            # Use Seerr's built-in TMDB search
             response = self.session.get(
-                f"{self.jellyseerr_url}/api/v1/search", params={"query": imdb_id}
+                f"{self.seerr_url}/api/v1/search", params={"query": imdb_id}
             )
             response.raise_for_status()
             results = response.json()
@@ -148,8 +148,8 @@ class TraktBlacklistSync:
         return None
 
     def get_existing_blacklist(self) -> set:
-        """Get currently blacklisted TMDB IDs from Jellyseerr"""
-        print("Fetching existing blacklist from Jellyseerr...")
+        """Get currently blacklisted TMDB IDs from Seerr"""
+        print("Fetching existing blacklist from Seerr...")
         blacklisted = set()
 
         try:
@@ -158,7 +158,7 @@ class TraktBlacklistSync:
 
             while True:
                 response = self.session.get(
-                    f"{self.jellyseerr_url}/api/v1/blacklist",
+                    f"{self.seerr_url}/api/v1/blacklist",
                     params={"skip": skip, "take": take},
                 )
                 response.raise_for_status()
@@ -184,7 +184,7 @@ class TraktBlacklistSync:
             return set()
 
     def add_to_blacklist(self, tmdb_id: int, title: str) -> bool:
-        """Add a movie to Jellyseerr blacklist"""
+        """Add a movie to Seerr blacklist"""
         if self.dry_run:
             print(f"[DRY RUN] Would blacklist: {title} (TMDB: {tmdb_id})")
             return True
@@ -198,7 +198,7 @@ class TraktBlacklistSync:
             }
 
             response = self.session.post(
-                f"{self.jellyseerr_url}/api/v1/blacklist", json=payload
+                f"{self.seerr_url}/api/v1/blacklist", json=payload
             )
 
             if response.status_code == 201:
@@ -217,13 +217,13 @@ class TraktBlacklistSync:
             return False
 
     def sync_watched_movies(self, watched_movies: List[Dict]):
-        """Sync watched movies to Jellyseerr blacklist"""
+        """Sync watched movies to Seerr blacklist"""
         if not watched_movies:
             print("No watched movies to sync")
             return
 
         print(f"\nStarting sync of {len(watched_movies)} watched movies...")
-        print(f"Jellyseerr URL: {self.jellyseerr_url}")
+        print(f"Seerr URL: {self.seerr_url}")
         print(f"Dry run mode: {self.dry_run}\n")
 
         # Get existing blacklist to avoid duplicates
@@ -285,27 +285,27 @@ class TraktBlacklistSync:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Sync Trakt watched movies to Jellyseerr blacklist",
+        description="Sync Trakt watched movies to Seerr blacklist",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__,
     )
 
-    # Jellyseerr settings
+    # Seerr settings
     parser.add_argument(
-        "--jellyseerr-url",
+        "--seerr-url",
         default="http://localhost:5055",
-        help="Jellyseerr URL (default: http://localhost:5055)",
+        help="Seerr URL (default: http://localhost:5055)",
     )
     parser.add_argument(
-        "--jellyseerr-api-key",
+        "--seerr-api-key",
         required=True,
-        help="Jellyseerr API key (get from Settings > General)",
+        help="Seerr API key (get from Settings > General)",
     )
     parser.add_argument(
         "--user-id",
         type=int,
         required=True,
-        help="Jellyseerr user ID to associate blacklisted items with",
+        help="Seerr user ID to associate blacklisted items with",
     )
 
     # Trakt data source
@@ -351,8 +351,8 @@ def main():
 
     # Create sync instance
     sync = TraktBlacklistSync(
-        jellyseerr_url=args.jellyseerr_url,
-        jellyseerr_api_key=args.jellyseerr_api_key,
+        seerr_url=args.seerr_url,
+        seerr_api_key=args.seerr_api_key,
         user_id=args.user_id,
         dry_run=args.dry_run,
     )

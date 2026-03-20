@@ -288,7 +288,7 @@ class setting:
                     for service in self.cls.__subclasses__():
                         if (
                             "(NOT FUNCTIONAL)" not in service.name
-                            and not service.name == "jellyseerr"
+                            and not service.name == "seerr"
                         ):
                             print(str(index + 1) + ") " + service.name)
                             indices += [str(index + 1)]
@@ -430,25 +430,25 @@ settings_list = [
                 help="Please choose at least one content service that jellyfin_debrid should monitor for new content.",
             ),
             setting(
-                "jellyseerr users",
+                "seerr users",
                 ["Please choose a user: "],
-                content.services.jellyseerr,
+                content.services.seerr,
                 "users",
                 entry="user",
                 help="Please specify which users requests should be downloaded by jellyfin_debrid.",
                 hidden=True,
             ),
             setting(
-                "jellyseerr API Key",
-                "Please specify your jellyseerr API Key: ",
-                content.services.jellyseerr,
+                "seerr API Key",
+                "Please specify your seerr API Key: ",
+                content.services.seerr,
                 "api_key",
                 hidden=True,
             ),
             setting(
-                "jellyseerr Base URL",
-                "Please specify your jellyseerr base URL: ",
-                content.services.jellyseerr,
+                "seerr Base URL",
+                "Please specify your seerr base URL: ",
+                content.services.seerr,
                 "base_url",
                 hidden=True,
             ),

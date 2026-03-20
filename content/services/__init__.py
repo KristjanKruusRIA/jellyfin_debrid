@@ -2,15 +2,15 @@ import sys
 
 # import child modules
 from content.services import jellyfin as jellyfin
-from content.services import jellyseerr as jellyseerr
+from content.services import seerr as seerr
 
 
 # define subclass method
 def __subclasses__():
-    return [jellyseerr]
+    return [seerr]
 
 
-active = ["jellyseerr"]
+active = ["seerr"]
 
 
 def setup(cls, new=False):

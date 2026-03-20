@@ -1,15 +1,15 @@
 {
     "Content Services": [
-        "jellyseerr"
+        "seerr"
     ],
-    "jellyseerr users": ["${JELLYSEERR_USERS}"],
-    "jellyseerr API Key": "${JELLYSEERR_API_KEY}",
-    "jellyseerr Base URL": "${JELLYSEERR_BASE_URL}",
-    "Library collection service": "jellyseerr Library",
+    "seerr users": ["${SEERR_USERS}"],
+    "seerr API Key": "${SEERR_API_KEY}",
+    "seerr Base URL": "${SEERR_BASE_URL}",
+    "Library collection service": "seerr Library",
     "Library update services": [
-        "Jellyseerr Requests"
+        "Seerr Requests"
     ],
-    "Library ignore services": ["jellyseerr ignore status"],
+    "Library ignore services": ["seerr ignore status"],
     "Local ignore list path": "",
     "Jellyfin API Key": "${JELLYFIN_API_KEY}",
     "Jellyfin server address": "${JELLYFIN_BASE_URL}",

@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Jellyseerr Rating Badges
+// @name         Seerr Rating Badges
 // @namespace    http://tampermonkey.net/
 // @version      1.5
-// @description  Add TMDB, IMDB, and Rotten Tomatoes ratings to Jellyseerr homepage and discover pages
+// @description  Add TMDB, IMDB, and Rotten Tomatoes ratings to Seerr homepage and discover pages
 // @author       You
 // @match        http://192.168.1.169:5055/*
 // @grant        none
@@ -56,7 +56,7 @@
         \`;
         document.head.appendChild(style);
 
-        // Fetch ratings from Jellyseerr API using XMLHttpRequest
+        // Fetch ratings from Seerr API using XMLHttpRequest
         async function getRatings(tmdbId, mediaType) {
             try {
                 const ratings = {};
@@ -261,7 +261,7 @@
             }
         }
 
-        // Find and process all Jellyseerr cards
+        // Find and process all Seerr cards
         function processAllCards() {
             // Process homepage title cards
             const titleCards = document.querySelectorAll('[data-testid="title-card"]');

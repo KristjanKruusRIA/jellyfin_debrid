@@ -1,6 +1,6 @@
-# Trakt to Jellyseerr Blacklist Sync
+# Trakt to Seerr Blacklist Sync
 
-This script automatically syncs your watched movies from Trakt to Jellyseerr's blacklist, preventing already-watched content from being requested.
+This script automatically syncs your watched movies from Trakt to Seerr's blacklist, preventing already-watched content from being requested.
 
 ## Prerequisites
 
@@ -9,12 +9,12 @@ This script automatically syncs your watched movies from Trakt to Jellyseerr's b
    pip install requests
    ```
 
-2. **Jellyseerr API Key**:
-   - Log into Jellyseerr
+2. **Seerr API Key**:
+   - Log into Seerr
    - Go to Settings → General
    - Copy your API Key
 
-3. **Your Jellyseerr User ID**:
+3. **Your Seerr User ID**:
    - Go to Settings → Users
    - Click on your username
    - The user ID is in the URL: `/users/{id}`
@@ -37,18 +37,18 @@ This script automatically syncs your watched movies from Trakt to Jellyseerr's b
 
 2. **Dry run** (preview without making changes):
    ```powershell
-   python trakt_blacklist_sync.py --mode json --json-file "path\to\watched.json" --jellyseerr-api-key "YOUR_API_KEY" --user-id YOUR_USER_ID --dry-run
+   python trakt_blacklist_sync.py --mode json --json-file "path\to\watched.json" --seerr-api-key "YOUR_API_KEY" --user-id YOUR_USER_ID --dry-run
    ```
 
 3. **Actual sync**:
    ```powershell
-   python trakt_blacklist_sync.py --mode json --json-file "path\to\watched.json" --jellyseerr-api-key "YOUR_API_KEY" --user-id YOUR_USER_ID
+   python trakt_blacklist_sync.py --mode json --json-file "path\to\watched.json" --seerr-api-key "YOUR_API_KEY" --user-id YOUR_USER_ID
    ```
 
 ### Using Trakt API
 
 ```powershell
-python trakt_blacklist_sync.py --mode api --trakt-client-id "YOUR_CLIENT_ID" --trakt-access-token "YOUR_ACCESS_TOKEN" --jellyseerr-api-key "YOUR_API_KEY" --user-id YOUR_USER_ID
+python trakt_blacklist_sync.py --mode api --trakt-client-id "YOUR_CLIENT_ID" --trakt-access-token "YOUR_ACCESS_TOKEN" --seerr-api-key "YOUR_API_KEY" --user-id YOUR_USER_ID
 ```
 
 ### Full Example
@@ -58,8 +58,8 @@ python trakt_blacklist_sync.py --mode api --trakt-client-id "YOUR_CLIENT_ID" --t
 python trakt_blacklist_sync.py `
   --mode json `
   --json-file "C:\Downloads\trakt-watched.json" `
-  --jellyseerr-url "http://localhost:5055" `
-  --jellyseerr-api-key "abcdef123456" `
+  --seerr-url "http://localhost:5055" `
+  --seerr-api-key "abcdef123456" `
   --user-id 1 `
   --dry-run
 ```
@@ -69,21 +69,21 @@ python trakt_blacklist_sync.py `
 | Option | Required | Description |
 |--------|----------|-------------|
 | `--mode` | Yes | Data source: `api` or `json` |
-| `--jellyseerr-api-key` | Yes | Your Jellyseerr API key |
-| `--user-id` | Yes | Your Jellyseerr user ID |
+| `--seerr-api-key` | Yes | Your Seerr API key |
+| `--user-id` | Yes | Your Seerr user ID |
 | `--json-file` | For JSON mode | Path to Trakt JSON export |
 | `--trakt-client-id` | For API mode | Trakt API client ID |
 | `--trakt-access-token` | For API mode | Trakt API access token |
-| `--jellyseerr-url` | No | Jellyseerr URL (default: http://localhost:5055) |
+| `--seerr-url` | No | Seerr URL (default: http://localhost:5055) |
 | `--dry-run` | No | Preview changes without applying them |
 
 ## What It Does
 
 1. ✓ Fetches your watched movies from Trakt (via API or JSON)
-2. ✓ Gets your current Jellyseerr blacklist to avoid duplicates
+2. ✓ Gets your current Seerr blacklist to avoid duplicates
 3. ✓ Matches movies using TMDB IDs
 4. ✓ For movies without TMDB IDs, attempts to find them using IMDB IDs
-5. ✓ Adds watched movies to Jellyseerr's blacklist
+5. ✓ Adds watched movies to Seerr's blacklist
 6. ✓ Prevents already-watched movies from showing up in recommendations or being requested
 
 ## Output Example
@@ -93,10 +93,10 @@ Loading watched movies from watched.json...
 Found 342 watched movies in JSON file
 
 Starting sync of 342 watched movies...
-Jellyseerr URL: http://localhost:5055
+Seerr URL: http://localhost:5055
 Dry run mode: True
 
-Fetching existing blacklist from Jellyseerr...
+Fetching existing blacklist from Seerr...
 Found 15 items already blacklisted
 
 [1/342] Processing: The Matrix...
@@ -123,7 +123,7 @@ pip install requests
 ```
 
 ### "Error 401: Unauthorized"
-- Check that your Jellyseerr API key is correct
+- Check that your Seerr API key is correct
 - Make sure you have the MANAGE_BLACKLIST permission
 
 ### "No TMDB ID found"
@@ -132,7 +132,7 @@ pip install requests
 - The script attempts to search by IMDB ID as a fallback
 
 ### Movies not being blocked in jellyfin_debrid
-After running this script, blacklisted movies won't be automatically requested. However, if you want jellyfin_debrid to also skip them during processing, you may need to update its logic to check Jellyseerr's blacklist before processing requests.
+After running this script, blacklisted movies won't be automatically requested. However, if you want jellyfin_debrid to also skip them during processing, you may need to update its logic to check Seerr's blacklist before processing requests.
 
 ## Scheduling Regular Syncs
 
@@ -144,7 +144,7 @@ To keep your blacklist in sync with Trakt, you can schedule this script to run p
 3. Set trigger (e.g., daily)
 4. Action: Start a program
 5. Program: `python`
-6. Arguments: `E:\DockerDesktopWSL\jellyfin_debrid\trakt_blacklist_sync.py --mode json --json-file "path\to\watched.json" --jellyseerr-api-key "KEY" --user-id 1`
+6. Arguments: `E:\DockerDesktopWSL\jellyfin_debrid\trakt_blacklist_sync.py --mode json --json-file "path\to\watched.json" --seerr-api-key "KEY" --user-id 1`
 
 ## Notes
 

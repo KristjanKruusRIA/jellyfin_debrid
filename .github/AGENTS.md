@@ -2,10 +2,10 @@
 
 ## Architecture
 
-Windows-first Python 3.10+ automation system. Monitors Jellyseerr requests, scrapes torrent sources via pluggable scrapers, checks debrid caching, downloads content locally, and triggers Jellyfin library refreshes.
+Windows-first Python 3.10+ automation system. Monitors Seerr requests, scrapes torrent sources via pluggable scrapers, checks debrid caching, downloads content locally, and triggers Jellyfin library refreshes.
 
 ```
-Jellyseerr Requests → Scraper Services → Debrid Cache Check → Downloader → File Organization → Jellyfin Refresh
+Seerr Requests → Scraper Services → Debrid Cache Check → Downloader → File Organization → Jellyfin Refresh
 ```
 
 ## Module Map
@@ -14,7 +14,7 @@ Jellyseerr Requests → Scraper Services → Debrid Cache Check → Downloader �
 |--------|---------|-----------|
 | `main.py` | Entry point — delegates to `ui.run()` | — |
 | `ui/` | Interactive CLI, logging (`ui_print()`), settings UI | `ui_print.py`, `ui_settings.py` |
-| `content/` | Media classes (movie/show/season/episode), Jellyseerr integration | `classes.py`, `services/jellyseerr.py` |
+| `content/` | Media classes (movie/show/season/episode), Seerr integration | `classes.py`, `services/seerr.py` |
 | `scraper/` | Pluggable scraper services (AIOStreams, Comet) | `services/__init__.py`, `services/aiostreams.py`, `services/comet.py` |
 | `debrid/` | Debrid provider integrations (RealDebrid) | `services/__init__.py`, `services/realdebrid.py` |
 | `releases/` | Release model, quality/version selection, scoring/sorting rules | `__init__.py` |
@@ -41,7 +41,7 @@ Services are registered in their parent `__init__.py` (e.g., `scraper/services/_
 - **Black** formatter, 88 char line length (see `pyproject.toml`)
 - **isort** with black profile
 - **ruff** for linting
-- **mypy** with `ignore_missing_imports = true`; excludes `tests/`, `debug_*.py`, `jellyseer_sync/`
+- **mypy** with `ignore_missing_imports = true`; excludes `tests/`, `debug_*.py`, `seerr_sync/`
 - **Regex**: Use `regex` module (not `re`), VERSION1 default (set in `base/__init__.py`)
 - **Type hints**: Use where possible
 
@@ -70,7 +70,7 @@ Versions in `settings.json` define structured quality criteria. `releases.sort` 
 
 | Service | Base URL | Auth | Key Status Codes |
 |---------|----------|------|-----------------|
-| Jellyseerr | `{base_url}/api/v1/` | `X-Api-Key` header | 1=Pending, 2=Approved, 3=Declined, 4=Processing, 5=Available |
+| Seerr | `{base_url}/api/v1/` | `X-Api-Key` header | 1=Pending, 2=Approved, 3=Declined, 4=Processing, 5=Available |
 | RealDebrid | `api.real-debrid.com/rest/1.0/` | `Bearer` token | 202=already done, 403=permission denied/premium, 401=bad key |
 | AIOStreams | `{base_url}/stremio/{uuid}/{b64config}/` | Embedded in URL | Stremio addon format |
 | Comet | `{base_url}/{b64config}/` | Embedded in URL | Stremio addon format |
@@ -114,7 +114,7 @@ Pre-commit hooks configured in `.pre-commit-config.yaml` (black, isort, ruff, my
 2. `debrid.check()` verifies cache status, populates `release.files` and `release.cached`
 3. `debrid.download()` unrestricts links or adds magnets, calls `downloader.download_from_realdebrid()`
 4. `downloader.download_file()` streams to `.downloading/` temp dir, validates size, moves to final path
-5. Jellyfin library refresh + Jellyseerr status update triggered on success
+5. Jellyfin library refresh + Seerr status update triggered on success
 
 ### Persistence
 ```python
@@ -127,7 +127,7 @@ store.save(data, "module_name", "variable_name")       # Save pickle
 ## Key Data Types
 
 - **`releases.release`**: Core release object — `source`, `type` (magnet/http), `title`, `files`, `size`, `download`, `hash`, `cached`, `resolution`, `seeders`
-- **`content.classes.media`**: Base media object — extended by `jellyseerr.movie`, `jellyseerr.show`; has `EID`, `type`, `title`, `Seasons`/`Episodes` for shows
+- **`content.classes.media`**: Base media object — extended by `seerr.movie`, `seerr.show`; has `EID`, `type`, `title`, `Seasons`/`Episodes` for shows
 - **`releases.sort.version`**: Quality version — `name`, `triggers`, `lang`, `rules`; applied via `releases.sort(scraped_releases, version)`
 
 ## Windows-Specific Notes

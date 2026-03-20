@@ -49,9 +49,9 @@ def ignored():
                 return
             library = library_services[0]()
             if len(library) > 0:
-                jellyseerr_requests = content.services.jellyseerr.jellyseerr_requests()
+                seerr_requests = content.services.seerr.seerr_requests()
                 print("checking new content ...")
-                for iterator in itertools.zip_longest([jellyseerr_requests]):
+                for iterator in itertools.zip_longest([seerr_requests]):
                     for element in iterator:
                         if hasattr(element, "uncollected") and hasattr(
                             element, "watched"
@@ -500,10 +500,10 @@ def threaded(stop):
         )
         return
     library = library_services[0]()
-    # get all jellyseerr request
-    jellyseerr_requests = content.services.jellyseerr.jellyseerr_requests()
-    # use only jellyseerr requests
-    watchlists = jellyseerr_requests
+    # get all seerr request
+    seerr_requests = content.services.seerr.seerr_requests()
+    # use only seerr requests
+    watchlists = seerr_requests
     try:
         watchlists.data.sort(key=lambda s: s.watchlistedAt, reverse=True)
     except Exception as e:
@@ -653,15 +653,13 @@ def threaded(stop):
         ui_print("done")
     while not stop():
         try:
-            # Quick check for new jellyseerr requests every loop (every 5 seconds)
+            # Quick check for new seerr requests every loop (every 5 seconds)
             # This ensures new requests are picked up immediately
-            if jellyseerr_requests.update():
-                ui_print(
-                    "[jellyseerr] new request detected, processing immediately ..."
-                )
+            if seerr_requests.update():
+                ui_print("[seerr] new request detected, processing immediately ...")
                 library = content.classes.library()[0]()
                 if len(library) > 0:
-                    new_watchlists = jellyseerr_requests
+                    new_watchlists = seerr_requests
                     try:
                         new_watchlists.data.sort(
                             key=lambda s: s.watchlistedAt, reverse=True
@@ -725,8 +723,8 @@ def threaded(stop):
 
             # Scheduled check - runs every regular_check seconds
             if timeout_counter >= regular_check:
-                jellyseerr_requests = content.services.jellyseerr.jellyseerr_requests()
-                watchlists = jellyseerr_requests
+                seerr_requests = content.services.seerr.seerr_requests()
+                watchlists = seerr_requests
                 try:
                     watchlists.data.sort(key=lambda s: s.watchlistedAt, reverse=True)
                 except Exception as e:
@@ -824,11 +822,11 @@ def threaded(stop):
                         t1 = time.time()
                         # if more than 5 seconds have passed, check for newly watchlisted content
                         if t1 - t0 >= 5:
-                            if jellyseerr_requests.update():
+                            if seerr_requests.update():
                                 library = content.classes.library()[0]()
                                 if len(library) == 0:
                                     continue
-                                new_watchlists = jellyseerr_requests
+                                new_watchlists = seerr_requests
                                 try:
                                     new_watchlists.data.sort(
                                         key=lambda s: s.watchlistedAt, reverse=True

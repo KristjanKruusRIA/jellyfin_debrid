@@ -14,7 +14,7 @@ ignore_missing_imports = true
 exclude = [
     "tests/.*",
     "debug_.*\\.py$",
-    "jellyseer_sync/.*"
+    "seerr_sync/.*"
 ]
 
 [tool.pytest.ini_options]

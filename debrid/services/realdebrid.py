@@ -316,14 +316,14 @@ def download(element, stream=True, query="", force=False):
                                     f"[realdebrid] could not refresh jellyfin libraries: {str(e)}",
                                     debug=True,
                                 )
-                            # Mark Jellyseerr request as available after successful download
+                            # Mark Seerr request as available after successful download
                             try:
-                                from content.services import jellyseerr
+                                from content.services import seerr
 
-                                jellyseerr.library.refresh(element)
+                                seerr.library.refresh(element)
                             except Exception as e:
                                 ui_print(
-                                    f"[realdebrid] could not mark jellyseerr request as available: {str(e)}",
+                                    f"[realdebrid] could not mark seerr request as available: {str(e)}",
                                     debug=True,
                                 )
                             return True
@@ -404,12 +404,12 @@ def download(element, stream=True, query="", force=False):
                                         debug=True,
                                     )
                                 try:
-                                    from content.services import jellyseerr
+                                    from content.services import seerr
 
-                                    jellyseerr.library.refresh(element)
+                                    seerr.library.refresh(element)
                                 except Exception as e:
                                     ui_print(
-                                        f"[realdebrid] could not mark jellyseerr request as available: {str(e)}",
+                                        f"[realdebrid] could not mark seerr request as available: {str(e)}",
                                         debug=True,
                                     )
                                 return True
@@ -666,14 +666,14 @@ def download(element, stream=True, query="", force=False):
                                                     f"[realdebrid] could not refresh jellyfin libraries: {str(e)}",
                                                     debug=True,
                                                 )
-                                            # Mark Jellyseerr request as available after successful download
+                                            # Mark Seerr request as available after successful download
                                             try:
-                                                from content.services import jellyseerr
+                                                from content.services import seerr
 
-                                                jellyseerr.library.refresh(element)
+                                                seerr.library.refresh(element)
                                             except Exception as e:
                                                 ui_print(
-                                                    f"[realdebrid] could not mark jellyseerr request as available: {str(e)}",
+                                                    f"[realdebrid] could not mark seerr request as available: {str(e)}",
                                                     debug=True,
                                                 )
                                             return True
@@ -842,12 +842,12 @@ def download(element, stream=True, query="", force=False):
                                                 debug=True,
                                             )
                                         try:
-                                            from content.services import jellyseerr
+                                            from content.services import seerr
 
-                                            jellyseerr.library.refresh(element)
+                                            seerr.library.refresh(element)
                                         except Exception as e:
                                             ui_print(
-                                                f"[realdebrid] could not mark jellyseerr request as available: {str(e)}",
+                                                f"[realdebrid] could not mark seerr request as available: {str(e)}",
                                                 debug=True,
                                             )
                                         return True
@@ -1103,12 +1103,12 @@ def download(element, stream=True, query="", force=False):
                                     debug=True,
                                 )
                             try:
-                                from content.services import jellyseerr
+                                from content.services import seerr
 
-                                jellyseerr.library.refresh(element)
+                                seerr.library.refresh(element)
                             except Exception as e:
                                 ui_print(
-                                    f"[realdebrid] could not mark jellyseerr request as available: {str(e)}",
+                                    f"[realdebrid] could not mark seerr request as available: {str(e)}",
                                     debug=True,
                                 )
                             return True

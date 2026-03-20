@@ -1,27 +1,27 @@
 """
-Jellyseerr Low-Rated Movie Blacklist Script
+Seerr Low-Rated Movie Blacklist Script
 
-This script fetches movies from Jellyseerr's discover endpoint based on your filters
+This script fetches movies from Seerr's discover endpoint based on your filters
 and automatically blacklists any movie with an IMDb critics score below a threshold.
 
 Usage:
     # Blacklist movies with IMDb score < 5.0 (default)
-    python blacklist_low_rated.py --jellyseerr-api-key YOUR_API_KEY --user-id 1
+    python blacklist_low_rated.py --seerr-api-key YOUR_API_KEY --user-id 1
 
     # Custom IMDb score threshold
-    python blacklist_low_rated.py --jellyseerr-api-key YOUR_API_KEY --user-id 1 --min-score 6.0
+    python blacklist_low_rated.py --seerr-api-key YOUR_API_KEY --user-id 1 --min-score 6.0
 
     # Specify custom discover filters
-    python blacklist_low_rated.py --jellyseerr-api-key YOUR_API_KEY --user-id 1 --genre 27 --year-gte 2020
+    python blacklist_low_rated.py --seerr-api-key YOUR_API_KEY --user-id 1 --genre 27 --year-gte 2020
 
     # Dry run
-    python blacklist_low_rated.py --jellyseerr-api-key YOUR_API_KEY --user-id 1 --dry-run
+    python blacklist_low_rated.py --seerr-api-key YOUR_API_KEY --user-id 1 --dry-run
 """
 
 import argparse
 import sys
 import time
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 try:
     import requests
@@ -33,8 +33,8 @@ except ImportError:
 class LowRatedBlacklist:
     def __init__(
         self,
-        jellyseerr_url: str,
-        jellyseerr_api_key: str,
+        seerr_url: str,
+        seerr_api_key: str,
         user_id: int,
         min_imdb_score: Optional[float] = None,
         blacklist_no_ratings: bool = False,
@@ -43,8 +43,8 @@ class LowRatedBlacklist:
         skip_blacklist_check: bool = False,
         dry_run: bool = False,
     ):
-        self.jellyseerr_url = jellyseerr_url.rstrip("/")
-        self.jellyseerr_api_key = jellyseerr_api_key
+        self.seerr_url = seerr_url.rstrip("/")
+        self.seerr_api_key = seerr_api_key
         self.user_id = user_id
         self.min_imdb_score = min_imdb_score
         self.blacklist_no_ratings = blacklist_no_ratings
@@ -56,7 +56,7 @@ class LowRatedBlacklist:
         self.dry_run = dry_run
         self.session = requests.Session()
         self.session.headers.update(
-            {"X-Api-Key": jellyseerr_api_key, "Content-Type": "application/json"}
+            {"X-Api-Key": seerr_api_key, "Content-Type": "application/json"}
         )
 
     def get_discover_movies(
@@ -70,8 +70,8 @@ class LowRatedBlacklist:
         sort_by: str = "vote_average.desc",
         max_pages: int = 50,
     ) -> List[Dict]:
-        """Fetch movies from Jellyseerr discover endpoint"""
-        print("Fetching movies from Jellyseerr discover...")
+        """Fetch movies from Seerr discover endpoint"""
+        print("Fetching movies from Seerr discover...")
         year_filter = f"year>={year_gte}" if year_gte else ""
         if year_lte:
             year_filter += f"-{year_lte}" if year_filter else f"year<={year_lte}"
@@ -93,7 +93,7 @@ class LowRatedBlacklist:
 
         while page <= max_pages:
             try:
-                params = {"page": page, "sortBy": sort_by}
+                params: dict[str, Any] = {"page": page, "sortBy": sort_by}
 
                 if genre:
                     params["genre"] = genre
@@ -109,7 +109,7 @@ class LowRatedBlacklist:
                     params["voteCountLte"] = vote_count_lte
 
                 response = self.session.get(
-                    f"{self.jellyseerr_url}/api/v1/discover/movies", params=params
+                    f"{self.seerr_url}/api/v1/discover/movies", params=params
                 )
                 response.raise_for_status()
                 data = response.json()
@@ -138,11 +138,11 @@ class LowRatedBlacklist:
         print(f"\nTotal movies found: {len(all_movies)}")
         return all_movies
 
-    def get_movie_ratings(self, tmdb_id: int) -> Optional[Dict]:
+    def get_movie_ratings(self, tmdb_id: int) -> Optional[Union[Dict[Any, Any], str]]:
         """Get movie ratings including IMDb score. Returns 'NOT_FOUND' for 404 errors."""
         try:
             response = self.session.get(
-                f"{self.jellyseerr_url}/api/v1/movie/{tmdb_id}/ratingscombined"
+                f"{self.seerr_url}/api/v1/movie/{tmdb_id}/ratingscombined"
             )
             response.raise_for_status()
             return response.json()
@@ -169,7 +169,7 @@ class LowRatedBlacklist:
     def get_movie_details(self, tmdb_id: int) -> Optional[Dict]:
         """Get full movie details including runtime"""
         try:
-            response = self.session.get(f"{self.jellyseerr_url}/api/v1/movie/{tmdb_id}")
+            response = self.session.get(f"{self.seerr_url}/api/v1/movie/{tmdb_id}")
             if response.status_code == 200:
                 return response.json()
             return None
@@ -178,8 +178,8 @@ class LowRatedBlacklist:
             return None
 
     def get_existing_blacklist(self) -> set:
-        """Get currently blacklisted TMDB IDs from Jellyseerr"""
-        print("Fetching existing blacklist from Jellyseerr...")
+        """Get currently blacklisted TMDB IDs from Seerr"""
+        print("Fetching existing blacklist from Seerr...")
         blacklisted = set()
 
         try:
@@ -188,7 +188,7 @@ class LowRatedBlacklist:
 
             while True:
                 response = self.session.get(
-                    f"{self.jellyseerr_url}/api/v1/blacklist",
+                    f"{self.seerr_url}/api/v1/blacklist",
                     params={"skip": skip, "take": take},
                 )
                 response.raise_for_status()
@@ -216,7 +216,7 @@ class LowRatedBlacklist:
     def add_to_blacklist(
         self, tmdb_id: int, title: str, imdb_score: Optional[float]
     ) -> bool:
-        """Add a movie to Jellyseerr blacklist"""
+        """Add a movie to Seerr blacklist"""
         if self.dry_run:
             score_str = (
                 f"IMDb: {imdb_score}" if imdb_score is not None else "No ratings"
@@ -233,7 +233,7 @@ class LowRatedBlacklist:
             }
 
             response = self.session.post(
-                f"{self.jellyseerr_url}/api/v1/blacklist", json=payload
+                f"{self.seerr_url}/api/v1/blacklist", json=payload
             )
 
             if response.status_code == 201:
@@ -356,6 +356,7 @@ class LowRatedBlacklist:
                     error_count += 1
                     continue
 
+                assert isinstance(ratings, dict)
                 imdb_score = self.get_imdb_score(ratings)
 
                 if imdb_score is None:
@@ -404,21 +405,19 @@ class LowRatedBlacklist:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Blacklist low-rated movies from Jellyseerr discover",
+        description="Blacklist low-rated movies from Seerr discover",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__,
     )
 
-    # Jellyseerr settings
+    # Seerr settings
     parser.add_argument(
-        "--jellyseerr-url",
+        "--seerr-url",
         default="http://192.168.1.169:5055",
-        help="Jellyseerr URL (default: http://192.168.1.169:5055)",
+        help="Seerr URL (default: http://192.168.1.169:5055)",
     )
-    parser.add_argument(
-        "--jellyseerr-api-key", required=True, help="Jellyseerr API key"
-    )
-    parser.add_argument("--user-id", type=int, required=True, help="Jellyseerr user ID")
+    parser.add_argument("--seerr-api-key", required=True, help="Seerr API key")
+    parser.add_argument("--user-id", type=int, required=True, help="Seerr user ID")
 
     # IMDb score threshold
     parser.add_argument(
@@ -485,8 +484,8 @@ def main():
 
     # Create processor instance
     processor = LowRatedBlacklist(
-        jellyseerr_url=args.jellyseerr_url,
-        jellyseerr_api_key=args.jellyseerr_api_key,
+        seerr_url=args.seerr_url,
+        seerr_api_key=args.seerr_api_key,
         user_id=args.user_id,
         min_imdb_score=args.min_score,
         blacklist_no_ratings=args.blacklist_no_ratings,

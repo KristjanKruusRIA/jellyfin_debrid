@@ -1,17 +1,17 @@
 """
-Jellyseerr Blacklist Removal Script
+Seerr Blacklist Removal Script
 
 Remove blacklisted movies from a specific year range.
 
 Usage:
     # Remove all movies from 2026
-    python remove_blacklisted_by_year.py --jellyseerr-api-key YOUR_API_KEY --year 2026
+    python remove_blacklisted_by_year.py --seerr-api-key YOUR_API_KEY --year 2026
 
     # Remove movies from multiple years
-    python remove_blacklisted_by_year.py --jellyseerr-api-key YOUR_API_KEY --year-gte 2026 --year-lte 2027
+    python remove_blacklisted_by_year.py --seerr-api-key YOUR_API_KEY --year-gte 2026 --year-lte 2027
 
     # Dry run to preview what would be removed
-    python remove_blacklisted_by_year.py --jellyseerr-api-key YOUR_API_KEY --year 2026 --dry-run
+    python remove_blacklisted_by_year.py --seerr-api-key YOUR_API_KEY --year 2026 --dry-run
 """
 
 import argparse
@@ -27,20 +27,18 @@ except ImportError:
 
 
 class BlacklistRemover:
-    def __init__(
-        self, jellyseerr_url: str, jellyseerr_api_key: str, dry_run: bool = False
-    ):
-        self.jellyseerr_url = jellyseerr_url.rstrip("/")
-        self.jellyseerr_api_key = jellyseerr_api_key
+    def __init__(self, seerr_url: str, seerr_api_key: str, dry_run: bool = False):
+        self.seerr_url = seerr_url.rstrip("/")
+        self.seerr_api_key = seerr_api_key
         self.dry_run = dry_run
         self.session = requests.Session()
         self.session.headers.update(
-            {"X-Api-Key": jellyseerr_api_key, "Content-Type": "application/json"}
+            {"X-Api-Key": seerr_api_key, "Content-Type": "application/json"}
         )
 
     def get_blacklist(self) -> List[Dict]:
-        """Get all blacklisted items from Jellyseerr"""
-        print("Fetching blacklist from Jellyseerr...")
+        """Get all blacklisted items from Seerr"""
+        print("Fetching blacklist from Seerr...")
         blacklisted = []
 
         try:
@@ -49,7 +47,7 @@ class BlacklistRemover:
 
             while True:
                 response = self.session.get(
-                    f"{self.jellyseerr_url}/api/v1/blacklist",
+                    f"{self.seerr_url}/api/v1/blacklist",
                     params={"skip": skip, "take": take},
                 )
                 response.raise_for_status()
@@ -75,9 +73,9 @@ class BlacklistRemover:
             return []
 
     def get_movie_details(self, tmdb_id: int) -> Optional[Dict]:
-        """Get movie details from Jellyseerr"""
+        """Get movie details from Seerr"""
         try:
-            response = self.session.get(f"{self.jellyseerr_url}/api/v1/movie/{tmdb_id}")
+            response = self.session.get(f"{self.seerr_url}/api/v1/movie/{tmdb_id}")
 
             if response.status_code == 200:
                 return response.json()
@@ -90,7 +88,7 @@ class BlacklistRemover:
     def remove_from_blacklist(
         self, tmdb_id: int, title: str, year: Optional[str]
     ) -> bool:
-        """Remove a movie from Jellyseerr blacklist using TMDB ID"""
+        """Remove a movie from Seerr blacklist using TMDB ID"""
         year_str = f"({year})" if year else ""
 
         if self.dry_run:
@@ -99,7 +97,7 @@ class BlacklistRemover:
 
         try:
             response = self.session.delete(
-                f"{self.jellyseerr_url}/api/v1/blacklist/{tmdb_id}"
+                f"{self.seerr_url}/api/v1/blacklist/{tmdb_id}"
             )
 
             if response.status_code in [200, 204]:
@@ -149,8 +147,13 @@ class BlacklistRemover:
 
         for idx, item in enumerate(movie_blacklist, 1):
             item.get("id")  # This is the blacklist database ID
-            tmdb_id = item.get("tmdbId")  # This is the TMDB movie ID
+            raw_tmdb_id = item.get("tmdbId")  # This is the TMDB movie ID
             title = item.get("title", "Unknown")
+
+            if raw_tmdb_id is None:
+                skipped_count += 1
+                continue
+            tmdb_id: int = int(raw_tmdb_id)
 
             # Progress indicator every 100 items
             if idx % 100 == 0:
@@ -207,20 +210,18 @@ class BlacklistRemover:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Remove blacklisted movies by year from Jellyseerr",
+        description="Remove blacklisted movies by year from Seerr",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__,
     )
 
-    # Jellyseerr settings
+    # Seerr settings
     parser.add_argument(
-        "--jellyseerr-url",
+        "--seerr-url",
         default="http://192.168.1.169:5055",
-        help="Jellyseerr URL (default: http://192.168.1.169:5055)",
+        help="Seerr URL (default: http://192.168.1.169:5055)",
     )
-    parser.add_argument(
-        "--jellyseerr-api-key", required=True, help="Jellyseerr API key"
-    )
+    parser.add_argument("--seerr-api-key", required=True, help="Seerr API key")
 
     # Year filters
     parser.add_argument("--year", type=int, help="Specific year to remove (e.g., 2026)")
@@ -248,8 +249,8 @@ def main():
 
     # Create processor instance
     processor = BlacklistRemover(
-        jellyseerr_url=args.jellyseerr_url,
-        jellyseerr_api_key=args.jellyseerr_api_key,
+        seerr_url=args.seerr_url,
+        seerr_api_key=args.seerr_api_key,
         dry_run=args.dry_run,
     )
 

@@ -11,10 +11,10 @@ import requests
 from content import classes
 from ui.ui_print import ui_cls, ui_print, ui_settings
 
-name = "jellyseerr"
+name = "seerr"
 base_url = ""
 users = ["all"]
-# Jellyseerr statuses: 1=Pending, 2=Approved, 3=Declined, 4=Processing, 5=Available
+# Seerr statuses: 1=Pending, 2=Approved, 3=Declined, 4=Processing, 5=Available
 # Include status 1 (Pending) to pick up new requests immediately
 allowed_movie_status = [["1"], ["2"], ["3"]]
 allowed_show_status = [["1"], ["2"], ["3"], ["4"]]
@@ -31,7 +31,7 @@ def setup(self):
     global session
     from settings import settings_list
 
-    ui_cls("Options/Settings/Content Services/Content Services/jellyseerr")
+    ui_cls("Options/Settings/Content Services/Content Services/seerr")
     working_key = False
     working_url = False
     try:
@@ -45,31 +45,29 @@ def setup(self):
             working_key = False
             working_url = True
     except Exception as e:
-        ui_print(
-            "[jellyseerr] setup connection error: " + str(e), debug=ui_settings.debug
-        )
+        ui_print("[seerr] setup connection error: " + str(e), debug=ui_settings.debug)
         working_url = False
     while not working_url:
         if base_url == "http://localhost:5055":
             print(
-                "Looks like jellyseerr couldn't be reached under the default base url ('"
+                "Looks like seerr couldn't be reached under the default base url ('"
                 + base_url
                 + "')."
             )
         else:
             print(
-                "Looks like jellyseerr couldn't be reached under the current base url ('"
+                "Looks like seerr couldn't be reached under the current base url ('"
                 + base_url
                 + "')."
             )
         print(
-            "Please make sure jellyseerr is running and try again, or provide your jellyseerr base URL below."
+            "Please make sure seerr is running and try again, or provide your seerr base URL below."
         )
         print(
-            "Please provide your jellyseerr base URL in the following format 'http://localhost:5055' or press enter to return to the main menu."
+            "Please provide your seerr base URL in the following format 'http://localhost:5055' or press enter to return to the main menu."
         )
         print()
-        base_url = input("Please provide your jellyseerr base URL: ")
+        base_url = input("Please provide your seerr base URL: ")
         if base_url == "":
             return
         working_key = False
@@ -88,19 +86,19 @@ def setup(self):
                 working_url = True
         except Exception as e:
             ui_print(
-                "[jellyseerr] setup connection error: " + str(e),
+                "[seerr] setup connection error: " + str(e),
                 debug=ui_settings.debug,
             )
             working_url = False
     while not working_key:
         if api_key == "":
             print(
-                "To setup jellyseerr, please provide your jellyseerr API Key. Press enter to return to the main menu."
+                "To setup seerr, please provide your seerr API Key. Press enter to return to the main menu."
             )
         else:
             print("Looks like your current API Key ('" + api_key + "') doesnt work.")
         print()
-        api_key = input("Please enter your jellyseerr API Key: ")
+        api_key = input("Please enter your seerr API Key: ")
         if api_key == "":
             return
         working_key = False
@@ -119,7 +117,7 @@ def setup(self):
                 working_url = True
         except Exception as e:
             ui_print(
-                "[jellyseerr] setup connection error: " + str(e),
+                "[seerr] setup connection error: " + str(e),
                 debug=ui_settings.debug,
             )
             working_url = False
@@ -135,7 +133,7 @@ def setup(self):
         if user.displayName not in users:
             new_users += [user.displayName]
     back = False
-    ui_cls("Options/Settings/Content Services/Content Services/jellyseerr")
+    ui_cls("Options/Settings/Content Services/Content Services/seerr")
     while not back:
         print("0) Back")
         indices = []
@@ -145,13 +143,13 @@ def setup(self):
         print()
         choice = input("Choose an action: ")
         if choice in indices:
-            if settings[int(choice) - 1].name == "jellyseerr users":
+            if settings[int(choice) - 1].name == "seerr users":
                 print()
                 print(
                     "You can define which users approved requests should be downloaded by jellyfin_debrid."
                 )
                 print()
-                print('Currently monitored jellyseerr users: "' + str(users) + '"')
+                print('Currently monitored seerr users: "' + str(users) + '"')
                 print()
                 print("0) Back")
                 print("1) Always monitor all users")
@@ -213,12 +211,10 @@ def setup(self):
 
 def logerror(response):
     if not response.status_code == 200:
-        ui_print(
-            "[jellyseerr] error: " + str(response.content), debug=ui_settings.debug
-        )
+        ui_print("[seerr] error: " + str(response.content), debug=ui_settings.debug)
     if response.status_code == 401:
         ui_print(
-            "[jellyseerr] error: (401 unauthorized): overserr api key does not seem to work."
+            "[seerr] error: (401 unauthorized): overserr api key does not seem to work."
         )
 
 
@@ -237,7 +233,7 @@ def get(url):
             response.content, object_hook=lambda d: SimpleNamespace(**d)
         )
     except Exception as e:
-        ui_print("[jellyseerr] error: (exception): " + str(e), debug=ui_settings.debug)
+        ui_print("[seerr] error: (exception): " + str(e), debug=ui_settings.debug)
         return None
     return response
 
@@ -258,7 +254,7 @@ def post(url, data):
             response.content, object_hook=lambda d: SimpleNamespace(**d)
         )
     except Exception as e:
-        ui_print("[jellyseerr] error: (exception): " + str(e), debug=ui_settings.debug)
+        ui_print("[seerr] error: (exception): " + str(e), debug=ui_settings.debug)
         return None
     return response
 
@@ -291,7 +287,7 @@ class movie(classes.media):
             datetime.datetime.strptime(self.updatedAt, "%Y-%m-%dT%H:%M:%S.000Z")
         )
 
-        # Fetch full movie details from Jellyseerr to get title, release date, and IMDB ID
+        # Fetch full movie details from Seerr to get title, release date, and IMDB ID
         if hasattr(self, "media") and hasattr(self.media, "tmdbId"):
             try:
                 movie_details = get(base_url + f"/api/v1/movie/{self.media.tmdbId}")
@@ -318,7 +314,7 @@ class movie(classes.media):
                             )  # Add IMDB at beginning for broader scraper compatibility
             except Exception as e:
                 ui_print(
-                    f"[jellyseerr] error fetching movie details: {str(e)}",
+                    f"[seerr] error fetching movie details: {str(e)}",
                     ui_settings.debug,
                 )
 
@@ -337,7 +333,7 @@ class show(classes.media):
         if not hasattr(self, "originallyAvailableAt"):
             self.originallyAvailableAt = "1990-01-01"
 
-        # Fetch full TV show details from Jellyseerr to get title, first air date, and IMDB ID
+        # Fetch full TV show details from Seerr to get title, first air date, and IMDB ID
         seasons_from_api = []
         if hasattr(self, "media") and hasattr(self.media, "tmdbId"):
             try:
@@ -365,7 +361,7 @@ class show(classes.media):
                         seasons_from_api = list(tv_details.seasons)
             except Exception as e:
                 ui_print(
-                    f"[jellyseerr] error fetching TV details: {str(e)}",
+                    f"[seerr] error fetching TV details: {str(e)}",
                     ui_settings.debug,
                 )
 
@@ -399,24 +395,24 @@ class show(classes.media):
                 episode_count = 0
                 # Try to get episode count from season object
                 ui_print(
-                    f"[jellyseerr] debug: season {season.seasonNumber} attributes: {dir(season)}",
+                    f"[seerr] debug: season {season.seasonNumber} attributes: {dir(season)}",
                     ui_settings.debug,
                 )
                 if hasattr(season, "episodeCount"):
                     episode_count = season.episodeCount
                     ui_print(
-                        f"[jellyseerr] debug: found episodeCount={episode_count} for season {season.seasonNumber}",
+                        f"[seerr] debug: found episodeCount={episode_count} for season {season.seasonNumber}",
                         ui_settings.debug,
                     )
                 elif hasattr(season, "episodes") and season.episodes:
                     episode_count = len(season.episodes)
                     ui_print(
-                        f"[jellyseerr] debug: found {episode_count} episodes in episodes list for season {season.seasonNumber}",
+                        f"[seerr] debug: found {episode_count} episodes in episodes list for season {season.seasonNumber}",
                         ui_settings.debug,
                     )
                 else:
                     ui_print(
-                        f"[jellyseerr] debug: no episodeCount or episodes found for season {season.seasonNumber}",
+                        f"[seerr] debug: no episodeCount or episodes found for season {season.seasonNumber}",
                         ui_settings.debug,
                     )
 
@@ -442,7 +438,7 @@ class show(classes.media):
 
                 if episode_count == 0:
                     ui_print(
-                        f"[jellyseerr] warning: season {season.seasonNumber} has no episode count, fetching from API",
+                        f"[seerr] warning: season {season.seasonNumber} has no episode count, fetching from API",
                         ui_settings.debug,
                     )
                     # Try to get episode count from the full season details API
@@ -459,7 +455,7 @@ class show(classes.media):
                             ):
                                 episode_count = len(season_details.episodes)
                                 ui_print(
-                                    f"[jellyseerr] fetched {episode_count} episodes for season {season.seasonNumber} from API",
+                                    f"[seerr] fetched {episode_count} episodes for season {season.seasonNumber} from API",
                                     ui_settings.debug,
                                 )
                                 # Create episodes from the detailed episode list
@@ -483,14 +479,14 @@ class show(classes.media):
                                     season.Episodes.append(episode)
                     except Exception as e:
                         ui_print(
-                            f"[jellyseerr] error fetching season details: {str(e)}",
+                            f"[seerr] error fetching season details: {str(e)}",
                             ui_settings.debug,
                         )
 
                 # If still no episodes after trying API, create placeholder
                 if len(season.Episodes) == 0:
                     ui_print(
-                        f"[jellyseerr] creating minimal episode placeholder for season {season.seasonNumber}",
+                        f"[seerr] creating minimal episode placeholder for season {season.seasonNumber}",
                         ui_settings.debug,
                     )
                     # Create at least one placeholder episode if we don't know the count
@@ -510,7 +506,7 @@ class show(classes.media):
 
             except Exception as e:
                 ui_print(
-                    f"[jellyseerr] error creating episodes for season {season.seasonNumber}: {str(e)}",
+                    f"[seerr] error creating episodes for season {season.seasonNumber}: {str(e)}",
                     ui_settings.debug,
                 )
                 # Create at least one episode as fallback
@@ -537,7 +533,7 @@ class show(classes.media):
             self.Seasons += [season_media]
 
 
-class jellyseerr_requests(classes.watchlist):
+class seerr_requests(classes.watchlist):
     def __init__(self):
         global last_requests
         # last_requests tracks API-level request objects we've already seen
@@ -545,11 +541,11 @@ class jellyseerr_requests(classes.watchlist):
         last_requests = []
         self.data = []
         if len(users) > 0 and len(api_key) > 0:
-            ui_print("[jellyseerr] getting all jellyseerr requests ...")
+            ui_print("[seerr] getting all seerr requests ...")
             try:
                 response = get(base_url + "/api/v1/request?take=10000")
                 ui_print(
-                    f"[jellyseerr] received {len(response.results) if response and hasattr(response, 'results') else 0} requests from API",
+                    f"[seerr] received {len(response.results) if response and hasattr(response, 'results') else 0} requests from API",
                     ui_settings.debug,
                 )
                 if response and hasattr(response, "results"):
@@ -577,7 +573,7 @@ class jellyseerr_requests(classes.watchlist):
                     if dedupe_key and dedupe_key in seen:
                         skipped += 1
                         ui_print(
-                            f"[jellyseerr] skipping duplicate request for media={media_id} user={user}",
+                            f"[seerr] skipping duplicate request for media={media_id} user={user}",
                             ui_settings.debug,
                         )
                         continue
@@ -596,7 +592,7 @@ class jellyseerr_requests(classes.watchlist):
 
                     if user_matches and status_matches:
                         ui_print(
-                            f"[jellyseerr] adding request to queue: type={element.type}, status={getattr(element.media, 'status', '?')}, user={getattr(element.requestedBy, 'displayName', '?')}",
+                            f"[seerr] adding request to queue: type={element.type}, status={getattr(element.media, 'status', '?')}, user={getattr(element.requestedBy, 'displayName', '?')}",
                             ui_settings.debug,
                         )
                         requests_to_process.append(element)
@@ -605,7 +601,7 @@ class jellyseerr_requests(classes.watchlist):
 
                 # Summary log to avoid spamming the logs on each scan
                 ui_print(
-                    f"[jellyseerr] checked {checked} unique requests, added {added}, skipped {skipped} duplicates",
+                    f"[seerr] checked {checked} unique requests, added {added}, skipped {skipped} duplicates",
                     ui_settings.debug,
                 )
 
@@ -618,19 +614,17 @@ class jellyseerr_requests(classes.watchlist):
                         last_requests.append(element)
 
             except Exception as e:
-                ui_print("[jellyseerr] error: " + str(e), ui_settings.debug)
+                ui_print("[seerr] error: " + str(e), ui_settings.debug)
                 ui_print(
-                    "[jellyseerr] error: jellyseerr couldnt be reached. turn on debug printing for more info."
+                    "[seerr] error: seerr couldnt be reached. turn on debug printing for more info."
                 )
                 requests_to_process = []
             ui_print(f"done - found {len(requests_to_process)} requests to process")
             if requests_to_process == []:
-                ui_print(
-                    "[jellyseerr] no requests to process, skipping", ui_settings.debug
-                )
+                ui_print("[seerr] no requests to process, skipping", ui_settings.debug)
                 return
-            # Just process the jellyseerr requests directly
-            ui_print("[jellyseerr] processing jellyseerr requests ...")
+            # Just process the seerr requests directly
+            ui_print("[seerr] processing seerr requests ...")
             add = []
             # default autoremove behavior for this watchlist
             self.autoremove = "both"
@@ -682,15 +676,13 @@ class jellyseerr_requests(classes.watchlist):
                         # Only process if not already in watchlist
                         if element not in self.data:
                             ui_print(
-                                '[jellyseerr] found new jellyseerr request by user "'
+                                '[seerr] found new seerr request by user "'
                                 + element_.requestedBy.displayName
                                 + '".'
                             )
                             refresh = True
                             last_requests.append(element_)
-                            ui_print(
-                                "[jellyseerr] processing new jellyseerr request ..."
-                            )
+                            ui_print("[seerr] processing new seerr request ...")
                             self.data.append(element)
                             ui_print("done")
                         else:
@@ -737,7 +729,7 @@ class jellyseerr_requests(classes.watchlist):
                         )
                         if not status_allowed:
                             ui_print(
-                                f"[jellyseerr] removing request from queue (status changed to {api_result.media.status}): {existing_item.title if hasattr(existing_item, 'title') else 'unknown'}"
+                                f"[seerr] removing request from queue (status changed to {api_result.media.status}): {existing_item.title if hasattr(existing_item, 'title') else 'unknown'}"
                             )
                             self.data.remove(existing_item)
                             refresh = True
@@ -750,10 +742,10 @@ class jellyseerr_requests(classes.watchlist):
 
 
 class library:
-    name = "jellyseerr Requests"
+    name = "seerr Requests"
 
     class refresh(classes.refresh):
-        name = "jellyseerr Requests"
+        name = "seerr Requests"
 
         def setup(cls, new=False):
             ui_cls("Options/Settings/Library Services/Library update services")
@@ -765,11 +757,11 @@ class library:
                     settings += [setting]
             if len(api_key) == 0:
                 print(
-                    "It looks like you havent setup an jellyseerr api key. Please set up an jellyseerr api key first."
+                    "It looks like you havent setup an seerr api key. Please set up an seerr api key first."
                 )
                 print()
                 for setting in settings:
-                    if setting.name == "jellyseerr API Key":
+                    if setting.name == "seerr API Key":
                         setting.setup()
             if not new:
                 if library.refresh.name not in classes.refresh.active:

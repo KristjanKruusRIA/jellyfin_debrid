@@ -18,7 +18,7 @@ def _import_settings_with_stubs(monkeypatch):
         "services",
         SimpleNamespace(
             active=[],
-            jellyseerr=SimpleNamespace(users=[], api_key="", base_url=""),
+            seerr=SimpleNamespace(users=[], api_key="", base_url=""),
             jellyfin=SimpleNamespace(api_key="", library=SimpleNamespace(url="")),
         ),
     )

@@ -421,7 +421,7 @@ class media:
                 for season in match.Seasons[:]:
                     if season not in self.Seasons:
                         match.Seasons.remove(season)
-                    elif self.services != ["content.services.jellyseerr"]:
+                    elif self.services != ["content.services.seerr"]:
                         matching_season = next(
                             (x for x in self.Seasons if x == season), None
                         )
@@ -429,7 +429,7 @@ class media:
                             for episode in season.Episodes:
                                 if episode not in matching_season.Episodes:
                                     season.Episodes.remove(episode)
-                if self.services != ["content.services.jellyseerr"] and hasattr(
+                if self.services != ["content.services.seerr"] and hasattr(
                     match, "Seasons"
                 ):
                     for season in match.Seasons:
@@ -1070,7 +1070,7 @@ class media:
         return len(self.versions()) > 0 and not self.versions() == all_versions
 
     def set_file_names(self):
-        # No collection-service-specific file name mapping required for Jellyfin/Jellyseerr workflow.
+        # No collection-service-specific file name mapping required for Jellyfin/Seerr workflow.
         return
 
     def complete(self, list):
@@ -1227,7 +1227,7 @@ class media:
             return False
 
     def available(self):
-        # Using Jellyseerr for availability checks
+        # Using Seerr for availability checks
 
         # Simplified availability check
         try:
@@ -1246,9 +1246,9 @@ class media:
 
     def collect(self, refresh_=True):
         for refresh_service in refresh():
-            # Use Jellyseerr and Jellyfin for library refresh
+            # Use Seerr and Jellyfin for library refresh
             if refresh_service.__module__ == self.__module__ or (
-                self.__module__ in ["content.services.jellyseerr"]
+                self.__module__ in ["content.services.seerr"]
                 and refresh_service.__module__ in ["content.services.jellyfin"]
             ):
                 refresh_service(self)
@@ -1442,7 +1442,7 @@ class media:
                     debrid_downloaded, retry = self.debrid_download(force=False)
                     if debrid_downloaded:
                         refresh_ = True
-                        # REMOVED: auto-remove from watchlist (Jellyseerr doesn't need this)
+                        # REMOVED: auto-remove from watchlist (Seerr doesn't need this)
                         toc = time.perf_counter()
                         ui_print("took " + str(round(toc - tic, 2)) + "s")
                     if retry:
@@ -1660,7 +1660,7 @@ class media:
                             refresh_ = True
                         if result[1]:
                             retry = True
-                    # REMOVED: auto-remove from watchlist (Jellyseerr doesn't need this)
+                    # REMOVED: auto-remove from watchlist (Seerr doesn't need this)
                     toc = time.perf_counter()
                     ui_print("took " + str(round(toc - tic, 2)) + "s")
         elif self.type == "season":

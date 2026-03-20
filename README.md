@@ -1,7 +1,7 @@
 # Jellyfin_Debrid
-Jellyfin torrent downloading through Debrid Services, using Jellyseerr requests and watchlists.
+Jellyfin torrent downloading through Debrid Services, using Seerr requests and watchlists.
 
-Using content services like Jellyseerr, your personal media server users can add movies/shows to their watchlist and they become available to stream in minutes.
+Using content services like Seerr, your personal media server users can add movies/shows to their watchlist and they become available to stream in minutes.
 
 Based on [plex_debrid](https://github.com/itsToggle/plex_debrid)
 
@@ -51,14 +51,14 @@ Log viewer: http://localhost:7654
 ### Description:
 
 A jellyfin_debrid setup consists of three parts.
-- The first part is Jellyseerr which allows you to request media
+- The first part is Seerr which allows you to request media
 - The second part is a personal media server (e.g., Jellyfin), which allows you to watch these files from anywhere on any device.
 - The third part is the jellyfin_debrid script, which ties both things together and provides an easy way to download media content from your debrid service.
 
-The jellyfin_debrid script monitors Jellyseerr requests (and optionally Overseerr) of specified users for newly added movies/shows and newly released episodes of watchlisted shows.
+The jellyfin_debrid script monitors Seerr requests (and optionally Overseerr) of specified users for newly added movies/shows and newly released episodes of watchlisted shows.
 
 How it works:
-- Monitor requests/watchlists from Jellyseerr (default) and Overseerr (optional).
+- Monitor requests/watchlists from Seerr (default) and Overseerr (optional).
 - Scrape torrent indexers and streaming providers for candidate releases using configurable scrapers and version rules.
 - Prefer cached releases on supported debrid services; if needed, add torrents to a debrid service and/or download directly.
 - Validate downloads (size checks, ranged retries, progress reporting), sanitize and preserve filenames, then move files into organized Movies/Shows folders.
@@ -68,9 +68,9 @@ This workflow enables near-instant availability for cached content and robust, c
  
 ### Features:
 - Cross-platform: works on Windows, macOS, Linux and other Unix-like systems.
-- Fast, configurable scanning: default polling interval is every 5 seconds (configurable) to pick up new Jellyseerr requests quickly.
+- Fast, configurable scanning: default polling interval is every 5 seconds (configurable) to pick up new Seerr requests quickly.
 - Sources:
-  - Primary: Jellyseerr (requests/watchlists). Overseerr is supported as well.
+  - Primary: Seerr (requests/watchlists). Overseerr is supported as well.
   - Scrapers: AIOStreams (for Easynews / direct HTTP sources) and Comet (for debrid-cached torrents).
 - Debrid integration: supports RealDebrid.
 - Download robustness: supports direct HTTP downloads and debrid APIs, temp-file downloads with progress reporting, ranged retries for partial responses, and size validation against expected size.
@@ -78,20 +78,20 @@ This workflow enables near-instant availability for cached content and robust, c
   - Movies/Movie Name (Year)/filename
   - Shows/Show Name/Season XX/filename
 - Quality selection: selects best candidate release,
-- Integrations: triggers Jellyfin library refreshes after downloads and monitors Jellyseerr for requests.
+- Integrations: triggers Jellyfin library refreshes after downloads and monitors Seerr for requests.
 - Configuration & logging: primary settings in `config/settings.json` (template at `settings.json.template`), and detailed logs are written to `config/jellyfin_debrid.log`.
 
 ### Example minimal `settings.json` ✅
 
-Below is a minimal example to get you started with Jellyfin + Jellyseerr + RealDebrid. Replace the placeholder values with your actual API keys and URLs.
+Below is a minimal example to get you started with Jellyfin + Seerr + RealDebrid. Replace the placeholder values with your actual API keys and URLs.
 
 ```json
 {
-  "Content Services": ["jellyseerr"],
-  "jellyseerr API Key": "YOUR_JELLYSEERR_API_KEY",
-  "jellyseerr Base URL": "http://jellyseerr.local:5055",
-  "Library collection service": "jellyseerr Library",
-  "Library update services": ["Jellyseerr Requests"],
+  "Content Services": ["seerr"],
+  "seerr API Key": "YOUR_SEERR_API_KEY",
+  "seerr Base URL": "http://seerr.local:5055",
+  "Library collection service": "seerr Library",
+  "Library update services": ["Seerr Requests"],
   "Debrid Services": ["Real Debrid"],
   "Real Debrid API Key": "YOUR_REALDEBRID_API_KEY",
   "Jellyfin server address": "http://jellyfin.local:8096",
@@ -163,14 +163,14 @@ Several helper scripts and utilities are provided for setup, maintenance, and op
 
 - Setup: `setup_venv.ps1` — creates the Python virtual environment.
 
-- Jellyseerr sync utilities (`jellyseer_sync/`):
-  - `trakt_blacklist_sync.py` — sync watched movies from Trakt (API or JSON export) into Jellyseerr's blacklist (optional; requires Trakt credentials or exported JSON).
+- Seerr sync utilities (`seerr_sync/`):
+  - `trakt_blacklist_sync.py` — sync watched movies from Trakt (API or JSON export) into Seerr's blacklist (optional; requires Trakt credentials or exported JSON).
   - `extract_movies.py` — helper to extract watched movies from Trakt JSON exports for use with the blacklist sync.
   - `blacklist_low_rated.py`, `remove_blacklisted_by_year.py` — convenience scripts to manage blacklists.
 
 - Verification & maintenance: `verify_setup.ps1` (Windows) helps validate your configuration after setup.
 
-Usage notes: These helper scripts are optional and documented in their respective folders (`jellyseer_sync/`, `scripts/`). Run `python jellyseer_sync/trakt_blacklist_sync.py --help` to view usage options for the Trakt sync tool.
+Usage notes: These helper scripts are optional and documented in their respective folders (`seerr_sync/`, `scripts/`). Run `python seerr_sync/trakt_blacklist_sync.py --help` to view usage options for the Trakt sync tool.
 
 Developer / contributors: To enable local linting, formatting and pre-commit hooks, install dev dependencies and enable pre-commit:
 
