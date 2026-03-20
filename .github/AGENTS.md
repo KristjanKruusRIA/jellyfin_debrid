@@ -130,6 +130,27 @@ store.save(data, "module_name", "variable_name")       # Save pickle
 - **`content.classes.media`**: Base media object — extended by `seerr.movie`, `seerr.show`; has `EID`, `type`, `title`, `Seasons`/`Episodes` for shows
 - **`releases.sort.version`**: Quality version — `name`, `triggers`, `lang`, `rules`; applied via `releases.sort(scraped_releases, version)`
 
+## Memory & Documentation Maintenance
+
+**Agents must keep memory and this file up to date as the project evolves.**
+
+### Repository Memory (`/memories/repo/`)
+- After completing any task that adds, removes, or changes modules, services, settings, data types, APIs, or conventions, **store the key facts** in `/memories/repo/` using the memory tool's `create` command.
+- Facts to store: new module purposes, new service contracts, changed API endpoints, new settings keys, new data types or fields, new build/test commands, and any discovered conventions not yet documented.
+- Each fact should include `subject`, `fact`, `citations` (file paths), `reason`, and `category`.
+
+### Updating This File (`AGENTS.md`)
+Whenever a task results in any of the following, **update the relevant section of this file before the phase is considered complete**:
+- **New module or service added** → Update the **Module Map** table and/or **Service Pattern** section.
+- **New scraper or debrid provider** → Update **Common Tasks** with any new steps and **API Integration Reference** if applicable.
+- **New data type or key field change** → Update **Key Data Types**.
+- **New setting or config change** → Update **Configuration** and/or **Build & Test** sections.
+- **New convention or code style rule** → Update **Code Style** or **Critical Conventions**.
+- **New script or automation** → Update **Windows-Specific Notes** or **Build & Test**.
+- **Workspace structure change** → Ensure the **Module Map** still reflects reality.
+
+This ensures future agents always have accurate, current context about the project.
+
 ## Windows-Specific Notes
 
 - Use PowerShell scripts (`.ps1`) for automation

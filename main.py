@@ -22,8 +22,8 @@ if config_dir == "":
 
 if __name__ == "__main__":
     if service_mode:
-        from log_viewer import start_log_viewer
+        from frontend import start_frontend
 
-        log_thread = threading.Thread(target=start_log_viewer, daemon=True)
+        log_thread = threading.Thread(target=start_frontend, daemon=True)
         log_thread.start()
     ui.run(config_dir, service_mode)

@@ -1,6 +1,6 @@
 """
-Simple web-based log viewer for jellyfin_debrid
-Serves logs on http://localhost:7654
+Simple web-based frontend for jellyfin_debrid
+Serves UI on http://localhost:7654
 """
 
 import os
@@ -142,7 +142,7 @@ def get_logs():
         return jsonify({"content": f"Error reading log file: {str(e)}\n"})
 
 
-def start_log_viewer():
+def start_frontend():
     """Start the log viewer in the current thread (use as a daemon thread target)."""
     app.run(host="0.0.0.0", port=7654, debug=False, threaded=True)
 
@@ -154,4 +154,4 @@ if __name__ == "__main__":
     print("Open your browser to: http://localhost:7654")
     print("Press Ctrl+C to stop")
     print("=" * 60)
-    start_log_viewer()
+    start_frontend()
