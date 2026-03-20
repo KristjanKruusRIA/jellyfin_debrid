@@ -796,6 +796,72 @@
                     statusDiv.textContent = 'Failed to fetch search results. Check the console for details.';
                 });
         }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const params = new URLSearchParams(window.location.search);
+            const tmdb_id = params.get('tmdb_id');
+            const media_type = params.get('media_type');
+
+            if (tmdb_id && media_type) {
+                const statusDiv = document.getElementById('status-message');
+                const gridDiv = document.getElementById('results-grid');
+
+                statusDiv.className = 'status';
+                statusDiv.textContent = 'Loading...';
+
+                fetch(`/api/tmdb/${media_type}/${tmdb_id}`)
+                    .then(response => {
+                        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                        return response.json();
+                    })
+                    .then(item => {
+                        if (item.error || item.status === 'error') {
+                            throw new Error(item.error || 'Failed to load item');
+                        }
+
+                        statusDiv.className = 'status';
+                        statusDiv.textContent = `Found: ${item.title || 'Unknown'}`;
+
+                        const card = document.createElement('div');
+                        card.className = 'card';
+
+                        const isMovie = item.media_type === 'movie';
+                        const prefix = isMovie ? 'movie-' : 'series-';
+                        const imgUrl = `https://api.ratingposterdb.com/t0-free-rpdb/tmdb/poster-default/${prefix}${item.id}.jpg?fallback=true`;
+                        const yearSuffix = item.year ? ` (${item.year})` : '';
+                        const title = (item.title || 'Unknown') + yearSuffix;
+                        const overview = item.overview || 'No overview available.';
+                        const badgeClass = isMovie ? 'movie' : 'tv';
+                        const badgeText = isMovie ? 'Movie' : 'TV Series';
+
+                        const safeTitle = escapeHtml(title);
+                        const safeOverview = escapeHtml(overview);
+
+                        card.onclick = () => handleCardClick(item, card);
+
+                        card.innerHTML = `
+                            <div class="card-image-container">
+                                <img src="${imgUrl}" alt="Poster" class="card-image" onerror="this.onerror=null; this.parentNode.innerHTML='<div class=\\'poster-placeholder\\'>${safeTitle.replace(/'/g, "&#39;")}</div>';">
+                            </div>
+                            <div class="card-content">
+                                <div class="badge ${badgeClass}">${badgeText}</div>
+                                <div class="card-title">${safeTitle}</div>
+                                <div class="card-overview" title="${safeOverview.replace(/"/g, '&quot;')}">${safeOverview}</div>
+                            </div>
+                        `;
+
+                        gridDiv.appendChild(card);
+
+                        // Automatically open modal and start searching
+                        handleCardClick(item, card);
+                    })
+                    .catch(error => {
+                        console.error('Fetch error:', error);
+                        statusDiv.className = 'error';
+                        statusDiv.textContent = 'Failed to load TMDB item: ' + error.message;
+                    });
+            }
+        });
     </script>
 </body>
 </html>

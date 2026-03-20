@@ -248,12 +248,33 @@ def test_tmdb_lookup_not_found_returns_404(monkeypatch):
     frontend = _import_frontend(monkeypatch, tmdb_module=tmdb_mod)
     frontend.app.config.update(TESTING=True)
 
+    def test_search_page_loads_with_deep_link_params(monkeypatch):
+        frontend = _import_frontend(monkeypatch)
+        frontend.app.config.update(TESTING=True)
+
+        with frontend.app.test_client() as client:
+            response = client.get("/search?tmdb_id=603&media_type=movie")
+
+        assert response.status_code == 200
+        assert b"<!DOCTYPE html>" in response.data
+
     with frontend.app.test_client() as client:
-        response = client.get("/api/tmdb/movie/603")
+        response = client.get("/api/tmdb/movie/99999999")
 
     assert response.status_code == 404
     payload = response.get_json()
     assert payload["status"] == "error"
+
+
+def test_search_page_loads_with_deep_link_params(monkeypatch):
+    frontend = _import_frontend(monkeypatch)
+    frontend.app.config.update(TESTING=True)
+
+    with frontend.app.test_client() as client:
+        response = client.get("/search?tmdb_id=603&media_type=movie")
+
+    assert response.status_code == 200
+    assert b"<!DOCTYPE html>" in response.data
 
 
 def test_scrape_status_endpoint_returns_release_summaries(monkeypatch):
