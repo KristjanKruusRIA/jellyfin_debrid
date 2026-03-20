@@ -275,7 +275,21 @@
         .release-list {
             display: flex;
             flex-direction: column;
-            gap: 5px;
+            gap: 0;
+        }
+
+        .release-header {
+            display: grid;
+            grid-template-columns: minmax(120px, 3fr) 1fr 1fr 1fr 1fr 1fr auto;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 10px;
+            color: #888;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid #4ec9b0;
+            margin-bottom: 4px;
         }
 
         .release-item {
@@ -285,8 +299,15 @@
             gap: 8px;
             background: #1e1e1e;
             padding: 8px 10px;
-            border: 1px solid #3e3e3e;
-            border-radius: 4px;
+            border-bottom: 1px solid #2e2e2e;
+        }
+
+        .release-item:last-child {
+            border-bottom: none;
+        }
+
+        .release-item:hover {
+            background: #252525;
         }
 
         .release-title {
@@ -476,7 +497,16 @@
             const panelList = document.getElementById('modal-releases');
             panelList.innerHTML = '';
 
-            // Header row could be nice but let's stick to simple columns
+            // Table header
+            const header = document.createElement('div');
+            header.className = 'release-header';
+            ['Title', 'Source', 'Size', 'Res', 'Peers', 'Cache', ''].forEach(label => {
+                const col = document.createElement('div');
+                col.textContent = label;
+                header.appendChild(col);
+            });
+            panelList.appendChild(header);
+
             results.forEach(r => {
                 const itemDiv = document.createElement('div');
                 itemDiv.className = 'release-item';
