@@ -280,7 +280,7 @@
 
         .release-header {
             display: grid;
-            grid-template-columns: minmax(120px, 3fr) 1fr 1fr 1fr 1fr 1fr auto;
+            grid-template-columns: minmax(120px, 3fr) 1fr 1fr 1fr 1fr auto;
             align-items: center;
             gap: 0;
             padding: 6px 0;
@@ -325,7 +325,7 @@
 
         .release-item {
             display: grid;
-            grid-template-columns: minmax(120px, 3fr) 1fr 1fr 1fr 1fr 1fr auto;
+            grid-template-columns: minmax(120px, 3fr) 1fr 1fr 1fr 1fr auto;
             align-items: center;
             gap: 0;
             background: #1e1e1e;
@@ -537,7 +537,6 @@
                 else if (key === 'source') { va = (a.source || '').toLowerCase(); vb = (b.source || '').toLowerCase(); }
                 else if (key === 'size_gb') { va = a.size_gb ?? 0; vb = b.size_gb ?? 0; }
                 else if (key === 'resolution') { va = parseInt(a.resolution) || 0; vb = parseInt(b.resolution) || 0; }
-                else if (key === 'seeders') { va = a.seeders ?? 0; vb = b.seeders ?? 0; }
                 else if (key === 'cached') { va = a.cached ? 1 : 0; vb = b.cached ? 1 : 0; }
                 else return 0;
                 if (va < vb) return dir === 'asc' ? -1 : 1;
@@ -564,7 +563,6 @@
                 { label: 'Source', key: 'source' },
                 { label: 'Size', key: 'size_gb' },
                 { label: 'Res', key: 'resolution' },
-                { label: 'Peers', key: 'seeders' },
                 { label: 'Cache', key: 'cached' },
                 { label: '', key: null }
             ];
@@ -597,7 +595,6 @@
 
                 const safeRes = escapeHtml(r.resolution || 'Unknown');
                 const sizeGb = r.size_gb !== undefined ? r.size_gb.toFixed(2) + ' GB' : '? GB';
-                const seeders = r.seeders !== undefined ? r.seeders : '?';
 
                 const titleDiv = document.createElement('div');
                 titleDiv.className = 'release-title';
@@ -619,11 +616,6 @@
                 resDiv.title = 'Resolution';
                 resDiv.textContent = safeRes;
                 itemDiv.appendChild(resDiv);
-
-                const seedDiv = document.createElement('div');
-                seedDiv.title = 'Seeders';
-                seedDiv.textContent = 'P: ' + seeders;
-                itemDiv.appendChild(seedDiv);
 
                 const cachedDiv = document.createElement('div');
                 if (r.cached) {
