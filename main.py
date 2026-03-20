@@ -1,5 +1,6 @@
 import os
 import sys
+import threading
 
 import ui
 
@@ -20,4 +21,9 @@ if config_dir == "":
     config_dir = "."
 
 if __name__ == "__main__":
+    if service_mode:
+        from log_viewer import start_log_viewer
+
+        log_thread = threading.Thread(target=start_log_viewer, daemon=True)
+        log_thread.start()
     ui.run(config_dir, service_mode)

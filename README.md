@@ -21,9 +21,24 @@ Based on [plex_debrid](https://github.com/itsToggle/plex_debrid)
    .\verify_setup.ps1
    ```
 
-4. Install as Windows service:
-   - Right-click `install_autostart.bat` and run as administrator
-   - Or manually start: `.\start_service.bat`
+4. Install [Servy](https://github.com/aelassas/servy) for Windows service management:
+   ```powershell
+   winget install servy
+   ```
+
+5. Register as a Windows service (run as Administrator):
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File scripts\Install-Service.ps1
+   ```
+
+6. Start the service:
+   ```bat
+   scripts\start_all_services.bat
+   ```
+
+The service auto-starts ~3 minutes after boot (delayed start + Docker wait). You can also manage it via `servy-cli start/stop/restart --name=jellyfin-debrid` or the Servy Manager GUI.
+
+Log viewer: http://localhost:7654
 
 **For detailed Windows setup instructions, see [WINDOWS_SETUP.md](WINDOWS_SETUP.md)**
 
@@ -139,7 +154,14 @@ For AIOStreams (Easynews), add both UUID and B64Config to your `config/settings.
 
 Several helper scripts and utilities are provided for setup, maintenance, and optional integrations:
 
-- Setup & service helpers (Windows): `setup_venv.ps1`, `install_autostart.bat`, `start_all_services.bat`, `stop_service.bat`, `uninstall_autostart.bat` — use these to create a virtual environment and install/run the service.
+- **Service management (Windows, requires [Servy](https://github.com/aelassas/servy)):**
+  - `scripts/Install-Service.ps1` — registers jellyfin-debrid as a Windows service (run as Administrator)
+  - `scripts/Uninstall-Service.ps1` — removes the service
+  - `scripts/start_all_services.bat` — start the service
+  - `scripts/stop_service.bat` — stop the service
+  - `scripts/restart_service.bat` — restart the service
+
+- Setup: `setup_venv.ps1` — creates the Python virtual environment.
 
 - Jellyseerr sync utilities (`jellyseer_sync/`):
   - `trakt_blacklist_sync.py` — sync watched movies from Trakt (API or JSON export) into Jellyseerr's blacklist (optional; requires Trakt credentials or exported JSON).

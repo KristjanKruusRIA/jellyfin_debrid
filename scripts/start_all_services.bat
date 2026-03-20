@@ -1,18 +1,17 @@
 @echo off
-cd /d "%~dp0\.."
-echo Starting jellyfin_debrid service in background...
-echo Logs available at: http://localhost:7654
+echo Starting jellyfin-debrid service...
+servy-cli start --name="jellyfin-debrid"
+if errorlevel 1 (
+    echo.
+    echo Failed to start. Make sure the service is installed:
+    echo   powershell -ExecutionPolicy Bypass -File "%~dp0Install-Service.ps1"
+    pause
+    exit /b 1
+)
 echo.
-
-REM Start the main service
-start /b "" venv\Scripts\pythonw.exe main.py --config-dir config -service > nul 2>&1
-
-REM Start the log viewer with python.exe (not pythonw) so it can run Flask properly
-start "Log Viewer" /min venv\Scripts\pythonw.exe log_viewer.py
-
-echo Services started!
-echo - Main service: Running in background
-echo - Log viewer: http://localhost:7654 (minimized window)
+echo Service started!
+echo Log viewer: http://localhost:7654
 echo.
-echo To stop services, run: stop_service.bat
+echo To stop:    stop_service.bat
+echo To restart: restart_service.bat
 timeout /t 3
