@@ -353,6 +353,17 @@ def _scrape(instance, query, altquery):
                 if hash_match:
                     info_hash = hash_match.group(1)
 
+            # Fallback: extract from behaviorHints.bingeGroup
+            # Format: "comet|realdebrid|<40-char-hex-hash>"
+            if not info_hash and hasattr(result, "behaviorHints"):
+                bh = result.behaviorHints
+                if hasattr(bh, "bingeGroup") and bh.bingeGroup:
+                    bg_match = regex.search(
+                        r"([a-fA-F0-9]{40})", str(bh.bingeGroup), regex.I
+                    )
+                    if bg_match:
+                        info_hash = bg_match.group(1)
+
             if not info_hash:
                 ui_print(
                     "["
@@ -432,6 +443,15 @@ def _scrape(instance, query, altquery):
                     size = 0
 
             # Fallback: try to extract from description or name if size field not available
+            # Fallback: try behaviorHints.videoSize (bytes)
+            if size == 0 and hasattr(result, "behaviorHints"):
+                bh = result.behaviorHints
+                if hasattr(bh, "videoSize") and bh.videoSize:
+                    try:
+                        size = float(bh.videoSize) / (1024 * 1024 * 1024)
+                    except Exception:
+                        pass
+
             if size == 0:
                 search_text = ""
                 if hasattr(result, "description") and result.description:

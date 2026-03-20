@@ -180,6 +180,56 @@ def test_title_strips_mkv_extension(monkeypatch):
     assert ".mkv" not in results[0].title
 
 
+def test_info_hash_from_binge_group(monkeypatch):
+    """Info hash should be extracted from behaviorHints.bingeGroup when infoHash and URL are absent."""
+    comet, logs = _import_comet(monkeypatch)
+    comet.base_url = "http://localhost"
+    comet.b64config = "test"
+
+    expected_hash = "124fe6dc4580b97f8680a513855fe3da53746882"
+    stream = _make_stream(
+        title="[RD⚡] Comet 2160p",
+        name="[RD⚡] Comet 2160p",
+        description="📄 Avatar The Way of Water 2023 2160p\n💾 68.3 GB",
+        url="https://cometnet.elfhosted.com/playback/Avatar.mkv?elfmagic=longtoken",
+        behaviorHints=SimpleNamespace(
+            bingeGroup="comet|realdebrid|" + expected_hash,
+            filename="Avatar The Way of Water 2023 2160p BluRay Remux.mkv",
+            videoSize=73373811211,
+        ),
+    )
+    response = SimpleNamespace(streams=[stream])
+    monkeypatch.setattr(comet, "get", lambda url: response)
+
+    results = comet.scrape("tt1234567", "tt1234567")
+    assert len(results) == 1
+    assert results[0].files == [expected_hash]
+
+
+def test_size_from_video_size(monkeypatch):
+    """Size should be extracted from behaviorHints.videoSize when size field is absent."""
+    comet, logs = _import_comet(monkeypatch)
+    comet.base_url = "http://localhost"
+    comet.b64config = "test"
+
+    stream = _make_stream(
+        infoHash="f" * 40,
+        title="[RD⚡] Comet 2160p",
+        name="[RD⚡] Comet 2160p",
+        behaviorHints=SimpleNamespace(
+            filename="Movie.2026.2160p.mkv",
+            videoSize=73373811211,
+        ),
+    )
+    response = SimpleNamespace(streams=[stream])
+    monkeypatch.setattr(comet, "get", lambda url: response)
+
+    results = comet.scrape("tt1234567", "tt1234567")
+    assert len(results) == 1
+    # 73373811211 bytes ≈ 68.3 GB
+    assert abs(results[0].size - 68.3) < 0.5
+
+
 def test_instance_title_from_behavior_hints(monkeypatch):
     """create_instance() scrape extracts title from behaviorHints.filename."""
     comet, logs = _import_comet(monkeypatch)
