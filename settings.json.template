@@ -14,7 +14,6 @@
     "Jellyfin API Key": "${JELLYFIN_API_KEY}",
     "Jellyfin server address": "${JELLYFIN_BASE_URL}",
     "Sources": [
-        "torrentio",
         "aiostreams",
         "comet"
     ],
@@ -150,7 +149,6 @@
             "."
         ]
     ],
-    "Torrentio Scraper Parameters": "https://torrentio.strem.fun/qualityfilter=threed,720p,480p,scr,cam|limit=5/manifest.json",
     "AIOStreams UUID": "${AIOSTREAMS_UUID}",
     "AIOStreams B64Config": "${AIOSTREAMS_B64CONFIG}",
     "Comet Base URL": "https://cometnet.elfhosted.com",

@@ -1,16 +1,17 @@
 import sys
 import time
 
-# import child modules
-# FIXED: Only import scrapers that exist
-from scraper.services import torrentio
+from ui.ui_print import ui_print, ui_settings
 
+# import child modules
 try:
     from scraper.services import aiostreams
 
     aiostreams_available = True
 except Exception as e:
-    print(f"Warning: Could not import aiostreams: {e}")
+    ui_print(
+        f"[scraper] warning: could not import aiostreams: {e}", debug=ui_settings.debug
+    )
     aiostreams_available = False
     aiostreams = None  # type: ignore[assignment]
 
@@ -19,13 +20,13 @@ try:
 
     comet_available = True
 except Exception as e:
-    print(f"Warning: Could not import comet: {e}")
+    ui_print(f"[scraper] warning: could not import comet: {e}", debug=ui_settings.debug)
     comet_available = False
     comet = None  # type: ignore[assignment]
 
 # Build scrapers list and active_default based on available scrapers
-scrapers = [torrentio]
-active_default = ["torrentio"]
+scrapers = []
+active_default = []
 
 if aiostreams_available:
     scrapers.append(aiostreams)
@@ -50,6 +51,31 @@ def __subclasses__():
 
 active = active_default
 overwrite: list = []
+
+
+def _supported_services_map():
+    cls = sys.modules[__name__]
+    return {service.name: service for service in cls.__subclasses__()}
+
+
+def _supported_sources_text(services_by_name):
+    return ", ".join(sorted(services_by_name.keys()))
+
+
+def _warn_unsupported_source(servicename, supported_sources):
+    ui_print(
+        "[scraper] warning: ignoring unsupported source "
+        + f"'{servicename}'"
+        + " in Sources config. Supported sources: "
+        + supported_sources
+    )
+
+
+def _error_no_supported_sources(supported_sources):
+    ui_print(
+        "[scraper] error: no supported sources found in Sources config. "
+        "Please update your settings. Supported sources: " + supported_sources
+    )
 
 
 def setup(cls, new=False):
@@ -96,24 +122,34 @@ def setup(cls, new=False):
 
 
 def get():
-    cls = sys.modules[__name__]
+    services_by_name = _supported_services_map()
+    supported_sources = _supported_sources_text(services_by_name)
     activeservices = []
     for servicename in active:
-        for service in cls.__subclasses__():
-            if service.name == servicename:
-                activeservices += [service]
+        service = services_by_name.get(servicename)
+        if service is None:
+            _warn_unsupported_source(servicename, supported_sources)
+            continue
+        activeservices += [service]
+    if active and activeservices == []:
+        _error_no_supported_sources(supported_sources)
     return activeservices
 
 
 def sequential():
     global overwrite
-    cls = sys.modules[__name__]
+    services_by_name = _supported_services_map()
+    supported_sources = _supported_sources_text(services_by_name)
     activeservices = []
     for sequence in overwrite:
         activesequence = []
         for servicename in sequence:
-            for service in cls.__subclasses__():
-                if service.name == servicename:
-                    activesequence += [service]
+            service = services_by_name.get(servicename)
+            if service is None:
+                _warn_unsupported_source(servicename, supported_sources)
+                continue
+            activesequence += [service]
+        if sequence and activesequence == []:
+            _error_no_supported_sources(supported_sources)
         activeservices += [activesequence]
     return activeservices

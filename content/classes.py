@@ -1402,7 +1402,7 @@ class media:
                         i = 0
                         while len(self.Releases) == 0 and i <= retries:
                             for k, title in enumerate(self.alternate_titles):
-                                # Use IMDB or TMDB ID in scraper pattern (prefer IMDB for Torrentio)
+                                # Use IMDB or TMDB ID in scraper pattern (prefer IMDB for broader scraper compatibility)
                                 id_pattern = imdbID if imdbID != "." else tmdbID
                                 self.Releases += scraper.scrape(
                                     self.query(title).replace(
@@ -1413,23 +1413,12 @@ class media:
                                     + id_pattern
                                     + ")?",
                                 )
-                                # Respect Torrentio's configured limit when deciding to
-                                # run the additional IMDB scrape so we don't exceed it
-                                overall_limit = None
-                                try:
-                                    import scraper.services.torrentio as _torrentio
-
-                                    m_lim = regex.search(
-                                        r"limit=([0-9]+)", _torrentio.default_opts
-                                    )
-                                    if m_lim:
-                                        overall_limit = int(m_lim.group(1))
-                                except Exception:
-                                    overall_limit = None
+                                # Threshold for deciding whether to run an additional
+                                # IMDB-based scrape (keeps results manageable)
+                                overall_limit = 20
 
                                 if (
-                                    len(self.Releases)
-                                    < (overall_limit if overall_limit else 20)
+                                    len(self.Releases) < overall_limit
                                     and k == 0
                                     and not imdb_scraped
                                 ):

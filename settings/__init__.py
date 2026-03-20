@@ -536,15 +536,6 @@ settings_list = [
                 help="In this setting you can specify a character or a string that should be replaced by nothing, some other character or a string. You can enter regular expressions using {{regex}}.",
             ),
             setting(
-                "Torrentio Scraper Parameters",
-                "Please enter a valid torrentio manifest url: ",
-                _lazy_scraper_services.torrentio,
-                "default_opts",
-                entry="parameter",
-                help='This settings lets you control the torrentio scraping parameters. Visit "https://torrentio.strem.fun/configure" and configure your settings. Dont choose a debrid service. The "manifest url" will be copied to your clipboard.',
-                hidden=True,
-            ),
-            setting(
                 "AIOStreams UUID",
                 "Please enter your AIOStreams UUID: ",
                 _lazy_scraper_services.aiostreams,

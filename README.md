@@ -56,7 +56,7 @@ This workflow enables near-instant availability for cached content and robust, c
 - Fast, configurable scanning: default polling interval is every 5 seconds (configurable) to pick up new Jellyseerr requests quickly.
 - Sources:
   - Primary: Jellyseerr (requests/watchlists). Overseerr is supported as well.
-  - Scrapers: Torrentio, AIOStreams (for Easynews / direct HTTP sources), and Comet (for debrid-cached torrents).
+  - Scrapers: AIOStreams (for Easynews / direct HTTP sources) and Comet (for debrid-cached torrents).
 - Debrid integration: supports RealDebrid.
 - Download robustness: supports direct HTTP downloads and debrid APIs, temp-file downloads with progress reporting, ranged retries for partial responses, and size validation against expected size.
 - Filenames and organization: sanitizes filenames for Windows, preserves extensions (including fixes for certain Easynews URL cases), and organizes files into:
@@ -81,7 +81,7 @@ Below is a minimal example to get you started with Jellyfin + Jellyseerr + RealD
   "Real Debrid API Key": "YOUR_REALDEBRID_API_KEY",
   "Jellyfin server address": "http://jellyfin.local:8096",
   "Jellyfin API Key": "YOUR_JELLYFIN_API_KEY",
-  "Sources": ["torrentio", "aiostreams", "comet"],
+  "Sources": ["aiostreams", "comet"],
   "Versions": [
     [
       "4k",

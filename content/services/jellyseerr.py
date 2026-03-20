@@ -315,7 +315,7 @@ class movie(classes.media):
                         if imdb_id_str not in self.EID:
                             self.EID.insert(
                                 0, imdb_id_str
-                            )  # Add IMDB at beginning since Torrentio needs it
+                            )  # Add IMDB at beginning for broader scraper compatibility
             except Exception as e:
                 ui_print(
                     f"[jellyseerr] error fetching movie details: {str(e)}",
@@ -359,7 +359,7 @@ class show(classes.media):
                         if imdb_id_str not in self.EID:
                             self.EID.insert(
                                 0, imdb_id_str
-                            )  # Add IMDB at beginning since Torrentio needs it
+                            )  # Add IMDB at beginning for broader scraper compatibility
                     # Extract seasons from TV details if available
                     if hasattr(tv_details, "seasons") and tv_details.seasons:
                         seasons_from_api = list(tv_details.seasons)
