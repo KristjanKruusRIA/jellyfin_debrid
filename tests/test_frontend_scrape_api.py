@@ -144,6 +144,118 @@ def test_create_scrape_request_returns_job_id_and_accepted_state(monkeypatch):
     assert payload["error"] is None
 
 
+def test_tmdb_lookup_movie_returns_normalized_result(monkeypatch):
+    tmdb_mod = _module(
+        "content.services.tmdb",
+        search=lambda *_args, **_kwargs: {"results": [], "error": None},
+        get_movie_details=lambda _tmdb_id: {
+            "id": 603,
+            "title": "The Matrix",
+            "year": "1999",
+            "release_date": "1999-03-30",
+            "imdb_id": "tt0133093",
+            "external_ids": {"imdb_id": "tt0133093"},
+            "poster_path": "/f89U3ADr1oiB1s9GkdPOEpXUk5H.jpg",
+            "overview": "A computer hacker learns about the true nature of reality.",
+        },
+        get_show_details=lambda _tmdb_id: {},
+    )
+
+    frontend = _import_frontend(monkeypatch, tmdb_module=tmdb_mod)
+    frontend.app.config.update(TESTING=True)
+
+    with frontend.app.test_client() as client:
+        response = client.get("/api/tmdb/movie/603")
+
+    assert response.status_code == 200
+    assert response.get_json() == {
+        "id": 603,
+        "title": "The Matrix",
+        "year": "1999",
+        "media_type": "movie",
+        "poster_path": "/f89U3ADr1oiB1s9GkdPOEpXUk5H.jpg",
+        "overview": "A computer hacker learns about the true nature of reality.",
+    }
+
+
+def test_tmdb_lookup_tv_returns_normalized_result(monkeypatch):
+    tmdb_mod = _module(
+        "content.services.tmdb",
+        search=lambda *_args, **_kwargs: {"results": [], "error": None},
+        get_movie_details=lambda _tmdb_id: {},
+        get_show_details=lambda _tmdb_id: {
+            "id": 1399,
+            "title": "Game of Thrones",
+            "year": "2011",
+            "first_air_date": "2011-04-17",
+            "imdb_id": "tt0944947",
+            "external_ids": {"imdb_id": "tt0944947"},
+            "seasons": [{"season_number": 1}],
+            "poster_path": "/1XS1oqL89opfnbLl8WnZY1O1uJx.jpg",
+            "overview": "Seven noble families fight for control of Westeros.",
+        },
+    )
+
+    frontend = _import_frontend(monkeypatch, tmdb_module=tmdb_mod)
+    frontend.app.config.update(TESTING=True)
+
+    with frontend.app.test_client() as client:
+        response = client.get("/api/tmdb/tv/1399")
+
+    assert response.status_code == 200
+    assert response.get_json() == {
+        "id": 1399,
+        "title": "Game of Thrones",
+        "year": "2011",
+        "media_type": "tv",
+        "poster_path": "/1XS1oqL89opfnbLl8WnZY1O1uJx.jpg",
+        "overview": "Seven noble families fight for control of Westeros.",
+    }
+
+
+def test_tmdb_lookup_invalid_media_type_returns_400(monkeypatch):
+    frontend = _import_frontend(monkeypatch)
+    frontend.app.config.update(TESTING=True)
+
+    with frontend.app.test_client() as client:
+        response = client.get("/api/tmdb/invalid/603")
+
+    assert response.status_code == 400
+    payload = response.get_json()
+    assert payload["status"] == "error"
+
+
+def test_tmdb_lookup_invalid_tmdb_id_returns_400(monkeypatch):
+    frontend = _import_frontend(monkeypatch)
+    frontend.app.config.update(TESTING=True)
+
+    with frontend.app.test_client() as client:
+        response = client.get("/api/tmdb/movie/not-a-number")
+
+    assert response.status_code == 400
+    payload = response.get_json()
+    assert payload["status"] == "error"
+
+
+def test_tmdb_lookup_not_found_returns_404(monkeypatch):
+    tmdb_mod = _module(
+        "content.services.tmdb",
+        search=lambda *_args, **_kwargs: {"results": [], "error": None},
+        get_movie_details=lambda _tmdb_id: {},
+        get_show_details=lambda _tmdb_id: {},
+    )
+
+    frontend = _import_frontend(monkeypatch, tmdb_module=tmdb_mod)
+    frontend.app.config.update(TESTING=True)
+
+    with frontend.app.test_client() as client:
+        response = client.get("/api/tmdb/movie/603")
+
+    assert response.status_code == 404
+    payload = response.get_json()
+    assert payload["status"] == "error"
+
+
 def test_scrape_status_endpoint_returns_release_summaries(monkeypatch):
     frontend = _import_frontend(monkeypatch)
     frontend.app.config.update(TESTING=True)

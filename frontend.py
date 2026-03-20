@@ -148,6 +148,48 @@ def search_api():
         )
 
 
+@app.route("/api/tmdb/<media_type>/<tmdb_id>", methods=["GET"])
+def tmdb_lookup_api(media_type, tmdb_id):
+    if media_type not in ("movie", "tv"):
+        return _json_error(
+            "Invalid media_type. Expected one of: movie, tv",
+            400,
+        )
+
+    try:
+        parsed_tmdb_id = int(tmdb_id)
+    except (TypeError, ValueError):
+        return _json_error("Invalid tmdb_id. Expected an integer", 400)
+
+    try:
+        from content.services import tmdb
+
+        if media_type == "movie":
+            details = tmdb.get_movie_details(parsed_tmdb_id)
+        else:
+            details = tmdb.get_show_details(parsed_tmdb_id)
+
+        if not details:
+            return _json_error("TMDB item not found", 404)
+
+        year = details.get("year")
+        result = {
+            "id": details.get("id", parsed_tmdb_id),
+            "title": details.get("title", ""),
+            "year": "" if year is None else str(year),
+            "media_type": media_type,
+            "poster_path": details.get("poster_path"),
+            "overview": details.get("overview", ""),
+        }
+        return jsonify(result)
+    except Exception as e:
+        _log_frontend(
+            f"tmdb lookup failed for media_type={media_type}, tmdb_id={tmdb_id}:"
+            f" {str(e)}"
+        )
+        return _json_error("TMDB lookup service unavailable", 500)
+
+
 @app.route("/api/scrapes", methods=["POST"])
 def create_scrape():
     try:
