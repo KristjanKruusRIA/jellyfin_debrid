@@ -81,6 +81,54 @@ def download_file(url, filename, is_show=False, expected_size=None, element=None
         with session.get(url, stream=True, timeout=30) as response:
             content_length = response.headers.get("content-length", "None")
             response.raise_for_status()
+
+            # Ensure filename has a video extension; infer from headers if missing
+            video_exts = {
+                ".mkv",
+                ".mp4",
+                ".avi",
+                ".mov",
+                ".flv",
+                ".wmv",
+                ".webm",
+                ".m4v",
+                ".mpg",
+                ".mpeg",
+                ".ts",
+                ".m2ts",
+                ".mts",
+                ".vob",
+            }
+            _, existing_ext = os.path.splitext(filename)
+            if existing_ext.lower() not in video_exts:
+                inferred_ext = ""
+                # Try Content-Disposition header first
+                cd = response.headers.get("content-disposition", "")
+                if cd:
+                    cd_match = re.search(r'filename[^;=\n]*=(["\']?)(.+?)\1(?:;|$)', cd)
+                    if cd_match:
+                        _, cd_ext = os.path.splitext(cd_match.group(2).strip())
+                        if cd_ext.lower() in video_exts:
+                            inferred_ext = cd_ext
+                # Fallback: Content-Type header
+                if not inferred_ext:
+                    ct = response.headers.get("content-type", "")
+                    ct_map = {
+                        "video/x-matroska": ".mkv",
+                        "video/mp4": ".mp4",
+                        "video/x-msvideo": ".avi",
+                        "video/webm": ".webm",
+                        "video/quicktime": ".mov",
+                        "video/mp2t": ".ts",
+                    }
+                    for mime, ext in ct_map.items():
+                        if mime in ct:
+                            inferred_ext = ext
+                            break
+                if inferred_ext:
+                    filename = filename + inferred_ext
+                    temp_file = os.path.join(temp_download_path, filename)
+
             total_size = (
                 int(content_length)
                 if content_length and content_length.isdigit()
