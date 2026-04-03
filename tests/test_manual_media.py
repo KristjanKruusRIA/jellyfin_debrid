@@ -193,3 +193,64 @@ def test_manual_media_hydration_handles_missing_external_ids_gracefully(monkeypa
     assert show.EID["tmdb"] == "34"
     assert len(show.Seasons) == 1
     assert len(show.Seasons[0].Episodes) == 1
+
+
+def test_build_manual_season_has_required_fields_and_query(monkeypatch):
+    manual_media = _import_manual_media(monkeypatch)
+
+    show_details = {
+        "id": 100,
+        "title": "Dark",
+        "first_air_date": "2017-12-01",
+        "imdb_id": "tt5753856",
+        "seasons": [
+            {
+                "season_number": 1,
+                "episode_count": 2,
+                "air_date": "2017-12-01",
+            },
+            {
+                "season_number": 2,
+                "episode_count": 3,
+                "air_date": "2019-06-21",
+            },
+        ],
+    }
+
+    season = manual_media.build_season(show_details, 2)
+
+    assert season.type == "season"
+    assert season.index == 2
+    assert season.parentTitle == "Dark"
+    assert season.parentYear == 2017
+    assert len(season.Episodes) == 3
+    assert season.query() == "dark.S02."
+
+    episode = season.Episodes[0]
+    assert episode.type == "episode"
+    assert episode.parentIndex == 2
+    assert episode.grandparentTitle == "Dark"
+
+
+def test_build_manual_season_falls_back_when_season_not_found(monkeypatch):
+    manual_media = _import_manual_media(monkeypatch)
+
+    show_details = {
+        "id": 100,
+        "title": "Dark",
+        "first_air_date": "2017-12-01",
+        "seasons": [
+            {
+                "season_number": 1,
+                "episode_count": 2,
+                "air_date": "2017-12-01",
+            }
+        ],
+    }
+
+    season = manual_media.build_season(show_details, 99)
+
+    assert season.type == "season"
+    assert season.index == 99
+    assert season.parentTitle == "Dark"
+    assert len(season.Episodes) == 0

@@ -293,3 +293,43 @@ def test_tmdb_show_details_include_seasons_or_required_fields(monkeypatch):
 
     assert parsed.path == "/3/tv/100"
     assert query["append_to_response"] == ["external_ids"]
+
+
+def test_tmdb_season_details_fetches_episode_list(monkeypatch):
+    payload = {
+        "season_number": 2,
+        "air_date": "2019-06-21",
+        "episodes": [
+            {"episode_number": 1, "air_date": "2019-06-21"},
+            {"episode_number": 2, "air_date": "2019-06-28"},
+        ],
+    }
+
+    tmdb, _ = _import_tmdb(
+        monkeypatch,
+        responder=lambda _url, _timeout: _make_response(payload),
+    )
+    tmdb.api_key = "abc123"
+
+    details = tmdb.get_season_details(100, 2)
+
+    assert details["season_number"] == 2
+    assert details["episode_count"] == 2
+    assert len(details["episodes"]) == 2
+    assert details["episodes"][0]["episode_number"] == 1
+    assert details["episodes"][1]["air_date"] == "2019-06-28"
+
+    called_url = tmdb.session.calls[0]["url"]
+    parsed = urlparse(called_url)
+    assert parsed.path == "/3/tv/100/season/2"
+
+
+def test_tmdb_season_details_returns_empty_on_failure(monkeypatch):
+    def failing_responder(_url, _timeout):
+        raise RuntimeError("network error")
+
+    tmdb, _ = _import_tmdb(monkeypatch, responder=failing_responder)
+    tmdb.api_key = "abc123"
+
+    details = tmdb.get_season_details(100, 1)
+    assert details == {}

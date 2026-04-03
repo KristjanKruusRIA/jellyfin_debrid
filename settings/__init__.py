@@ -5,6 +5,7 @@ import debrid
 import releases
 import scraper
 from content.services import tmdb as tmdb
+from content.services import tvdb as tvdb
 from ui import ui_settings
 
 
@@ -643,6 +644,22 @@ settings_list = [
                 "api_key",
                 hidden=True,
                 help="Get a free TMDB API key from https://developer.themoviedb.org",
+            ),
+            setting(
+                "TVDB API Key",
+                "Please enter your TVDB API Key: ",
+                tvdb,
+                "api_key",
+                hidden=True,
+                help="Get a free TVDB API key from https://thetvdb.com",
+            ),
+            setting(
+                "TVDB PIN",
+                "Please enter your TVDB PIN (optional): ",
+                tvdb,
+                "pin",
+                hidden=True,
+                help="TVDB subscriber PIN (optional)",
             ),
         ],
     ],

@@ -125,6 +125,37 @@ def _iter_episode_numbers(season: dict[str, Any]) -> list[dict[str, Any]]:
     ]
 
 
+def _build_single_season(
+    show: SimpleNamespace, season_data: dict[str, Any]
+) -> classes.media:
+    season_number = _to_int(season_data.get("season_number"), default=0)
+
+    season = SimpleNamespace()
+    season.type = "season"
+    season.index = season_number
+    season.parentEID = show.EID
+    season.parentTitle = show.title
+    season.parentYear = show.year
+    season.Episodes = []
+
+    for episode_data in _iter_episode_numbers(season_data):
+        episode = SimpleNamespace()
+        episode.type = "episode"
+        episode.index = _to_int(episode_data.get("episode_number"), default=1)
+        episode.parentIndex = season_number
+        episode.grandparentEID = show.EID
+        episode.grandparentTitle = show.title
+        episode.grandparentYear = show.year
+        episode.originallyAvailableAt = _safe_date(
+            episode_data.get("air_date")
+            or season_data.get("air_date")
+            or show.originallyAvailableAt
+        )
+        season.Episodes.append(classes.media(episode))
+
+    return classes.media(season)
+
+
 def build_show(tmdb_details: dict[str, Any]) -> classes.media:
     title = tmdb_details.get("title") or tmdb_details.get("name") or ""
     first_air_date = _safe_date(tmdb_details.get("first_air_date"))
@@ -149,30 +180,7 @@ def build_show(tmdb_details: dict[str, Any]) -> classes.media:
         if season_number <= 0:
             continue
 
-        season = SimpleNamespace()
-        season.type = "season"
-        season.index = season_number
-        season.parentEID = show.EID
-        season.parentTitle = show.title
-        season.parentYear = show.year
-        season.Episodes = []
-
-        for episode_data in _iter_episode_numbers(season_data):
-            episode = SimpleNamespace()
-            episode.type = "episode"
-            episode.index = _to_int(episode_data.get("episode_number"), default=1)
-            episode.parentIndex = season_number
-            episode.grandparentEID = show.EID
-            episode.grandparentTitle = show.title
-            episode.grandparentYear = show.year
-            episode.originallyAvailableAt = _safe_date(
-                episode_data.get("air_date")
-                or season_data.get("air_date")
-                or show.originallyAvailableAt
-            )
-            season.Episodes.append(classes.media(episode))
-
-        show.Seasons.append(classes.media(season))
+        show.Seasons.append(_build_single_season(show, season_data))
 
     ui_print(
         f"[manual_media] built show context for '{show.title}' with "
@@ -180,3 +188,97 @@ def build_show(tmdb_details: dict[str, Any]) -> classes.media:
         debug=ui_settings.debug,
     )
     return classes.media(show)
+
+
+def build_season(tmdb_details: dict[str, Any], season_number: int) -> classes.media:
+    title = tmdb_details.get("title") or tmdb_details.get("name") or ""
+    first_air_date = _safe_date(tmdb_details.get("first_air_date"))
+
+    show = SimpleNamespace()
+    show.type = "show"
+    show.title = title
+    show.year = _extract_year(first_air_date)
+    show.EID = _build_eid(tmdb_details)
+    show.originallyAvailableAt = first_air_date
+
+    seasons = tmdb_details.get("seasons")
+    if not isinstance(seasons, list):
+        seasons = []
+
+    season_data = None
+    for s in seasons:
+        if isinstance(s, dict) and _to_int(s.get("season_number")) == season_number:
+            season_data = s
+            break
+
+    if season_data is not None:
+        season = _build_single_season(show, season_data)
+    else:
+        ns = SimpleNamespace()
+        ns.type = "season"
+        ns.index = season_number
+        ns.parentEID = show.EID
+        ns.parentTitle = show.title
+        ns.parentYear = show.year
+        ns.Episodes = []
+        season = classes.media(ns)
+
+    ui_print(
+        f"[manual_media] built season {season_number} context for '{show.title}'"
+        f" with {len(getattr(season, 'Episodes', []))} episodes",
+        debug=ui_settings.debug,
+    )
+    return season
+
+
+def build_episode(
+    tmdb_details: dict[str, Any], season_number: int, episode_number: int
+) -> classes.media:
+    title = tmdb_details.get("title") or tmdb_details.get("name") or ""
+    first_air_date = _safe_date(tmdb_details.get("first_air_date"))
+
+    show = SimpleNamespace()
+    show.type = "show"
+    show.title = title
+    show.year = _extract_year(first_air_date)
+    show.EID = _build_eid(tmdb_details)
+    show.originallyAvailableAt = first_air_date
+
+    seasons = tmdb_details.get("seasons")
+    if not isinstance(seasons, list):
+        seasons = []
+
+    season_data = None
+    for s in seasons:
+        if isinstance(s, dict) and _to_int(s.get("season_number")) == season_number:
+            season_data = s
+            break
+
+    episode = SimpleNamespace()
+    episode.type = "episode"
+    episode.index = episode_number
+    episode.parentIndex = season_number
+    episode.grandparentEID = show.EID
+    episode.grandparentTitle = show.title
+    episode.grandparentYear = show.year
+
+    air_date = first_air_date
+    if season_data:
+        for ep in season_data.get("episodes", []):
+            if (
+                isinstance(ep, dict)
+                and _to_int(ep.get("episode_number")) == episode_number
+            ):
+                air_date = _safe_date(ep.get("air_date")) or air_date
+                break
+        if not air_date:
+            air_date = _safe_date(season_data.get("air_date")) or first_air_date
+
+    episode.originallyAvailableAt = air_date
+
+    ui_print(
+        f"[manual_media] built S{season_number:02d}E{episode_number:02d} context for"
+        f" '{show.title}'",
+        debug=ui_settings.debug,
+    )
+    return classes.media(episode)

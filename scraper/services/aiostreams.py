@@ -70,7 +70,7 @@ def setup(cls, new=False):
             active += [cls.name]
 
 
-def scrape(query, altquery):
+def scrape(query, altquery, imdb_id=None):
     from scraper.services import active
 
     if not uuid or not b64config:
@@ -111,19 +111,35 @@ def scrape(query, altquery):
             s = 1
         # Keep e as None if not specified - will query for season pack
 
-    # Get IMDB ID from query or resolve via TMDB
+    # Get IMDB ID from provided value, altquery, or resolve via TMDB
     plain_text = ""
-    if regex.search(r"(tt[0-9]+)", altquery, regex.I):
+    if imdb_id:
+        query = imdb_id
+    elif regex.search(r"(tt[0-9]+)", altquery, regex.I):
         query = regex.search(r"(tt[0-9]+)", altquery, regex.I).group()
     else:
         plain_text = copy.deepcopy(query)
         from content.services import tmdb
 
-        imdb_id = tmdb.resolve_imdb_id(query, media_type=type)
-        if not imdb_id:
+        resolved_imdb_id = tmdb.resolve_imdb_id(query, media_type=type)
+        if not resolved_imdb_id:
             ui_print("[aiostreams] error: could not find IMDB ID via TMDB")
             return scraped_releases
-        query = imdb_id
+        query = resolved_imdb_id
+
+    def _try_url(url):
+        resp = get(url)
+        if not resp or not hasattr(resp, "streams"):
+            try:
+                if resp is not None:
+                    ui_print("[aiostreams] error: " + str(resp))
+            except Exception:
+                ui_print("[aiostreams] error: unknown error")
+            return None
+        if len(resp.streams) == 1 and not hasattr(resp.streams[0], "title"):
+            ui_print("[aiostreams] error: no streams found or API error")
+            return None
+        return resp
 
     # Query the AIOStreams service
     if type == "movie":
@@ -137,12 +153,8 @@ def scrape(query, altquery):
             + query
             + ".json"
         )
-        response = get(url)
-        if (
-            not response
-            or not hasattr(response, "streams")
-            or len(response.streams) == 0
-        ):
+        response = _try_url(url)
+        if response is None:
             type = "show"
             s = 1
             e = 1
@@ -156,9 +168,9 @@ def scrape(query, altquery):
                 query = imdb_id
 
     if type == "show":
-        # If episode number specified, query specific episode
+        urls = []
         if e is not None and int(e) > 0:
-            url = (
+            urls.append(
                 base_url
                 + "/stremio/"
                 + uuid
@@ -172,29 +184,36 @@ def scrape(query, altquery):
                 + str(int(e))
                 + ".json"
             )
-        else:
-            # No episode specified - query for season pack
-            url = (
-                base_url
-                + "/stremio/"
-                + uuid
-                + "/"
-                + b64config
-                + "/stream/series/"
-                + query
-                + ".json"
-            )
-        response = get(url)
+        urls.append(
+            base_url
+            + "/stremio/"
+            + uuid
+            + "/"
+            + b64config
+            + "/stream/series/"
+            + query
+            + ":"
+            + str(int(s))
+            + ".json"
+        )
+        urls.append(
+            base_url
+            + "/stremio/"
+            + uuid
+            + "/"
+            + b64config
+            + "/stream/series/"
+            + query
+            + ".json"
+        )
 
-    if not response or not hasattr(response, "streams"):
-        try:
+        response = None
+        for url in urls:
+            response = _try_url(url)
             if response is not None:
-                ui_print("[aiostreams] error: " + str(response))
-        except Exception:
-            ui_print("[aiostreams] error: unknown error")
-        return scraped_releases
-    elif len(response.streams) == 1 and not hasattr(response.streams[0], "title"):
-        ui_print("[aiostreams] error: no streams found or API error")
+                break
+
+    if response is None:
         return scraped_releases
 
     # Parse the stream results - AIOStreams returns direct download URLs

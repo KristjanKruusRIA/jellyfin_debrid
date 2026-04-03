@@ -60,6 +60,7 @@ def _import_frontend(
             "content.services.manual_media",
             build_movie=lambda _details: _FakeMedia("movie.query"),
             build_show=lambda _details: _FakeMedia("show.query"),
+            build_season=lambda _details, _season: _FakeMedia("season.query"),
         )
 
     if scraper_module is None:
@@ -72,10 +73,16 @@ def _import_frontend(
             download=lambda *_args, **_kwargs: None,
         )
 
+    tvdb_module = _module(
+        "content.services.tvdb",
+        get_series_seasons=lambda _tvdb_id: [],
+    )
+
     services_mod = _module(
         "content.services",
         tmdb=tmdb_module,
         manual_media=manual_media_module,
+        tvdb=tvdb_module,
     )
 
     monkeypatch.setitem(sys.modules, "content.services", services_mod)
@@ -83,6 +90,7 @@ def _import_frontend(
     monkeypatch.setitem(
         sys.modules, "content.services.manual_media", manual_media_module
     )
+    monkeypatch.setitem(sys.modules, "content.services.tvdb", tvdb_module)
     monkeypatch.setitem(sys.modules, "scraper", scraper_module)
     monkeypatch.setitem(sys.modules, "debrid", debrid_module)
 
@@ -210,6 +218,7 @@ def test_tmdb_lookup_tv_returns_normalized_result(monkeypatch):
         "media_type": "tv",
         "poster_path": "/1XS1oqL89opfnbLl8WnZY1O1uJx.jpg",
         "overview": "Seven noble families fight for control of Westeros.",
+        "seasons": [1],
     }
 
 
@@ -306,7 +315,13 @@ def test_scrape_status_endpoint_returns_release_summaries(monkeypatch):
     payload = response.get_json()
     assert payload["status"] == "complete"
     assert payload["count"] == 1
-    assert payload["media"] == {"title": "Fight Club", "type": "movie", "tmdb_id": 550}
+    assert payload["media"] == {
+        "title": "Fight Club",
+        "type": "movie",
+        "tmdb_id": 550,
+        "season_number": None,
+        "episode_number": None,
+    }
     assert payload["results"][0]["release_id"] == "0"
     assert "download" not in payload["results"][0]
     assert "hash" not in payload["results"][0]

@@ -204,7 +204,7 @@
             border: 1px solid #4ec9b0;
             border-radius: 8px;
             width: 90%;
-            max-width: 960px;
+            max-width: 1600px;
             max-height: 80vh;
             display: flex;
             flex-direction: column;
@@ -517,6 +517,10 @@
                 <button class="modal-close" onclick="closeModal()">&times;</button>
             </div>
             <div class="modal-body">
+                <div id="modal-seasons" style="display:none;">
+                    <div style="font-size:13px; color:#a0a0a0; margin-bottom:12px;">Select a season to search for:</div>
+                    <div id="season-list" style="display:flex; flex-direction:column; gap:8px;"></div>
+                </div>
                 <div id="modal-status" class="release-status"><div class="spinner"></div>Searching for releases...</div>
                 <div id="modal-releases" class="release-list"></div>
             </div>
@@ -536,30 +540,23 @@
             document.getElementById('release-modal').classList.remove('active');
             document.querySelectorAll('.card.selected').forEach(c => c.classList.remove('selected'));
             activeJobId = null;
+            // Reset modal state
+            document.getElementById('modal-seasons').style.display = 'none';
+            document.getElementById('modal-status').style.display = 'none';
+            document.getElementById('modal-releases').innerHTML = '';
+            document.getElementById('season-list').innerHTML = '';
         }
 
         function collapseAllPanels() {
             closeModal();
         }
 
-        function handleCardClick(item, cardElement) {
-            if (cardElement.classList.contains('selected')) {
-                closeModal();
-                return;
-            }
-
-            document.querySelectorAll('.card.selected').forEach(c => c.classList.remove('selected'));
-            cardElement.classList.add('selected');
-
-            const yearSuffix = item.year ? ' (' + item.year + ')' : '';
-            const titleText = (item.title || 'Unknown') + yearSuffix;
-
-            const modal = document.getElementById('release-modal');
-            const modalTitle = document.getElementById('modal-title');
+        function startScrape(item, seasonNumber, episodeNumber) {
             const status = document.getElementById('modal-status');
             const list = document.getElementById('modal-releases');
+            const seasonsDiv = document.getElementById('modal-seasons');
 
-            modalTitle.textContent = titleText;
+            seasonsDiv.style.display = 'none';
             status.style.display = 'flex';
             status.className = 'release-status';
             status.innerHTML = '';
@@ -570,12 +567,19 @@
             txt.textContent = 'Searching for releases...';
             status.appendChild(txt);
             list.innerHTML = '';
-            modal.classList.add('active');
+
+            const body = { tmdb_id: item.id, media_type: item.media_type };
+            if (seasonNumber !== null && seasonNumber !== undefined) {
+                body.season_number = seasonNumber;
+            }
+            if (episodeNumber !== null && episodeNumber !== undefined) {
+                body.episode_number = episodeNumber;
+            }
 
             fetch('/api/scrapes', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ tmdb_id: item.id, media_type: item.media_type })
+                body: JSON.stringify(body)
             })
             .then(res => {
                 if (!res.ok) throw new Error('API error starting scrape');
@@ -590,6 +594,178 @@
                 status.className = 'release-status error';
                 status.textContent = 'Scrape failed: ' + err.message;
             });
+        }
+
+        function showSeasonPicker(item) {
+            const modal = document.getElementById('release-modal');
+            const modalTitle = document.getElementById('modal-title');
+            const status = document.getElementById('modal-status');
+            const seasonsDiv = document.getElementById('modal-seasons');
+            const seasonList = document.getElementById('season-list');
+            const list = document.getElementById('modal-releases');
+
+            const yearSuffix = item.year ? ' (' + item.year + ')' : '';
+            const titleText = (item.title || 'Unknown') + yearSuffix;
+            modalTitle.textContent = titleText;
+
+            status.style.display = 'none';
+            list.innerHTML = '';
+            seasonList.innerHTML = '';
+            seasonsDiv.style.display = 'block';
+            modal.classList.add('active');
+
+            const seasons = Array.isArray(item.seasons) ? item.seasons : [];
+            if (seasons.length === 0) {
+                const noSeasons = document.createElement('div');
+                noSeasons.textContent = 'No seasons available.';
+                noSeasons.style.cssText = 'color:#888; font-size:13px; padding:10px;';
+                seasonList.appendChild(noSeasons);
+                return;
+            }
+
+            // Add "All Seasons" option
+            const allBtn = document.createElement('button');
+            allBtn.textContent = '📚 All Seasons';
+            allBtn.style.cssText = 'text-align:left; padding:10px 12px; font-size:13px; background:#1e1e1e; color:#d4d4d4; border:1px solid #3e3e3e; border-radius:6px; cursor:pointer;';
+            allBtn.onmouseenter = () => { allBtn.style.background = '#252525'; };
+            allBtn.onmouseleave = () => { allBtn.style.background = '#1e1e1e'; };
+            allBtn.onclick = () => startScrape(item, null, null);
+            seasonList.appendChild(allBtn);
+
+            seasons.forEach(sn => {
+                const btn = document.createElement('button');
+                btn.textContent = '📅 Season ' + sn;
+                btn.style.cssText = 'text-align:left; padding:10px 12px; font-size:13px; background:#1e1e1e; color:#d4d4d4; border:1px solid #3e3e3e; border-radius:6px; cursor:pointer;';
+                btn.onmouseenter = () => { btn.style.background = '#252525'; };
+                btn.onmouseleave = () => { btn.style.background = '#1e1e1e'; };
+                btn.onclick = () => loadEpisodePicker(item, sn);
+                seasonList.appendChild(btn);
+            });
+        }
+
+        function loadEpisodePicker(item, seasonNumber) {
+            const seasonList = document.getElementById('season-list');
+            const status = document.getElementById('modal-status');
+
+            seasonList.innerHTML = '';
+            status.style.display = 'flex';
+            status.className = 'release-status';
+            status.innerHTML = '';
+            const spinner = document.createElement('div');
+            spinner.className = 'spinner';
+            status.appendChild(spinner);
+            const txt = document.createElement('span');
+            txt.textContent = 'Loading episodes...';
+            status.appendChild(txt);
+
+            fetch('/api/tmdb/tv/' + item.id + '/season/' + seasonNumber)
+                .then(res => {
+                    if (!res.ok) throw new Error('Failed to load season details');
+                    return res.json();
+                })
+                .then(data => {
+                    status.style.display = 'none';
+                    showEpisodePicker(item, seasonNumber, data.episodes || []);
+                })
+                .catch(err => {
+                    status.style.display = 'block';
+                    status.className = 'release-status error';
+                    status.textContent = 'Failed to load episodes: ' + err.message;
+                });
+        }
+
+        function showEpisodePicker(item, seasonNumber, episodes) {
+            const seasonList = document.getElementById('season-list');
+            const modalTitle = document.getElementById('modal-title');
+
+            modalTitle.textContent = (item.title || 'Unknown') + (item.year ? ' (' + item.year + ')' : '') + ' — Season ' + seasonNumber;
+            seasonList.innerHTML = '';
+
+            // Back button
+            const backBtn = document.createElement('button');
+            backBtn.textContent = '← Back to seasons';
+            backBtn.style.cssText = 'text-align:left; padding:10px 12px; font-size:13px; background:#1e1e1e; color:#4ec9b0; border:1px solid #3e3e3e; border-radius:6px; cursor:pointer;';
+            backBtn.onmouseenter = () => { backBtn.style.background = '#252525'; };
+            backBtn.onmouseleave = () => { backBtn.style.background = '#1e1e1e'; };
+            backBtn.onclick = () => showSeasonPicker(item);
+            seasonList.appendChild(backBtn);
+
+            // Season pack button
+            const packBtn = document.createElement('button');
+            packBtn.textContent = '📦 Search Season Pack';
+            packBtn.style.cssText = 'text-align:left; padding:10px 12px; font-size:13px; background:#1e1e1e; color:#d4d4d4; border:1px solid #4ec9b0; border-radius:6px; cursor:pointer;';
+            packBtn.onmouseenter = () => { packBtn.style.background = '#252525'; };
+            packBtn.onmouseleave = () => { packBtn.style.background = '#1e1e1e'; };
+            packBtn.onclick = () => startScrape(item, seasonNumber, null);
+            seasonList.appendChild(packBtn);
+
+            if (!episodes || episodes.length === 0) {
+                const noEpisodes = document.createElement('div');
+                noEpisodes.textContent = 'No episode information available.';
+                noEpisodes.style.cssText = 'color:#888; font-size:13px; padding:10px;';
+                seasonList.appendChild(noEpisodes);
+                return;
+            }
+
+            // Grid of episode buttons
+            const grid = document.createElement('div');
+            grid.style.cssText = 'display:grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap:8px; margin-top:8px;';
+
+            episodes.forEach(ep => {
+                const btn = document.createElement('button');
+                btn.textContent = 'E' + String(ep.episode_number).padStart(2, '0');
+                btn.title = ep.name || ('Episode ' + ep.episode_number);
+                btn.style.cssText = 'padding:10px; font-size:13px; background:#1e1e1e; color:#d4d4d4; border:1px solid #3e3e3e; border-radius:6px; cursor:pointer;';
+                btn.onmouseenter = () => { btn.style.background = '#252525'; };
+                btn.onmouseleave = () => { btn.style.background = '#1e1e1e'; };
+                btn.onclick = () => startScrape(item, seasonNumber, ep.episode_number);
+                grid.appendChild(btn);
+            });
+
+            seasonList.appendChild(grid);
+        }
+
+        function handleCardClick(item, cardElement) {
+            if (cardElement.classList.contains('selected')) {
+                closeModal();
+                return;
+            }
+
+            document.querySelectorAll('.card.selected').forEach(c => c.classList.remove('selected'));
+            cardElement.classList.add('selected');
+
+            if (item.media_type === 'tv') {
+                // Fetch show details to get seasons, then show picker
+                fetch(`/api/tmdb/tv/${item.id}`)
+                    .then(res => {
+                        if (!res.ok) throw new Error('Failed to load show details');
+                        return res.json();
+                    })
+                    .then(details => {
+                        item.seasons = details.seasons || [];
+                        showSeasonPicker(item);
+                    })
+                    .catch(err => {
+                        const status = document.getElementById('modal-status');
+                        const modal = document.getElementById('release-modal');
+                        const modalTitle = document.getElementById('modal-title');
+                        modalTitle.textContent = (item.title || 'Unknown') + (item.year ? ' (' + item.year + ')' : '');
+                        status.style.display = 'block';
+                        status.className = 'release-status error';
+                        status.textContent = 'Failed to load show details: ' + err.message;
+                        document.getElementById('modal-releases').innerHTML = '';
+                        document.getElementById('modal-seasons').style.display = 'none';
+                        modal.classList.add('active');
+                    });
+            } else {
+                // Movies: scrape directly
+                const modal = document.getElementById('release-modal');
+                const modalTitle = document.getElementById('modal-title');
+                const yearSuffix = item.year ? ' (' + item.year + ')' : '';
+                modalTitle.textContent = (item.title || 'Unknown') + yearSuffix;
+                startScrape(item, null);
+                modal.classList.add('active');
+            }
         }
 
         function pollScrapeJob(jobId) {

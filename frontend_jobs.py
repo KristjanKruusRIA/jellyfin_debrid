@@ -18,13 +18,22 @@ class ScrapeJob:
     releases: list[Any] = field(default_factory=list)
     error: str | None = None
     created_at: float = field(default_factory=time.time)
+    season_number: int | None = None
+    episode_number: int | None = None
 
 
 class JobRegistry:
     def __init__(self) -> None:
         self._jobs: dict[str, ScrapeJob] = {}
 
-    def create_job(self, tmdb_id: int, media_type: str, media_title: str) -> str:
+    def create_job(
+        self,
+        tmdb_id: int,
+        media_type: str,
+        media_title: str,
+        season_number: int | None = None,
+        episode_number: int | None = None,
+    ) -> str:
         job_id = uuid.uuid4().hex
         self._jobs[job_id] = ScrapeJob(
             job_id=job_id,
@@ -32,6 +41,8 @@ class JobRegistry:
             media_type=media_type,
             media_title=media_title,
             tmdb_id=int(tmdb_id),
+            season_number=season_number,
+            episode_number=episode_number,
         )
         ui_print(
             f"[frontend_jobs] created scrape job {job_id}", debug=ui_settings.debug

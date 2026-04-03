@@ -218,12 +218,82 @@ def get_show_details(tmdb_id):
     }
 
 
+def get_season_details(tmdb_id, season_number):
+    """Fetch season details for a show. Returns normalized season dict or {}."""
+    if not api_key:
+        ui_print("[tmdb] TMDB API Key not configured", debug=ui_settings.debug)
+        return {}
+
+    params = urlencode({"api_key": api_key})
+    url = f"https://api.themoviedb.org/3/tv/{tmdb_id}/season/{season_number}?{params}"
+
+    try:
+        ui_print(
+            f"[tmdb] fetching season {season_number} details for tv/{tmdb_id}",
+            debug=ui_settings.debug,
+        )
+        response = session.get(url, timeout=10)
+        if response.status_code == 404:
+            ui_print(
+                f"[tmdb] season {season_number} not found on TMDB for tv/{tmdb_id}",
+                debug=ui_settings.debug,
+            )
+            return {}
+        response.raise_for_status()
+        payload = response.json() if response else {}
+        if not isinstance(payload, dict):
+            return {}
+
+        episodes = []
+        raw_episodes = payload.get("episodes")
+        if isinstance(raw_episodes, list):
+            for episode in raw_episodes:
+                if not isinstance(episode, dict):
+                    continue
+                episode_number = _to_int(episode.get("episode_number"), default=0)
+                if episode_number <= 0:
+                    continue
+                episodes.append(
+                    {
+                        "episode_number": episode_number,
+                        "air_date": _safe_date(episode.get("air_date")),
+                    }
+                )
+
+        air_date = _safe_date(payload.get("air_date"))
+        episode_count = (
+            len(episodes)
+            if episodes
+            else _to_int(payload.get("episode_count"), default=0)
+        )
+
+        if not episodes and episode_count > 0:
+            for episode_number in range(1, episode_count + 1):
+                episodes.append(
+                    {
+                        "episode_number": episode_number,
+                        "air_date": air_date,
+                    }
+                )
+
+        return {
+            "season_number": _to_int(payload.get("season_number"), default=0),
+            "episode_count": episode_count,
+            "air_date": air_date,
+            "episodes": episodes,
+        }
+    except Exception as e:
+        message = f"TMDB season details failed: {_sanitize_error(e)}"
+        ui_print(f"[tmdb] {message}", debug=ui_settings.debug)
+        return {}
+
+
 def resolve_imdb_id(query, media_type="movie"):
     """Resolve a text query to an IMDB ID via TMDB search + details.
 
     Args:
         query: Title text to search for (may be dotted like "war.of.the.worlds.2025").
-        media_type: "movie" or "show".
+        media_type: "movie", "show" or "season".
 
     Returns:
         IMDB ID string (e.g. "tt1234567") or None if not found.
@@ -234,7 +304,11 @@ def resolve_imdb_id(query, media_type="movie"):
     clean = query.replace(".", " ").strip()
     clean = re.sub(r"\s+(19|20)\d{2}\s*$", "", clean).strip()
 
-    tmdb_type = "tv" if media_type == "show" else "movie"
+    # Strip season/episode markers for show/season searches so TMDB can find the series
+    if media_type in ("show", "season"):
+        clean = re.sub(r"\s+S\d+(?:E\d+)?\s*$", "", clean, flags=re.IGNORECASE).strip()
+
+    tmdb_type = "tv" if media_type in ("show", "season") else "movie"
     result = search(clean, media_type=tmdb_type)
     results = result.get("results", [])
     if not results:

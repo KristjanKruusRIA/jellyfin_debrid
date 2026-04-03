@@ -43,6 +43,21 @@ def test_create_scrape_job_returns_opaque_job_id():
     assert registry.get_job(first_job_id) is not None
 
 
+def test_create_scrape_job_with_season_number():
+    registry = JobRegistry()
+
+    job_id = registry.create_job(
+        tmdb_id=1399,
+        media_type="tv",
+        media_title="Game of Thrones",
+        season_number=2,
+    )
+
+    job = registry.get_job(job_id)
+    assert job is not None
+    assert job.season_number == 2
+
+
 def test_scrape_job_tracks_running_complete_and_failed_states():
     registry = JobRegistry()
     job_id = registry.create_job(1, "show", "Some Show")

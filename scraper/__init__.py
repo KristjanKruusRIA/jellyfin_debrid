@@ -7,7 +7,7 @@ from scraper import services
 from ui.ui_print import ui_print, ui_settings
 
 
-def scrape(query, altquery="(.*)"):
+def scrape(query, altquery="(.*)", imdb_id=None):
     ui_print("done")
     scrapers = services.sequential()
     if len(scrapers) == 0:
@@ -15,7 +15,15 @@ def scrape(query, altquery="(.*)"):
     scraped_releases = []
     for sequence in scrapers:
         servicenames = "[" + ",".join(x.name for x in sequence) + "]"
-        if regex.search(r"(tt[0-9]+)", query, regex.I):
+        if imdb_id:
+            ui_print(
+                "scraping sources "
+                + servicenames
+                + ' for IMDB ID "'
+                + imdb_id
+                + '" ...'
+            )
+        elif regex.search(r"(tt[0-9]+)", query, regex.I):
             ui_print(
                 "scraping sources " + servicenames + ' for IMDB ID "' + query + '" ...'
             )
@@ -31,7 +39,9 @@ def scrape(query, altquery="(.*)"):
         threads = []
         for index, scraper_ in enumerate(sequence):
             t = Thread(
-                target=multi_scrape, args=(scraper_, query, altquery, results, index)
+                target=multi_scrape,
+                args=(scraper_, query, altquery, results, index),
+                kwargs={"imdb_id": imdb_id},
             )
             threads.append(t)
             try:
@@ -68,5 +78,5 @@ def traditional():
 
 
 # Multiprocessing scrape method
-def multi_scrape(cls, query, altquery, result, index):
-    result[index] = cls.scrape(query, altquery)
+def multi_scrape(cls, query, altquery, result, index, imdb_id=None):
+    result[index] = cls.scrape(query, altquery, imdb_id=imdb_id)

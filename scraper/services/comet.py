@@ -36,18 +36,21 @@ def create_instance(instance_name):
         base_url="",
         b64config="",
     )
-    instance.scrape = lambda query, altquery="(.*)": _scrape(instance, query, altquery)
+    instance.scrape = lambda query, altquery="(.*)", imdb_id=None: _scrape(
+        instance, query, altquery, imdb_id=imdb_id
+    )
     instance.setup = lambda cls, new=False: _setup(cls, new)
     return instance
 
 
 # Backward-compatibility callables for legacy code/tests that still invoke
 # scraper.services.comet.scrape/setup directly.
-def scrape(query, altquery="(.*)"):
+def scrape(query, altquery="(.*)", imdb_id=None):
     return _scrape(
         SimpleNamespace(name=name, base_url=base_url, b64config=b64config),
         query,
         altquery,
+        imdb_id=imdb_id,
     )
 
 
@@ -94,7 +97,7 @@ def _setup(cls, new=False):
             active += [cls.name]
 
 
-def _scrape(instance, query, altquery):
+def _scrape(instance, query, altquery, imdb_id=None):
     from scraper.services import active
 
     if not instance.b64config:
@@ -140,19 +143,68 @@ def _scrape(instance, query, altquery):
             s = 1
         # Keep e as None if not specified - will query for season pack
 
-    # Get IMDB ID from query or resolve via TMDB
+    # Get IMDB ID from provided value, altquery, or resolve via TMDB
     plain_text = ""
-    if regex.search(r"(tt[0-9]+)", altquery, regex.I):
+    if imdb_id:
+        query = imdb_id
+    elif regex.search(r"(tt[0-9]+)", altquery, regex.I):
         query = regex.search(r"(tt[0-9]+)", altquery, regex.I).group()
     else:
         plain_text = copy.deepcopy(query)
         from content.services import tmdb
 
-        imdb_id = tmdb.resolve_imdb_id(query, media_type=type)
-        if not imdb_id:
+        resolved_imdb_id = tmdb.resolve_imdb_id(query, media_type=type)
+        if not resolved_imdb_id:
             ui_print("[" + instance.name + "] error: could not find IMDB ID via TMDB")
             return scraped_releases
-        query = imdb_id
+        query = resolved_imdb_id
+
+    def _try_url(url):
+        resp = get(url)
+        for _attempt in range(2):
+            if not resp or not hasattr(resp, "streams"):
+                try:
+                    if resp is not None:
+                        ui_print("[" + instance.name + "] error: " + str(resp))
+                except Exception:
+                    ui_print("[" + instance.name + "] error: unknown error")
+                return None
+
+            if len(resp.streams) == 1 and not hasattr(resp.streams[0], "title"):
+                err_stream = resp.streams[0]
+                err_text = ""
+                if hasattr(err_stream, "name"):
+                    err_text += str(err_stream.name)
+                if hasattr(err_stream, "description"):
+                    err_text += " " + str(err_stream.description)
+
+                if "first search" in err_text.lower() and _attempt == 0:
+                    ui_print(
+                        "["
+                        + instance.name
+                        + "] indexing in progress, retrying in 8s...",
+                        ui_settings.debug,
+                    )
+                    time.sleep(8)
+                    resp = get(url)
+                    continue
+
+                err_detail = ""
+                if hasattr(err_stream, "name"):
+                    err_detail += str(err_stream.name)
+                if hasattr(err_stream, "description"):
+                    err_detail += " | " + str(err_stream.description)
+                ui_print(
+                    "["
+                    + instance.name
+                    + "] error: no streams found or API error"
+                    + (" — " + err_detail if err_detail else ""),
+                )
+                return None
+
+            # Valid response
+            return resp
+        return None
 
     # Query the Comet service
     if type == "movie":
@@ -164,12 +216,8 @@ def _scrape(instance, query, altquery):
             + query
             + ".json"
         )
-        response = get(url)
-        if (
-            not response
-            or not hasattr(response, "streams")
-            or len(response.streams) == 0
-        ):
+        response = _try_url(url)
+        if response is None:
             type = "show"
             s = 1
             e = 1
@@ -185,20 +233,9 @@ def _scrape(instance, query, altquery):
                 query = imdb_id
 
     if type == "show":
-        # Check if this is a season pack request (e is None or 0) or specific episode
-        if e is None or int(e) == 0:
-            # Season pack query - use plain IMDB ID without episode suffix
-            url = (
-                instance.base_url
-                + "/"
-                + instance.b64config
-                + "/stream/series/"
-                + query
-                + ".json"
-            )
-        else:
-            # Specific episode query - include season and episode numbers
-            url = (
+        urls = []
+        if e is not None and int(e) > 0:
+            urls.append(
                 instance.base_url
                 + "/"
                 + instance.b64config
@@ -210,52 +247,33 @@ def _scrape(instance, query, altquery):
                 + str(int(e))
                 + ".json"
             )
+        urls.append(
+            instance.base_url
+            + "/"
+            + instance.b64config
+            + "/stream/series/"
+            + query
+            + ":"
+            + str(int(s))
+            + ".json"
+        )
+        urls.append(
+            instance.base_url
+            + "/"
+            + instance.b64config
+            + "/stream/series/"
+            + query
+            + ".json"
+        )
 
-        response = get(url)
+        response = None
+        for url in urls:
+            response = _try_url(url)
+            if response is not None:
+                break
 
-    # Retry logic: Comet selfhosted may return a "First search" placeholder on
-    # cold queries while it indexes.  Detect it and retry once after a delay.
-    for _attempt in range(2):
-        if not response or not hasattr(response, "streams"):
-            try:
-                if response is not None:
-                    ui_print("[" + instance.name + "] error: " + str(response))
-            except Exception:
-                ui_print("[" + instance.name + "] error: unknown error")
-            return scraped_releases
-
-        if len(response.streams) == 1 and not hasattr(response.streams[0], "title"):
-            err_stream = response.streams[0]
-            err_text = ""
-            if hasattr(err_stream, "name"):
-                err_text += str(err_stream.name)
-            if hasattr(err_stream, "description"):
-                err_text += " " + str(err_stream.description)
-
-            if "first search" in err_text.lower() and _attempt == 0:
-                ui_print(
-                    "[" + instance.name + "] indexing in progress, retrying in 8s...",
-                    ui_settings.debug,
-                )
-                time.sleep(8)
-                response = get(url)
-                continue
-
-            err_detail = ""
-            if hasattr(err_stream, "name"):
-                err_detail += str(err_stream.name)
-            if hasattr(err_stream, "description"):
-                err_detail += " | " + str(err_stream.description)
-            ui_print(
-                "["
-                + instance.name
-                + "] error: no streams found or API error"
-                + (" — " + err_detail if err_detail else ""),
-            )
-            return scraped_releases
-
-        # Valid response — break out of retry loop
-        break
+    if response is None:
+        return scraped_releases
 
     # Parse the stream results - Comet returns torrent info hashes
     # Streams are ordered by quality/size (best first), so prioritize stream 0

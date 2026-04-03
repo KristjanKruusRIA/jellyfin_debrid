@@ -6,6 +6,7 @@ Serves UI on http://localhost:7654
 import os
 import threading
 
+import regex
 from flask import Flask, jsonify, render_template, request
 
 from frontend_jobs import JobRegistry, serialize_releases
@@ -43,24 +44,120 @@ def _normalize_cached_via(cached_value):
     return []
 
 
-def _run_scrape_job(job_registry, job_id, tmdb_id, media_type):
+def _filter_releases_for_season(releases, season_number):
+    """Remove releases whose titles explicitly mention a different season."""
+    if season_number is None:
+        return releases
+
+    filtered = []
+    for release in releases:
+        title = str(getattr(release, "title", ""))
+        has_other_season = False
+        for other in range(1, 30):
+            if other == season_number:
+                continue
+            if regex.search(
+                rf"(?<![0-9])(S0?{other}\b|season[ .]?0?{other}\b|TV-0?{other}\b)",
+                title,
+                regex.I,
+            ):
+                has_other_season = True
+                break
+        if not has_other_season:
+            filtered.append(release)
+    return filtered
+
+
+def _run_scrape_job(
+    job_registry, job_id, tmdb_id, media_type, season_number=None, episode_number=None
+):
     try:
         job_registry.update_job(job_id, "running")
 
         import debrid
         import scraper
-        from content.services import manual_media, tmdb
+        from content.services import manual_media, tmdb, tvdb
 
         if media_type == "movie":
             details = tmdb.get_movie_details(tmdb_id)
             media_obj = manual_media.build_movie(details)
+        elif episode_number is not None and season_number is not None:
+            details = tmdb.get_show_details(tmdb_id)
+            tvdb_id = None
+            external_ids = details.get("external_ids")
+            if isinstance(external_ids, dict):
+                tvdb_id = external_ids.get("tvdb_id")
+
+            season_details = None
+            if tvdb_id:
+                season_details = tvdb.get_season_details(int(tvdb_id), season_number)
+            if not season_details:
+                season_details = tmdb.get_season_details(tmdb_id, season_number)
+
+            if season_details:
+                existing = {s["season_number"] for s in details.get("seasons", [])}
+                if season_details["season_number"] not in existing:
+                    details.setdefault("seasons", []).append(season_details)
+                else:
+                    for s in details.get("seasons", []):
+                        if s.get("season_number") == season_details["season_number"]:
+                            s.update(season_details)
+                            break
+            media_obj = manual_media.build_episode(
+                details, season_number, episode_number
+            )
+        elif season_number is not None:
+            details = tmdb.get_show_details(tmdb_id)
+            tvdb_id = None
+            external_ids = details.get("external_ids")
+            if isinstance(external_ids, dict):
+                tvdb_id = external_ids.get("tvdb_id")
+
+            season_details = None
+            if tvdb_id:
+                season_details = tvdb.get_season_details(int(tvdb_id), season_number)
+            if not season_details:
+                season_details = tmdb.get_season_details(tmdb_id, season_number)
+
+            if season_details:
+                existing = {s["season_number"] for s in details.get("seasons", [])}
+                if season_details["season_number"] not in existing:
+                    details.setdefault("seasons", []).append(season_details)
+                else:
+                    for s in details.get("seasons", []):
+                        if s.get("season_number") == season_details["season_number"]:
+                            s.update(season_details)
+                            break
+            media_obj = manual_media.build_season(details, season_number)
         else:
             details = tmdb.get_show_details(tmdb_id)
+            tvdb_id = None
+            external_ids = details.get("external_ids")
+            if isinstance(external_ids, dict):
+                tvdb_id = external_ids.get("tvdb_id")
+
+            if tvdb_id:
+                tvdb_season_numbers = tvdb.get_series_seasons(int(tvdb_id))
+                if tvdb_season_numbers:
+                    tvdb_seasons = []
+                    for sn in tvdb_season_numbers:
+                        sd = tvdb.get_season_details(int(tvdb_id), sn)
+                        if sd:
+                            tvdb_seasons.append(sd)
+                    if tvdb_seasons:
+                        details["seasons"] = tvdb_seasons
+
             media_obj = manual_media.build_show(details)
 
         query = media_obj.query()
         altquery = media_obj.deviation()
-        releases = scraper.scrape(query, altquery) or []
+        imdb_id = None
+        if hasattr(media_obj, "EID") and isinstance(media_obj.EID, dict):
+            imdb_id = media_obj.EID.get("imdb") or None
+        releases = scraper.scrape(query, altquery, imdb_id=imdb_id) or []
+
+        if season_number is not None:
+            releases = _filter_releases_for_season(releases, season_number)
 
         media_obj.Releases = list(releases)
         debrid.check(media_obj, force=True)
@@ -162,7 +259,7 @@ def tmdb_lookup_api(media_type, tmdb_id):
         return _json_error("Invalid tmdb_id. Expected an integer", 400)
 
     try:
-        from content.services import tmdb
+        from content.services import tmdb, tvdb
 
         if media_type == "movie":
             details = tmdb.get_movie_details(parsed_tmdb_id)
@@ -181,11 +278,89 @@ def tmdb_lookup_api(media_type, tmdb_id):
             "poster_path": details.get("poster_path"),
             "overview": details.get("overview", ""),
         }
+        if media_type == "tv":
+            raw_seasons = details.get("seasons", [])
+            seasons = []
+            for s in raw_seasons:
+                if isinstance(s, dict):
+                    sn = s.get("season_number")
+                    if sn is not None:
+                        try:
+                            seasons.append(int(sn))
+                        except (TypeError, ValueError):
+                            pass
+
+            # Try TVDB enrichment for more accurate season counts
+            external_ids = details.get("external_ids", {})
+            tvdb_id = (
+                external_ids.get("tvdb_id") if isinstance(external_ids, dict) else None
+            )
+            if tvdb_id:
+                try:
+                    tvdb_seasons = tvdb.get_series_seasons(int(tvdb_id))
+                    if tvdb_seasons:
+                        seasons = tvdb_seasons
+                except Exception:
+                    pass
+
+            result["seasons"] = sorted(set(seasons))
         return jsonify(result)
     except Exception as e:
         _log_frontend(
             f"tmdb lookup failed for media_type={media_type}, tmdb_id={tmdb_id}:"
             f" {str(e)}"
+        )
+        return _json_error("TMDB lookup service unavailable", 500)
+
+
+@app.route("/api/tmdb/tv/<tmdb_id>/season/<season_number>", methods=["GET"])
+def tmdb_season_lookup_api(tmdb_id, season_number):
+    try:
+        parsed_tmdb_id = int(tmdb_id)
+        parsed_season_number = int(season_number)
+    except (TypeError, ValueError):
+        return _json_error("Invalid tmdb_id or season_number", 400)
+
+    try:
+        from content.services import tmdb, tvdb
+
+        # Try TVDB first (it may have seasons TMDB doesn't, e.g. split-cour shows)
+        season_details = None
+        show_details = tmdb.get_show_details(parsed_tmdb_id)
+        tvdb_id = None
+        external_ids = show_details.get("external_ids") if show_details else None
+        if isinstance(external_ids, dict):
+            tvdb_id = external_ids.get("tvdb_id")
+        if tvdb_id:
+            season_details = tvdb.get_season_details(int(tvdb_id), parsed_season_number)
+        if not season_details:
+            season_details = tmdb.get_season_details(
+                parsed_tmdb_id, parsed_season_number
+            )
+        if not season_details:
+            return _json_error("Season not found", 404)
+
+        episodes = []
+        for ep in season_details.get("episodes", []):
+            if isinstance(ep, dict):
+                episodes.append(
+                    {
+                        "episode_number": ep.get("episode_number"),
+                        "air_date": ep.get("air_date"),
+                    }
+                )
+
+        return jsonify(
+            {
+                "season_number": season_details.get("season_number"),
+                "episode_count": season_details.get("episode_count"),
+                "episodes": episodes,
+            }
+        )
+    except Exception as e:
+        _log_frontend(
+            f"tmdb season lookup failed for tmdb_id={tmdb_id},"
+            f" season_number={season_number}: {str(e)}"
         )
         return _json_error("TMDB lookup service unavailable", 500)
 
@@ -197,6 +372,8 @@ def create_scrape():
         tmdb_id_raw = body.get("tmdb_id")
         media_type = body.get("media_type")
         media_title = (body.get("title") or "").strip()
+        season_number_raw = body.get("season_number")
+        episode_number_raw = body.get("episode_number")
 
         try:
             tmdb_id = int(tmdb_id_raw)
@@ -214,6 +391,24 @@ def create_scrape():
                 job_id=None,
             )
 
+        season_number = None
+        if season_number_raw is not None:
+            try:
+                season_number = int(season_number_raw)
+                if season_number < 0:
+                    season_number = None
+            except (TypeError, ValueError):
+                season_number = None
+
+        episode_number = None
+        if episode_number_raw is not None:
+            try:
+                episode_number = int(episode_number_raw)
+                if episode_number < 1:
+                    episode_number = None
+            except (TypeError, ValueError):
+                episode_number = None
+
         if not media_title:
             media_title = f"TMDB {tmdb_id}"
 
@@ -221,11 +416,13 @@ def create_scrape():
             tmdb_id=tmdb_id,
             media_type=media_type,
             media_title=media_title,
+            season_number=season_number,
+            episode_number=episode_number,
         )
 
         thread = threading.Thread(
             target=_run_scrape_job,
-            args=(registry, job_id, tmdb_id, media_type),
+            args=(registry, job_id, tmdb_id, media_type, season_number, episode_number),
             daemon=True,
         )
         thread.start()
@@ -269,6 +466,8 @@ def get_scrape_status(job_id):
                     "title": job.media_title,
                     "type": job.media_type,
                     "tmdb_id": job.tmdb_id,
+                    "season_number": job.season_number,
+                    "episode_number": job.episode_number,
                 },
                 "results": results,
                 "count": len(results),
@@ -312,13 +511,81 @@ def download_scrape_release(job_id):
             )
 
         import debrid
-        from content.services import manual_media, tmdb
+        from content.services import manual_media, tmdb, tvdb
 
         if job.media_type == "movie":
             details = tmdb.get_movie_details(job.tmdb_id)
             media_obj = manual_media.build_movie(details)
+        elif job.episode_number is not None and job.season_number is not None:
+            details = tmdb.get_show_details(job.tmdb_id)
+            tvdb_id = None
+            external_ids = details.get("external_ids")
+            if isinstance(external_ids, dict):
+                tvdb_id = external_ids.get("tvdb_id")
+
+            season_details = None
+            if tvdb_id:
+                season_details = tvdb.get_season_details(
+                    int(tvdb_id), job.season_number
+                )
+            if not season_details:
+                season_details = tmdb.get_season_details(job.tmdb_id, job.season_number)
+
+            if season_details:
+                existing = {s["season_number"] for s in details.get("seasons", [])}
+                if season_details["season_number"] not in existing:
+                    details.setdefault("seasons", []).append(season_details)
+                else:
+                    for s in details.get("seasons", []):
+                        if s.get("season_number") == season_details["season_number"]:
+                            s.update(season_details)
+                            break
+            media_obj = manual_media.build_episode(
+                details, job.season_number, job.episode_number
+            )
+        elif job.season_number is not None:
+            details = tmdb.get_show_details(job.tmdb_id)
+            tvdb_id = None
+            external_ids = details.get("external_ids")
+            if isinstance(external_ids, dict):
+                tvdb_id = external_ids.get("tvdb_id")
+
+            season_details = None
+            if tvdb_id:
+                season_details = tvdb.get_season_details(
+                    int(tvdb_id), job.season_number
+                )
+            if not season_details:
+                season_details = tmdb.get_season_details(job.tmdb_id, job.season_number)
+
+            if season_details:
+                existing = {s["season_number"] for s in details.get("seasons", [])}
+                if season_details["season_number"] not in existing:
+                    details.setdefault("seasons", []).append(season_details)
+                else:
+                    for s in details.get("seasons", []):
+                        if s.get("season_number") == season_details["season_number"]:
+                            s.update(season_details)
+                            break
+            media_obj = manual_media.build_season(details, job.season_number)
         else:
             details = tmdb.get_show_details(job.tmdb_id)
+            tvdb_id = None
+            external_ids = details.get("external_ids")
+            if isinstance(external_ids, dict):
+                tvdb_id = external_ids.get("tvdb_id")
+
+            if tvdb_id:
+                tvdb_season_numbers = tvdb.get_series_seasons(int(tvdb_id))
+                if tvdb_season_numbers:
+                    tvdb_seasons = []
+                    for sn in tvdb_season_numbers:
+                        sd = tvdb.get_season_details(int(tvdb_id), sn)
+                        if sd:
+                            tvdb_seasons.append(sd)
+                    if tvdb_seasons:
+                        details["seasons"] = tvdb_seasons
+
             media_obj = manual_media.build_show(details)
 
         media_obj.Releases = [selected_release]
@@ -344,7 +611,8 @@ def download_scrape_release(job_id):
 
 def start_frontend():
     """Start the log viewer in the current thread (use as a daemon thread target)."""
-    app.run(host="0.0.0.0", port=7654, debug=False, threaded=True)
+    port = int(os.environ.get("FRONTEND_PORT", "7654"))
+    app.run(host="0.0.0.0", port=port, debug=False, threaded=True)
 
 
 if __name__ == "__main__":

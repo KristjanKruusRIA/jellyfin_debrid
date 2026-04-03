@@ -80,6 +80,8 @@ Versions in `settings.json` define structured quality criteria. `releases.sort` 
 ### Frontend Manual Search API Notes
 
 - `GET /api/search?q=<query>[&type=movie|tv|all]` returns TMDB-backed JSON results for the `/search` page.
+- `GET /api/tmdb/tv/<tmdb_id>/season/<season_number>` returns season details including episode list for the episode picker.
+- `POST /api/scrapes` accepts `season_number` and `episode_number` to support season-pack and per-episode scraping.
 - Manual scrape/download endpoints are designed to work without Seerr configuration.
 - Scrape jobs are stored in memory (`frontend_jobs.JobRegistry`) and are not persisted across process restarts.
 
@@ -142,6 +144,7 @@ store.save(data, "module_name", "variable_name")       # Save pickle
 
 - **`releases.release`**: Core release object — `source`, `type` (magnet/http), `title`, `files`, `size`, `download`, `hash`, `cached`, `resolution`, `seeders`
 - **`content.classes.media`**: Base media object — extended by `seerr.movie`, `seerr.show`; has `EID`, `type`, `title`, `Seasons`/`Episodes` for shows
+- **`frontend_jobs.ScrapeJob`**: In-memory scrape job — `job_id`, `status`, `media_type`, `media_title`, `tmdb_id`, `season_number`, `episode_number`, `releases`, `error`
 - **`releases.sort.version`**: Quality version — `name`, `triggers`, `lang`, `rules`; applied via `releases.sort(scraped_releases, version)`
 
 ## Self-Improvement & Learnings (`.learnings/`)
