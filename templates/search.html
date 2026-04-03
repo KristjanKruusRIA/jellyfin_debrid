@@ -535,6 +535,7 @@
         }
 
         let activeJobId = null;
+        let activeBackFn = null;
 
         function closeModal() {
             document.getElementById('release-modal').classList.remove('active');
@@ -545,16 +546,33 @@
             document.getElementById('modal-status').style.display = 'none';
             document.getElementById('modal-releases').innerHTML = '';
             document.getElementById('season-list').innerHTML = '';
+            activeBackFn = null;
         }
 
         function collapseAllPanels() {
             closeModal();
         }
 
-        function startScrape(item, seasonNumber, episodeNumber) {
+        function startScrape(item, seasonNumber, episodeNumber, backFn) {
             const status = document.getElementById('modal-status');
             const list = document.getElementById('modal-releases');
             const seasonsDiv = document.getElementById('modal-seasons');
+            const modalTitle = document.getElementById('modal-title');
+
+            // Update header to show season/episode context
+            const yearSuffix = item.year ? ' (' + item.year + ')' : '';
+            let titleText = (item.title || 'Unknown') + yearSuffix;
+            if (seasonNumber !== null && seasonNumber !== undefined) {
+                if (episodeNumber !== null && episodeNumber !== undefined) {
+                    titleText += ' — S' + String(seasonNumber).padStart(2, '0') + 'E' + String(episodeNumber).padStart(2, '0');
+                } else {
+                    titleText += ' — Season ' + seasonNumber + ' Pack';
+                }
+            }
+            modalTitle.textContent = titleText;
+
+            // Store back navigation
+            activeBackFn = backFn || null;
 
             seasonsDiv.style.display = 'none';
             status.style.display = 'flex';
@@ -677,6 +695,13 @@
         function showEpisodePicker(item, seasonNumber, episodes) {
             const seasonList = document.getElementById('season-list');
             const modalTitle = document.getElementById('modal-title');
+            const status = document.getElementById('modal-status');
+
+            // Ensure the seasons panel is visible and releases panel is cleared
+            document.getElementById('modal-seasons').style.display = 'block';
+            document.getElementById('modal-releases').innerHTML = '';
+            status.style.display = 'none';
+            activeBackFn = null;
 
             modalTitle.textContent = (item.title || 'Unknown') + (item.year ? ' (' + item.year + ')' : '') + ' — Season ' + seasonNumber;
             seasonList.innerHTML = '';
@@ -696,7 +721,7 @@
             packBtn.style.cssText = 'text-align:left; padding:10px 12px; font-size:13px; background:#1e1e1e; color:#d4d4d4; border:1px solid #4ec9b0; border-radius:6px; cursor:pointer;';
             packBtn.onmouseenter = () => { packBtn.style.background = '#252525'; };
             packBtn.onmouseleave = () => { packBtn.style.background = '#1e1e1e'; };
-            packBtn.onclick = () => startScrape(item, seasonNumber, null);
+            packBtn.onclick = () => startScrape(item, seasonNumber, null, () => showEpisodePicker(item, seasonNumber, episodes));
             seasonList.appendChild(packBtn);
 
             if (!episodes || episodes.length === 0) {
@@ -718,7 +743,7 @@
                 btn.style.cssText = 'padding:10px; font-size:13px; background:#1e1e1e; color:#d4d4d4; border:1px solid #3e3e3e; border-radius:6px; cursor:pointer;';
                 btn.onmouseenter = () => { btn.style.background = '#252525'; };
                 btn.onmouseleave = () => { btn.style.background = '#1e1e1e'; };
-                btn.onclick = () => startScrape(item, seasonNumber, ep.episode_number);
+                btn.onclick = () => startScrape(item, seasonNumber, ep.episode_number, () => showEpisodePicker(item, seasonNumber, episodes));
                 grid.appendChild(btn);
             });
 
@@ -847,6 +872,21 @@
 
             const panelList = document.getElementById('modal-releases');
             panelList.innerHTML = '';
+
+            // Back button if we came from an episode/season picker
+            if (activeBackFn) {
+                const backRow = document.createElement('div');
+                backRow.style.cssText = 'margin-bottom:10px;';
+                const backBtn = document.createElement('button');
+                backBtn.textContent = '← Back';
+                backBtn.style.cssText = 'padding:8px 14px; font-size:13px; background:#1e1e1e; color:#4ec9b0; border:1px solid #3e3e3e; border-radius:6px; cursor:pointer;';
+                backBtn.onmouseenter = () => { backBtn.style.background = '#252525'; };
+                backBtn.onmouseleave = () => { backBtn.style.background = '#1e1e1e'; };
+                const fn = activeBackFn;
+                backBtn.onclick = () => { activeBackFn = null; fn(); };
+                backRow.appendChild(backBtn);
+                panelList.appendChild(backRow);
+            }
 
             // Detect mobile layout
             const isMobile = window.innerWidth <= 760;
