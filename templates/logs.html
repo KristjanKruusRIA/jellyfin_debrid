@@ -1,8 +1,11 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Jellyfin Debrid Logs</title>
     <style>
+        * { box-sizing: border-box; }
         body {
             background: #1e1e1e;
             color: #d4d4d4;
@@ -45,6 +48,19 @@
         .nav-links a.active {
             font-weight: bold;
             text-decoration: underline;
+        }
+
+        @media (max-width: 600px) {
+            body { padding: 12px; }
+            h1 { font-size: 16px; }
+            .nav-links { font-size: 14px; }
+            .nav-links a { margin-right: 10px; }
+            #logs {
+                font-size: 12px;
+                padding: 10px;
+                max-height: calc(100vh - 110px);
+            }
+            .status { font-size: 11px; }
         }
     </style>
     <script>

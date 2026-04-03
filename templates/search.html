@@ -1,8 +1,11 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Jellyfin Debrid Search</title>
     <style>
+        * { box-sizing: border-box; }
         body {
             background: #1e1e1e;
             color: #d4d4d4;
@@ -399,6 +402,82 @@
             cursor: not-allowed;
             box-shadow: none;
         }
+
+        /* Mobile responsiveness */
+        @media (max-width: 760px) {
+            body { padding: 12px; }
+            h1 { font-size: 16px; }
+            .nav-links { font-size: 14px; }
+            .nav-links a { margin-right: 10px; }
+
+            .search-container {
+                padding: 10px;
+            }
+            #search-form {
+                flex-direction: column;
+                gap: 8px;
+            }
+            #search-form input,
+            #search-form select,
+            #search-form button {
+                width: 100%;
+            }
+            #search-form button {
+                padding: 10px;
+            }
+
+            .results-grid {
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+                gap: 12px;
+            }
+            .card-image-container { height: 220px; }
+            .card-content { padding: 10px; }
+            .card-title { font-size: 14px; }
+            .card-overview { -webkit-line-clamp: 3; line-clamp: 3; }
+
+            .modal {
+                width: 96%;
+                max-height: 92vh;
+                border-radius: 6px;
+            }
+            .modal-header { padding: 10px 12px; }
+            .modal-header h2 { font-size: 14px; }
+            .modal-body { padding: 10px 12px; }
+
+            /* Stack release table into cards on mobile */
+            .release-header { display: none; }
+            .release-item {
+                display: flex;
+                flex-direction: column;
+                gap: 6px;
+                background: #1e1e1e;
+                border: 1px solid #2e2e2e;
+                border-radius: 6px;
+                padding: 10px;
+                margin-bottom: 10px;
+            }
+            .release-item > * {
+                padding: 0;
+                border-right: none;
+                white-space: normal;
+                overflow: visible;
+                text-overflow: clip;
+                line-height: 1.4;
+            }
+            .release-item > *:last-child {
+                justify-content: flex-start;
+            }
+            .release-title {
+                font-weight: bold;
+                color: #4ec9b0;
+                font-size: 13px;
+            }
+            .download-btn {
+                width: 100%;
+                padding: 10px;
+                font-size: 13px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -587,39 +666,79 @@
             const panelList = document.getElementById('modal-releases');
             panelList.innerHTML = '';
 
-            // Table header with sort controls
-            const header = document.createElement('div');
-            header.className = 'release-header';
-            const columns = [
-                { label: 'Title', key: 'title' },
-                { label: 'Source', key: 'source' },
-                { label: 'Size', key: 'size_gb' },
-                { label: 'Res', key: 'resolution' },
-                { label: 'Cache', key: 'cached' },
-                { label: '', key: null }
-            ];
-            columns.forEach(col => {
-                const span = document.createElement('span');
-                if (col.key) {
-                    span.className = 'sortable' + (currentSort.key === col.key ? ' sort-active' : '');
-                    span.innerHTML = col.label + '<span class="sort-arrow">' +
-                        (currentSort.key === col.key ? (currentSort.dir === 'asc' ? '&#9650;' : '&#9660;') : '&#9660;') +
-                        '</span>';
-                    span.addEventListener('click', () => {
-                        if (currentSort.key === col.key) {
-                            currentSort.dir = currentSort.dir === 'asc' ? 'desc' : 'asc';
-                        } else {
-                            currentSort.key = col.key;
-                            currentSort.dir = col.key === 'title' || col.key === 'source' ? 'asc' : 'desc';
-                        }
-                        renderReleases(lastRenderResults, lastRenderJobId);
-                    });
-                } else {
-                    span.textContent = col.label;
-                }
-                header.appendChild(span);
-            });
-            panelList.appendChild(header);
+            // Detect mobile layout
+            const isMobile = window.innerWidth <= 760;
+
+            if (!isMobile) {
+                // Table header with sort controls (desktop)
+                const header = document.createElement('div');
+                header.className = 'release-header';
+                const columns = [
+                    { label: 'Title', key: 'title' },
+                    { label: 'Source', key: 'source' },
+                    { label: 'Size', key: 'size_gb' },
+                    { label: 'Res', key: 'resolution' },
+                    { label: 'Cache', key: 'cached' },
+                    { label: '', key: null }
+                ];
+                columns.forEach(col => {
+                    const span = document.createElement('span');
+                    if (col.key) {
+                        span.className = 'sortable' + (currentSort.key === col.key ? ' sort-active' : '');
+                        span.innerHTML = col.label + '<span class="sort-arrow">' +
+                            (currentSort.key === col.key ? (currentSort.dir === 'asc' ? '&#9650;' : '&#9660;') : '&#9660;') +
+                            '</span>';
+                        span.addEventListener('click', () => {
+                            if (currentSort.key === col.key) {
+                                currentSort.dir = currentSort.dir === 'asc' ? 'desc' : 'asc';
+                            } else {
+                                currentSort.key = col.key;
+                                currentSort.dir = col.key === 'title' || col.key === 'source' ? 'asc' : 'desc';
+                            }
+                            renderReleases(lastRenderResults, lastRenderJobId);
+                        });
+                    } else {
+                        span.textContent = col.label;
+                    }
+                    header.appendChild(span);
+                });
+                panelList.appendChild(header);
+            } else {
+                // Mobile sort dropdown
+                const sortBar = document.createElement('div');
+                sortBar.style.cssText = 'display:flex; gap:8px; align-items:center; margin-bottom:10px; flex-wrap:wrap;';
+                const sortLabel = document.createElement('span');
+                sortLabel.textContent = 'Sort:';
+                sortLabel.style.fontSize = '12px';
+                sortLabel.style.color = '#888';
+                const sortSelect = document.createElement('select');
+                sortSelect.style.cssText = 'flex:1; min-width:120px; padding:6px; font-size:12px;';
+                const options = [
+                    { label: 'Size (high to low)', key: 'size_gb', dir: 'desc' },
+                    { label: 'Size (low to high)', key: 'size_gb', dir: 'asc' },
+                    { label: 'Title (A-Z)', key: 'title', dir: 'asc' },
+                    { label: 'Title (Z-A)', key: 'title', dir: 'desc' },
+                    { label: 'Source (A-Z)', key: 'source', dir: 'asc' },
+                    { label: 'Resolution (high to low)', key: 'resolution', dir: 'desc' },
+                    { label: 'Cached first', key: 'cached', dir: 'desc' }
+                ];
+                options.forEach(opt => {
+                    const o = document.createElement('option');
+                    o.textContent = opt.label;
+                    o.value = JSON.stringify(opt);
+                    if (currentSort.key === opt.key && currentSort.dir === opt.dir) o.selected = true;
+                    sortSelect.appendChild(o);
+                });
+                sortSelect.addEventListener('change', () => {
+                    const opt = JSON.parse(sortSelect.value);
+                    currentSort.key = opt.key;
+                    currentSort.dir = opt.dir;
+                    renderReleases(lastRenderResults, lastRenderJobId);
+                });
+                sortBar.appendChild(sortLabel);
+                sortBar.appendChild(sortSelect);
+                panelList.appendChild(sortBar);
+            }
 
             sorted.forEach(r => {
                 const itemDiv = document.createElement('div');
@@ -628,54 +747,90 @@
                 const safeRes = escapeHtml(r.resolution || 'Unknown');
                 const sizeGb = r.size_gb !== undefined ? r.size_gb.toFixed(2) + ' GB' : '? GB';
 
-                const titleDiv = document.createElement('div');
-                titleDiv.className = 'release-title';
-                titleDiv.title = r.title || 'Unknown';
-                titleDiv.textContent = r.title || 'Unknown';
-                itemDiv.appendChild(titleDiv);
+                if (isMobile) {
+                    const titleDiv = document.createElement('div');
+                    titleDiv.className = 'release-title';
+                    titleDiv.textContent = r.title || 'Unknown';
+                    itemDiv.appendChild(titleDiv);
 
-                const sourceDiv = document.createElement('div');
-                sourceDiv.title = r.source || 'Unknown';
-                sourceDiv.textContent = r.source || 'Unknown';
-                itemDiv.appendChild(sourceDiv);
+                    const metaDiv = document.createElement('div');
+                    metaDiv.style.cssText = 'display:flex; gap:10px; flex-wrap:wrap; font-size:12px; color:#a0a0a0;';
+                    metaDiv.innerHTML = '<span><b>Source:</b> ' + escapeHtml(r.source || 'Unknown') + '</span>' +
+                        '<span><b>Size:</b> ' + sizeGb + '</span>' +
+                        '<span><b>Res:</b> ' + safeRes + '</span>';
+                    itemDiv.appendChild(metaDiv);
 
-                const sizeDiv = document.createElement('div');
-                sizeDiv.title = sizeGb;
-                sizeDiv.textContent = sizeGb;
-                itemDiv.appendChild(sizeDiv);
+                    const cachedDiv = document.createElement('div');
+                    if (r.cached) {
+                        cachedDiv.innerHTML = '<span class="release-cached">✅ Cached' +
+                            (r.cached_via ? ' (' + escapeHtml(r.cached_via.join(', ')) + ')' : '') + '</span>';
+                    } else {
+                        cachedDiv.innerHTML = '<span class="release-uncached">❌ Uncached</span>';
+                    }
+                    itemDiv.appendChild(cachedDiv);
 
-                const resDiv = document.createElement('div');
-                resDiv.title = safeRes;
-                resDiv.textContent = safeRes;
-                itemDiv.appendChild(resDiv);
-
-                const cachedDiv = document.createElement('div');
-                if (r.cached) {
-                    const cachedSpan = document.createElement('span');
-                    cachedSpan.className = 'release-cached';
-                    cachedSpan.title = 'Cached via ' + (r.cached_via || []).join(',');
-                    cachedSpan.textContent = '\u2705 Cached';
-                    cachedDiv.appendChild(cachedSpan);
+                    const dlBtnWrapper = document.createElement('div');
+                    const dlBtn = document.createElement('button');
+                    dlBtn.className = 'download-btn';
+                    dlBtn.textContent = 'Download';
+                    dlBtn.dataset.jobId = jobId;
+                    dlBtn.dataset.releaseId = r.release_id;
+                    dlBtn.addEventListener('click', function(event) {
+                        event.stopPropagation();
+                        handleDownload(this.dataset.jobId, this.dataset.releaseId, this);
+                    });
+                    dlBtnWrapper.appendChild(dlBtn);
+                    itemDiv.appendChild(dlBtnWrapper);
                 } else {
-                    const uncachedSpan = document.createElement('span');
-                    uncachedSpan.className = 'release-uncached';
-                    uncachedSpan.textContent = '\u274C Uncached';
-                    cachedDiv.appendChild(uncachedSpan);
-                }
-                itemDiv.appendChild(cachedDiv);
+                    const titleDiv = document.createElement('div');
+                    titleDiv.className = 'release-title';
+                    titleDiv.title = r.title || 'Unknown';
+                    titleDiv.textContent = r.title || 'Unknown';
+                    itemDiv.appendChild(titleDiv);
 
-                const dlBtnWrapper = document.createElement('div');
-                const dlBtn = document.createElement('button');
-                dlBtn.className = 'download-btn';
-                dlBtn.textContent = 'Download';
-                dlBtn.dataset.jobId = jobId;
-                dlBtn.dataset.releaseId = r.release_id;
-                dlBtn.addEventListener('click', function(event) {
-                    event.stopPropagation();
-                    handleDownload(this.dataset.jobId, this.dataset.releaseId, this);
-                });
-                dlBtnWrapper.appendChild(dlBtn);
-                itemDiv.appendChild(dlBtnWrapper);
+                    const sourceDiv = document.createElement('div');
+                    sourceDiv.title = r.source || 'Unknown';
+                    sourceDiv.textContent = r.source || 'Unknown';
+                    itemDiv.appendChild(sourceDiv);
+
+                    const sizeDiv = document.createElement('div');
+                    sizeDiv.title = sizeGb;
+                    sizeDiv.textContent = sizeGb;
+                    itemDiv.appendChild(sizeDiv);
+
+                    const resDiv = document.createElement('div');
+                    resDiv.title = safeRes;
+                    resDiv.textContent = safeRes;
+                    itemDiv.appendChild(resDiv);
+
+                    const cachedDiv = document.createElement('div');
+                    if (r.cached) {
+                        const cachedSpan = document.createElement('span');
+                        cachedSpan.className = 'release-cached';
+                        cachedSpan.title = 'Cached via ' + (r.cached_via || []).join(',');
+                        cachedSpan.textContent = '✅ Cached';
+                        cachedDiv.appendChild(cachedSpan);
+                    } else {
+                        const uncachedSpan = document.createElement('span');
+                        uncachedSpan.className = 'release-uncached';
+                        uncachedSpan.textContent = '❌ Uncached';
+                        cachedDiv.appendChild(uncachedSpan);
+                    }
+                    itemDiv.appendChild(cachedDiv);
+
+                    const dlBtnWrapper = document.createElement('div');
+                    const dlBtn = document.createElement('button');
+                    dlBtn.className = 'download-btn';
+                    dlBtn.textContent = 'Download';
+                    dlBtn.dataset.jobId = jobId;
+                    dlBtn.dataset.releaseId = r.release_id;
+                    dlBtn.addEventListener('click', function(event) {
+                        event.stopPropagation();
+                        handleDownload(this.dataset.jobId, this.dataset.releaseId, this);
+                    });
+                    dlBtnWrapper.appendChild(dlBtn);
+                    itemDiv.appendChild(dlBtnWrapper);
+                }
 
                 panelList.appendChild(itemDiv);
             });
