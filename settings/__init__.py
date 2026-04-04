@@ -543,6 +543,38 @@ settings_list = [
                 hidden=True,
             ),
             setting(
+                "Anime Hardsub Exclude",
+                "Exclude anime releases with burned-in/hardcoded subtitles (type 'true' to enable, 'false' to disable): ",
+                releases.sort,
+                "anime_hardsub_exclude",
+                help="When enabled, releases tagged as HardSub, HardCoded or [HS] are excluded. Useful when combined with the dub filter to avoid dubbed releases with burned-in Japanese subs.",
+                hidden=True,
+            ),
+            setting(
+                "Anime Hardsub Exclude Pattern",
+                "Regex pattern to detect hardcoded subtitle releases (leave blank to keep default): ",
+                releases.sort,
+                "anime_hardsub_pattern",
+                help="Regex used to detect hardsubbed anime releases. Default matches: HardSub, HardSubbed, HardCoded, [HS].",
+                hidden=True,
+            ),
+            setting(
+                "Anime Preferred Groups",
+                "Comma-separated list of preferred anime release group names (e.g. EMBER,NanDesuKa): ",
+                releases.sort,
+                "anime_preferred_groups",
+                help="Releases from these groups are sorted to the top before quality selection. Leave blank to disable.",
+                hidden=True,
+            ),
+            setting(
+                "Anime Uncensored Prefer",
+                "Prefer uncensored anime releases when available (type 'true' to enable, 'false' to disable): ",
+                releases.sort,
+                "anime_uncensored_prefer",
+                help="When enabled, releases tagged as 'Uncensored' are sorted above censored versions of the same anime.",
+                hidden=True,
+            ),
+            setting(
                 "Special character renaming",
                 [
                     "Please specify a character or string that should be replaced, or provide a regex using {{regex}}: ",

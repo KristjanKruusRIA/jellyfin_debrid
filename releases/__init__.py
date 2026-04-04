@@ -1933,6 +1933,10 @@ class sort:
     unwanted = ["sample"]
     anime_dub_filter = "false"
     anime_dub_pattern = r"(?i)(\bdub(bed)?\b|dual[.\s_-]?audio|multi[.\s_-]?audio|english[.\s_-]?audio|eng[.\s_-]?dub)"
+    anime_hardsub_exclude = "false"
+    anime_hardsub_pattern = r"(?i)(\bHardSub(bed|s)?\b|Hard[.\-_\s]?[Cc]oded|\[HS\])"
+    anime_preferred_groups = ""
+    anime_uncensored_prefer = "false"
     versions = [
         [
             "1080p SDR",

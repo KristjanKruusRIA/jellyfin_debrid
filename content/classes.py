@@ -1887,19 +1887,55 @@ class media:
     def debrid_download(self, force=False):
         debrid.check(self)
         self.bitrate()
-        # Apply anime dub filter before sorting if enabled and item is anime
-        if releases.sort.anime_dub_filter == "true" and self.isanime():
-            before = len(self.Releases)
-            self.Releases = [
-                r
-                for r in self.Releases
-                if regex.search(releases.sort.anime_dub_pattern, r.title, regex.I)
+        # Apply anime-specific filters before sorting
+        if self.isanime():
+            # 1. Dub filter: keep only dubbed releases
+            if releases.sort.anime_dub_filter == "true":
+                before = len(self.Releases)
+                self.Releases = [
+                    r
+                    for r in self.Releases
+                    if regex.search(releases.sort.anime_dub_pattern, r.title, regex.I)
+                ]
+                filtered = before - len(self.Releases)
+                if filtered > 0:
+                    ui_print(
+                        f"[dub filter] removed {filtered} non-dubbed release(s) for anime item",
+                        debug=ui_settings.debug,
+                    )
+            # 2. Hardsub exclusion: remove releases with burned-in subtitles
+            if releases.sort.anime_hardsub_exclude == "true":
+                before = len(self.Releases)
+                self.Releases = [
+                    r
+                    for r in self.Releases
+                    if not regex.search(
+                        releases.sort.anime_hardsub_pattern, r.title, regex.I
+                    )
+                ]
+                filtered = before - len(self.Releases)
+                if filtered > 0:
+                    ui_print(
+                        f"[hardsub filter] removed {filtered} hardsub release(s) for anime item",
+                        debug=ui_settings.debug,
+                    )
+            # 3. Preferred release groups: sort matching groups to the top
+            groups = [
+                g.strip()
+                for g in releases.sort.anime_preferred_groups.split(",")
+                if g.strip()
             ]
-            filtered = before - len(self.Releases)
-            if filtered > 0:
-                ui_print(
-                    f"[dub filter] removed {filtered} non-dubbed release(s) for anime item",
-                    debug=ui_settings.debug,
+            if groups:
+                group_pattern = "|".join(regex.escape(g) for g in groups)
+                self.Releases.sort(
+                    key=lambda r: bool(regex.search(group_pattern, r.title, regex.I)),
+                    reverse=True,
+                )
+            # 4. Uncensored preference: sort uncensored releases to the top
+            if releases.sort.anime_uncensored_prefer == "true":
+                self.Releases.sort(
+                    key=lambda r: bool(regex.search(r"(?i)\buncensored\b", r.title)),
+                    reverse=True,
                 )
         if len(self.Releases) > 0:
             releases.print_releases(self.Releases, True)
