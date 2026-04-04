@@ -211,7 +211,8 @@ def setup(self):
 
 def logerror(response):
     if not response.status_code == 200:
-        ui_print("[seerr] error: " + str(response.content), debug=ui_settings.debug)
+        if response.content:
+            ui_print("[seerr] error: " + str(response.content), debug=ui_settings.debug)
     if response.status_code == 401:
         ui_print(
             "[seerr] error: (401 unauthorized): overserr api key does not seem to work."
@@ -229,6 +230,8 @@ def get(url):
             },
         )
         logerror(response)
+        if not response.content:
+            return None
         response = json.loads(
             response.content, object_hook=lambda d: SimpleNamespace(**d)
         )
