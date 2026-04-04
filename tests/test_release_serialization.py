@@ -43,6 +43,12 @@ def test_release_serializer_exposes_safe_summary_fields_only():
         "file_count",
         "wanted",
         "unwanted",
+        "encode",
+        "codec",
+        "hdr_tags",
+        "audio",
+        "channels",
+        "group",
     }
     assert serialized["release_id"] == "0"
     assert "download" not in serialized

@@ -5,6 +5,8 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any
 
+import regex
+
 from ui.ui_print import ui_print, ui_settings
 
 
@@ -148,6 +150,104 @@ def _size_gb(value: Any) -> float:
         return 0.0
 
 
+def _parse_release_meta(title: str) -> dict[str, Any]:
+    """Parse common release metadata from a release title string."""
+    t = title.upper()
+
+    # Encode / source
+    encode = ""
+    for pat, label in [
+        (r"\bREMUX\b", "REMUX"),
+        (r"\bBLU-?RAY\b", "BluRay"),
+        (r"\bWEB-?DL\b", "WEB-DL"),
+        (r"\bWEBRIP\b", "WEBRip"),
+        (r"\bHDTV\b", "HDTV"),
+        (r"\bBDRIP\b", "BDRip"),
+        (r"\bDVDRIP\b", "DVDRip"),
+        (r"\bWEB\b", "WEB"),
+    ]:
+        if regex.search(pat, t):
+            encode = label
+            break
+
+    # Video codec
+    codec = ""
+    for pat, label in [
+        (r"\bAV1\b", "AV1"),
+        (r"\bHEVC\b|\bH\.?265\b|\bX\.?265\b", "H.265"),
+        (r"\bAVC\b|\bH\.?264\b|\bX\.?264\b", "H.264"),
+        (r"\bVC-?1\b", "VC-1"),
+    ]:
+        if regex.search(pat, t):
+            codec = label
+            break
+
+    # HDR / colour tags (can be multiple)
+    hdr_tags: list[str] = []
+    for pat, label in [
+        (r"\bHDR10\+\b|\bHDR10PLUS\b", "HDR10+"),
+        (r"\bDOLBY.?VISION\b|\bDOVI\b", "DV"),
+        (r"\bHDR10\b", "HDR10"),
+        (r"\bHDR\b", "HDR"),
+        (r"\bHLG\b", "HLG"),
+    ]:
+        if regex.search(pat, t):
+            hdr_tags.append(label)
+
+    # Audio codec
+    audio = ""
+    for pat, label in [
+        (r"\bTRUEHD.ATMOS\b|\bATMOS.TRUEHD\b", "TrueHD Atmos"),
+        (r"\bATMOS\b", "Atmos"),
+        (r"\bTRUEHD\b", "TrueHD"),
+        (r"\bDTS-HD\.?MA\b", "DTS-HD MA"),
+        (r"\bDTS-?X\b|\bDTSX\b", "DTS:X"),
+        (r"\bDTS-HD\b", "DTS-HD"),
+        (r"\bDTS\b", "DTS"),
+        (r"\bEAC-?3\b|\bDD\+\b|\bDDP\b", "EAC3"),
+        (r"\bAC-?3\b", "AC3"),
+        (r"\bFLAC\b", "FLAC"),
+        (r"\bAAC\b", "AAC"),
+        (r"\bOPUS\b", "Opus"),
+        (r"\bMP3\b", "MP3"),
+    ]:
+        if regex.search(pat, t):
+            audio = label
+            break
+
+    # Audio channels
+    channels = ""
+    for pat, label in [
+        (r"\b7\.1\.\d\b", "7.1.x"),
+        (r"\b5\.1\.\d\b", "5.1.x"),
+        (r"\b7\.1\b", "7.1"),
+        (r"\b5\.1\b", "5.1"),
+        (r"\b2\.0\b", "2.0"),
+        (r"\bSTEREO\b", "Stereo"),
+        (r"\bMONO\b", "Mono"),
+    ]:
+        if regex.search(pat, t):
+            channels = label
+            break
+
+    # Release group — last hyphen token at end of title
+    group = ""
+    m = regex.search(
+        r"-([A-Za-z0-9]{2,15})(?:\s*(?:\[|\(|\.(?:mkv|mp4|avi|ts))|$)", title
+    )
+    if m:
+        group = m.group(1)
+
+    return {
+        "encode": encode,
+        "codec": codec,
+        "hdr_tags": hdr_tags,
+        "audio": audio,
+        "channels": channels,
+        "group": group,
+    }
+
+
 def serialize_release(release_obj: Any, index: int) -> dict[str, Any]:
     cached_via = _normalize_cached_via(getattr(release_obj, "cached", []))
 
@@ -157,9 +257,12 @@ def serialize_release(release_obj: Any, index: int) -> dict[str, Any]:
     else:
         file_count = 0
 
+    title = str(getattr(release_obj, "title", ""))
+    meta = _parse_release_meta(title)
+
     return {
         "release_id": str(index),
-        "title": str(getattr(release_obj, "title", "")),
+        "title": title,
         "source": str(getattr(release_obj, "source", "")),
         "type": str(getattr(release_obj, "type", "")),
         "size_gb": _size_gb(getattr(release_obj, "size", 0)),
@@ -170,6 +273,7 @@ def serialize_release(release_obj: Any, index: int) -> dict[str, Any]:
         "file_count": file_count,
         "wanted": _count_value(getattr(release_obj, "wanted", 0)),
         "unwanted": _count_value(getattr(release_obj, "unwanted", 0)),
+        **meta,
     }
 
 

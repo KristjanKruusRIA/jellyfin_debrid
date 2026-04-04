@@ -281,73 +281,13 @@
             gap: 0;
         }
 
-        .release-header {
-            display: grid;
-            grid-template-columns: minmax(0, 4fr) minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) 100px;
-            align-items: stretch;
-            gap: 0;
-            padding: 0;
-            color: #888;
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            border-bottom: 2px solid #4ec9b0;
-            margin-bottom: 4px;
-        }
-
-        .release-header > span,
-        .release-item > * {
-            padding: 8px 10px;
-            border-right: 1px solid #2e2e2e;
-            min-width: 0;
-            overflow: hidden;
-            display: block;
-            white-space: nowrap;
-            text-overflow: ellipsis;
-            line-height: 22px;
-        }
-
-        .release-header > span {
-            display: flex;
-            align-items: center;
-        }
-
-        .release-header > span:last-child,
-        .release-item > *:last-child {
-            border-right: none;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .release-header > span.sortable {
-            cursor: pointer;
-            user-select: none;
-        }
-
-        .release-header > span.sortable:hover {
-            color: #d4d4d4;
-        }
-
-        .release-header > span .sort-arrow {
-            font-size: 10px;
-            margin-left: 3px;
-            opacity: 0.3;
-        }
-
-        .release-header > span.sort-active .sort-arrow {
-            opacity: 1;
-            color: #4ec9b0;
-        }
-
         .release-item {
-            display: grid;
-            grid-template-columns: minmax(0, 4fr) minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) 100px;
-            align-items: stretch;
-            gap: 0;
             background: #1e1e1e;
-            padding: 0;
             border-bottom: 1px solid #2e2e2e;
+            padding: 10px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
         }
 
         .release-item:last-child {
@@ -358,19 +298,61 @@
             background: #252525;
         }
 
-        .release-title {
+        .release-name {
             color: #d4d4d4;
-            word-break: break-word;
+            font-size: 12px;
+            word-break: break-all;
             overflow-wrap: anywhere;
+            line-height: 1.4;
+        }
+
+        .release-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+            font-size: 11px;
+            color: #a0a0a0;
+            min-height: 16px;
+        }
+
+        .release-row-bottom {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 2px;
+        }
+
+        .release-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+            font-size: 11px;
+            color: #a0a0a0;
+        }
+
+        .rtag {
+            white-space: nowrap;
+        }
+
+        .rtag-hl {
+            color: #d4d4d4;
         }
 
         .release-cached {
             color: #4ec9b0;
             font-weight: bold;
+            font-size: 11px;
+            white-space: nowrap;
         }
 
         .release-uncached {
             color: #f48771;
+            font-size: 11px;
+            white-space: nowrap;
         }
 
         .download-btn {
@@ -445,44 +427,6 @@
             .modal-header { padding: 10px 12px; }
             .modal-header h2 { font-size: 14px; }
             .modal-body { padding: 10px 12px; }
-
-            /* Stack release table into cards on mobile */
-            .release-header { display: none; }
-            .release-item {
-                display: flex;
-                flex-direction: column;
-                gap: 6px;
-                background: #1e1e1e;
-                border: 1px solid #2e2e2e;
-                border-radius: 6px;
-                padding: 10px;
-                margin-bottom: 10px;
-            }
-            .release-item > * {
-                padding: 0;
-                border-right: none;
-                white-space: normal;
-                overflow: visible;
-                text-overflow: clip;
-                line-height: 1.4;
-                word-break: break-word;
-                overflow-wrap: anywhere;
-            }
-            .release-item > *:last-child {
-                justify-content: flex-start;
-            }
-            .release-title {
-                font-weight: bold;
-                color: #4ec9b0;
-                font-size: 13px;
-                word-break: break-word;
-                overflow-wrap: anywhere;
-            }
-            .download-btn {
-                width: 100%;
-                padding: 10px;
-                font-size: 13px;
-            }
         }
     </style>
 </head>
@@ -864,6 +808,12 @@
             return sorted;
         }
 
+        function tag(emoji, value, hlClass) {
+            if (!value) return '';
+            const cls = hlClass ? 'rtag rtag-hl' : 'rtag';
+            return '<span class="' + cls + '">' + emoji + ' ' + escapeHtml(String(value)) + '</span>';
+        }
+
         function renderReleases(results, jobId) {
             lastRenderResults = results;
             lastRenderJobId = jobId;
@@ -888,171 +838,121 @@
                 panelList.appendChild(backRow);
             }
 
-            // Detect mobile layout
-            const isMobile = window.innerWidth <= 760;
-
-            if (!isMobile) {
-                // Table header with sort controls (desktop)
-                const header = document.createElement('div');
-                header.className = 'release-header';
-                const columns = [
-                    { label: 'Title', key: 'title' },
-                    { label: 'Source', key: 'source' },
-                    { label: 'Size', key: 'size_gb' },
-                    { label: 'Res', key: 'resolution' },
-                    { label: 'Cache', key: 'cached' },
-                    { label: '', key: null }
-                ];
-                columns.forEach(col => {
-                    const span = document.createElement('span');
-                    if (col.key) {
-                        span.className = 'sortable' + (currentSort.key === col.key ? ' sort-active' : '');
-                        span.innerHTML = col.label + '<span class="sort-arrow">' +
-                            (currentSort.key === col.key ? (currentSort.dir === 'asc' ? '&#9650;' : '&#9660;') : '&#9660;') +
-                            '</span>';
-                        span.addEventListener('click', () => {
-                            if (currentSort.key === col.key) {
-                                currentSort.dir = currentSort.dir === 'asc' ? 'desc' : 'asc';
-                            } else {
-                                currentSort.key = col.key;
-                                currentSort.dir = col.key === 'title' || col.key === 'source' ? 'asc' : 'desc';
-                            }
-                            renderReleases(lastRenderResults, lastRenderJobId);
-                        });
-                    } else {
-                        span.textContent = col.label;
-                    }
-                    header.appendChild(span);
-                });
-                panelList.appendChild(header);
-            } else {
-                // Mobile sort dropdown
-                const sortBar = document.createElement('div');
-                sortBar.style.cssText = 'display:flex; gap:8px; align-items:center; margin-bottom:10px; flex-wrap:wrap;';
-                const sortLabel = document.createElement('span');
-                sortLabel.textContent = 'Sort:';
-                sortLabel.style.fontSize = '12px';
-                sortLabel.style.color = '#888';
-                const sortSelect = document.createElement('select');
-                sortSelect.style.cssText = 'flex:1; min-width:120px; padding:6px; font-size:12px;';
-                const options = [
-                    { label: 'Size (high to low)', key: 'size_gb', dir: 'desc' },
-                    { label: 'Size (low to high)', key: 'size_gb', dir: 'asc' },
-                    { label: 'Title (A-Z)', key: 'title', dir: 'asc' },
-                    { label: 'Title (Z-A)', key: 'title', dir: 'desc' },
-                    { label: 'Source (A-Z)', key: 'source', dir: 'asc' },
-                    { label: 'Resolution (high to low)', key: 'resolution', dir: 'desc' },
-                    { label: 'Cached first', key: 'cached', dir: 'desc' }
-                ];
-                options.forEach(opt => {
-                    const o = document.createElement('option');
-                    o.textContent = opt.label;
-                    o.value = JSON.stringify(opt);
-                    if (currentSort.key === opt.key && currentSort.dir === opt.dir) o.selected = true;
-                    sortSelect.appendChild(o);
-                });
-                sortSelect.addEventListener('change', () => {
-                    const opt = JSON.parse(sortSelect.value);
-                    currentSort.key = opt.key;
-                    currentSort.dir = opt.dir;
-                    renderReleases(lastRenderResults, lastRenderJobId);
-                });
-                sortBar.appendChild(sortLabel);
-                sortBar.appendChild(sortSelect);
-                panelList.appendChild(sortBar);
-            }
+            // Sort bar (uniform for all screen sizes)
+            const sortBar = document.createElement('div');
+            sortBar.style.cssText = 'display:flex; gap:8px; align-items:center; margin-bottom:8px; flex-wrap:wrap;';
+            const sortLabel = document.createElement('span');
+            sortLabel.textContent = 'Sort:';
+            sortLabel.style.cssText = 'font-size:11px; color:#888; white-space:nowrap;';
+            const sortSelect = document.createElement('select');
+            sortSelect.style.cssText = 'flex:1; min-width:140px; padding:5px 8px; font-size:11px;';
+            const sortOptions = [
+                { label: 'Size (high→low)', key: 'size_gb', dir: 'desc' },
+                { label: 'Size (low→high)', key: 'size_gb', dir: 'asc' },
+                { label: 'Title (A→Z)', key: 'title', dir: 'asc' },
+                { label: 'Title (Z→A)', key: 'title', dir: 'desc' },
+                { label: 'Source (A→Z)', key: 'source', dir: 'asc' },
+                { label: 'Resolution (high→low)', key: 'resolution', dir: 'desc' },
+                { label: 'Cached first', key: 'cached', dir: 'desc' }
+            ];
+            sortOptions.forEach(opt => {
+                const o = document.createElement('option');
+                o.textContent = opt.label;
+                o.value = JSON.stringify(opt);
+                if (currentSort.key === opt.key && currentSort.dir === opt.dir) o.selected = true;
+                sortSelect.appendChild(o);
+            });
+            sortSelect.addEventListener('change', () => {
+                const opt = JSON.parse(sortSelect.value);
+                currentSort.key = opt.key;
+                currentSort.dir = opt.dir;
+                renderReleases(lastRenderResults, lastRenderJobId);
+            });
+            sortBar.appendChild(sortLabel);
+            sortBar.appendChild(sortSelect);
+            panelList.appendChild(sortBar);
 
             sorted.forEach(r => {
                 const itemDiv = document.createElement('div');
                 itemDiv.className = 'release-item';
 
-                const safeRes = escapeHtml(r.resolution || 'Unknown');
-                const sizeGb = r.size_gb !== undefined ? r.size_gb.toFixed(2) + ' GB' : '? GB';
+                const sizeGb = r.size_gb > 0 ? r.size_gb.toFixed(2) + ' GB' : null;
 
-                if (isMobile) {
-                    const titleDiv = document.createElement('div');
-                    titleDiv.className = 'release-title';
-                    titleDiv.textContent = r.title || 'Unknown';
-                    itemDiv.appendChild(titleDiv);
+                // Row 1: filename
+                const nameDiv = document.createElement('div');
+                nameDiv.className = 'release-name';
+                nameDiv.title = r.title || '';
+                nameDiv.textContent = '📁 ' + (r.title || 'Unknown');
+                itemDiv.appendChild(nameDiv);
 
-                    const metaDiv = document.createElement('div');
-                    metaDiv.style.cssText = 'display:flex; gap:10px; flex-wrap:wrap; font-size:12px; color:#a0a0a0;';
-                    metaDiv.innerHTML = '<span><b>Source:</b> ' + escapeHtml(r.source || 'Unknown') + '</span>' +
-                        '<span><b>Size:</b> ' + sizeGb + '</span>' +
-                        '<span><b>Res:</b> ' + safeRes + '</span>';
-                    itemDiv.appendChild(metaDiv);
-
-                    const cachedDiv = document.createElement('div');
-                    if (r.cached) {
-                        cachedDiv.innerHTML = '<span class="release-cached">✅ Cached' +
-                            (r.cached_via ? ' (' + escapeHtml(r.cached_via.join(', ')) + ')' : '') + '</span>';
-                    } else {
-                        cachedDiv.innerHTML = '<span class="release-uncached">❌ Uncached</span>';
-                    }
-                    itemDiv.appendChild(cachedDiv);
-
-                    const dlBtnWrapper = document.createElement('div');
-                    const dlBtn = document.createElement('button');
-                    dlBtn.className = 'download-btn';
-                    dlBtn.textContent = 'Download';
-                    dlBtn.dataset.jobId = jobId;
-                    dlBtn.dataset.releaseId = r.release_id;
-                    dlBtn.addEventListener('click', function(event) {
-                        event.stopPropagation();
-                        handleDownload(this.dataset.jobId, this.dataset.releaseId, this);
-                    });
-                    dlBtnWrapper.appendChild(dlBtn);
-                    itemDiv.appendChild(dlBtnWrapper);
-                } else {
-                    const titleDiv = document.createElement('div');
-                    titleDiv.className = 'release-title';
-                    titleDiv.title = r.title || 'Unknown';
-                    titleDiv.textContent = r.title || 'Unknown';
-                    itemDiv.appendChild(titleDiv);
-
-                    const sourceDiv = document.createElement('div');
-                    sourceDiv.title = r.source || 'Unknown';
-                    sourceDiv.textContent = r.source || 'Unknown';
-                    itemDiv.appendChild(sourceDiv);
-
-                    const sizeDiv = document.createElement('div');
-                    sizeDiv.title = sizeGb;
-                    sizeDiv.textContent = sizeGb;
-                    itemDiv.appendChild(sizeDiv);
-
-                    const resDiv = document.createElement('div');
-                    resDiv.title = safeRes;
-                    resDiv.textContent = safeRes;
-                    itemDiv.appendChild(resDiv);
-
-                    const cachedDiv = document.createElement('div');
-                    if (r.cached) {
-                        const cachedSpan = document.createElement('span');
-                        cachedSpan.className = 'release-cached';
-                        cachedSpan.title = 'Cached via ' + (r.cached_via || []).join(',');
-                        cachedSpan.textContent = '✅ Cached';
-                        cachedDiv.appendChild(cachedSpan);
-                    } else {
-                        const uncachedSpan = document.createElement('span');
-                        uncachedSpan.className = 'release-uncached';
-                        uncachedSpan.textContent = '❌ Uncached';
-                        cachedDiv.appendChild(uncachedSpan);
-                    }
-                    itemDiv.appendChild(cachedDiv);
-
-                    const dlBtnWrapper = document.createElement('div');
-                    const dlBtn = document.createElement('button');
-                    dlBtn.className = 'download-btn';
-                    dlBtn.textContent = 'Download';
-                    dlBtn.dataset.jobId = jobId;
-                    dlBtn.dataset.releaseId = r.release_id;
-                    dlBtn.addEventListener('click', function(event) {
-                        event.stopPropagation();
-                        handleDownload(this.dataset.jobId, this.dataset.releaseId, this);
-                    });
-                    dlBtnWrapper.appendChild(dlBtn);
-                    itemDiv.appendChild(dlBtnWrapper);
+                // Row 2: quality tags
+                const qualityParts = [
+                    tag('🎥', r.resolution),
+                    tag('🎞️', r.encode),
+                    tag('🏷️', r.codec),
+                    ...(r.hdr_tags || []).map(h => tag('📺', h)),
+                    tag('🔍', r.source)
+                ].filter(Boolean).join('');
+                if (qualityParts) {
+                    const qualRow = document.createElement('div');
+                    qualRow.className = 'release-row';
+                    qualRow.innerHTML = qualityParts;
+                    itemDiv.appendChild(qualRow);
                 }
+
+                // Row 3: audio + group
+                const audioParts = [
+                    tag('🎧', r.audio),
+                    tag('🔊', r.channels),
+                    tag('🏷️', r.group)
+                ].filter(Boolean).join('');
+                if (audioParts) {
+                    const audioRow = document.createElement('div');
+                    audioRow.className = 'release-row';
+                    audioRow.innerHTML = audioParts;
+                    itemDiv.appendChild(audioRow);
+                }
+
+                // Row 4: size / seeders / cache badge + download button
+                const bottomRow = document.createElement('div');
+                bottomRow.className = 'release-row-bottom';
+
+                const metaLeft = document.createElement('div');
+                metaLeft.className = 'release-meta';
+                const metaParts = [
+                    tag('📦', sizeGb),
+                    r.seeders > 0 ? tag('🌱', r.seeders + ' seeds') : ''
+                ].filter(Boolean).join('');
+                metaLeft.innerHTML = metaParts;
+
+                const metaRight = document.createElement('div');
+                metaRight.style.cssText = 'display:flex; align-items:center; gap:10px; flex-shrink:0;';
+
+                const cacheSpan = document.createElement('span');
+                if (r.cached) {
+                    cacheSpan.className = 'release-cached';
+                    const via = (r.cached_via || []).join(', ');
+                    cacheSpan.textContent = '⚡ Cached' + (via ? ' · ' + via : '');
+                } else {
+                    cacheSpan.className = 'release-uncached';
+                    cacheSpan.textContent = '⏳ Uncached';
+                }
+                metaRight.appendChild(cacheSpan);
+
+                const dlBtn = document.createElement('button');
+                dlBtn.className = 'download-btn';
+                dlBtn.textContent = 'Download';
+                dlBtn.dataset.jobId = jobId;
+                dlBtn.dataset.releaseId = r.release_id;
+                dlBtn.addEventListener('click', function(event) {
+                    event.stopPropagation();
+                    handleDownload(this.dataset.jobId, this.dataset.releaseId, this);
+                });
+                metaRight.appendChild(dlBtn);
+
+                bottomRow.appendChild(metaLeft);
+                bottomRow.appendChild(metaRight);
+                itemDiv.appendChild(bottomRow);
 
                 panelList.appendChild(itemDiv);
             });
