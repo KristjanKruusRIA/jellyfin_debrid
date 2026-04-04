@@ -1266,6 +1266,8 @@ class media:
                 match = next((x for x in list if x == self), None)
                 if not hasattr(match, "leafCount"):
                     return False
+                if not hasattr(self, "leafCount"):
+                    return False
                 if match.leafCount == self.leafCount:
                     return True
             return False
@@ -1274,6 +1276,8 @@ class media:
                 if show.type == "show" and hasattr(show, "Seasons"):
                     for season in show.Seasons:
                         if self == season:
+                            if not hasattr(self, "leafCount"):
+                                return False
                             if season.leafCount == self.leafCount:
                                 return True
                             return False

@@ -248,6 +248,19 @@ class library(classes.library):
                         elif element.Type == "Series":
                             element.type = "show"
 
+                    # Build EID list from ProviderIds for __eq__ matching
+                    EID = []
+                    if hasattr(element, "ProviderIds"):
+                        pids = element.ProviderIds
+                        if hasattr(pids, "Tmdb") and pids.Tmdb:
+                            EID.append(f"tmdb://{pids.Tmdb}")
+                        if hasattr(pids, "Imdb") and pids.Imdb:
+                            EID.append(f"imdb://{pids.Imdb}")
+                        if hasattr(pids, "Tvdb") and pids.Tvdb:
+                            EID.append(f"tvdb://{pids.Tvdb}")
+                    if EID:
+                        element.EID = EID
+
                     # Determine if this is a series and fetch full details
                     if hasattr(element, "Type") and element.Type == "Series":
                         # Fetch seasons for this series
@@ -261,9 +274,12 @@ class library(classes.library):
                         )
                         seasons_response = get(seasons_url, timeout=30)
                         if seasons_response and hasattr(seasons_response, "Items"):
-                            element.seasons = []
+                            element.Seasons = []
                             total_episode_count = 0
                             for season in seasons_response.Items:
+                                season.type = "season"
+                                season.index = getattr(season, "IndexNumber", 0)
+                                season.parentEID = EID
                                 # Fetch episodes for this season
                                 episodes_url = (
                                     library.url
@@ -277,14 +293,24 @@ class library(classes.library):
                                 if episodes_response and hasattr(
                                     episodes_response, "Items"
                                 ):
+                                    for episode in episodes_response.Items:
+                                        episode.type = "episode"
+                                        episode.index = getattr(
+                                            episode, "IndexNumber", 0
+                                        )
+                                        episode.parentIndex = getattr(
+                                            season, "IndexNumber", 0
+                                        )
+                                        episode.grandparentEID = EID
                                     season.Episodes = episodes_response.Items
                                     total_episode_count += len(episodes_response.Items)
-                                element.seasons.append(season)
+                                season.leafCount = len(season.Episodes)
+                                element.Seasons.append(season)
                             # Set leafCount to total episode count for matching
                             element.leafCount = total_episode_count
                         else:
                             # Fallback to empty seasons list if fetch fails
-                            element.seasons = []
+                            element.Seasons = []
                             element.leafCount = 0
 
                     # Convert Jellyfin item to jellyfin_debrid media object

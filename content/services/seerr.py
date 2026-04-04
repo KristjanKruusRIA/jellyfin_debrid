@@ -531,6 +531,9 @@ class show(classes.media):
             for i, episode in enumerate(season.Episodes):
                 season.Episodes[i] = classes.media(episode)
 
+            # Set leafCount so season.collected() can compare against Jellyfin
+            season.leafCount = len(season.Episodes)
+
             # Convert season to proper media object
             season_media = classes.media(season)
             self.Seasons += [season_media]
