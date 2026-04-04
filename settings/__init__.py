@@ -527,6 +527,22 @@ settings_list = [
                 "Versions", [], releases.sort, "versions", special=True, entry="version"
             ),
             setting(
+                "Anime Dub Filter",
+                "Enable dubbed-only filter for anime (type 'true' to enable, 'false' to disable): ",
+                releases.sort,
+                "anime_dub_filter",
+                help="When enabled, only releases matching dubbed audio keywords (dub, dubbed, dual-audio, multi-audio, english audio, etc.) will be downloaded for anime. Leave disabled for all anime.",
+                hidden=True,
+            ),
+            setting(
+                "Anime Dub Filter Pattern",
+                "Regex pattern to match dubbed releases (leave blank to keep default): ",
+                releases.sort,
+                "anime_dub_pattern",
+                help="Regex used to identify dubbed anime releases. Default matches: dub, dubbed, dual-audio, multi-audio, english-audio, eng-dub.",
+                hidden=True,
+            ),
+            setting(
                 "Special character renaming",
                 [
                     "Please specify a character or string that should be replaced, or provide a regex using {{regex}}: ",

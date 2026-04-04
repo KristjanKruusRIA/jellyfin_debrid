@@ -1887,6 +1887,20 @@ class media:
     def debrid_download(self, force=False):
         debrid.check(self)
         self.bitrate()
+        # Apply anime dub filter before sorting if enabled and item is anime
+        if releases.sort.anime_dub_filter == "true" and self.isanime():
+            before = len(self.Releases)
+            self.Releases = [
+                r
+                for r in self.Releases
+                if regex.search(releases.sort.anime_dub_pattern, r.title, regex.I)
+            ]
+            filtered = before - len(self.Releases)
+            if filtered > 0:
+                ui_print(
+                    f"[dub filter] removed {filtered} non-dubbed release(s) for anime item",
+                    debug=ui_settings.debug,
+                )
         if len(self.Releases) > 0:
             releases.print_releases(self.Releases, True)
         scraped_releases = copy.deepcopy(self.Releases)

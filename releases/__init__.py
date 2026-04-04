@@ -1931,6 +1931,8 @@ class sort:
     ]
     default_language = "en"
     unwanted = ["sample"]
+    anime_dub_filter = "false"
+    anime_dub_pattern = r"(?i)(\bdub(bed)?\b|dual[.\s_-]?audio|multi[.\s_-]?audio|english[.\s_-]?audio|eng[.\s_-]?dub)"
     versions = [
         [
             "1080p SDR",
