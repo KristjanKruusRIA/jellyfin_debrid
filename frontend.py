@@ -162,6 +162,45 @@ def _run_scrape_job(
         media_obj.Releases = list(releases)
         debrid.check(media_obj, force=True)
 
+        # Apply anime filters so the manual search view matches auto-download behaviour
+        import regex
+
+        import releases as releases_mod
+
+        if media_obj.isanime():
+            if releases_mod.sort.anime_dub_filter == "true":
+                media_obj.Releases = [
+                    r
+                    for r in media_obj.Releases
+                    if regex.search(
+                        releases_mod.sort.anime_dub_pattern, r.title, regex.I
+                    )
+                ]
+            if releases_mod.sort.anime_hardsub_exclude == "true":
+                media_obj.Releases = [
+                    r
+                    for r in media_obj.Releases
+                    if not regex.search(
+                        releases_mod.sort.anime_hardsub_pattern, r.title, regex.I
+                    )
+                ]
+            groups = [
+                g.strip()
+                for g in releases_mod.sort.anime_preferred_groups.split(",")
+                if g.strip()
+            ]
+            if groups:
+                group_pattern = "|".join(regex.escape(g) for g in groups)
+                media_obj.Releases.sort(
+                    key=lambda r: bool(regex.search(group_pattern, r.title, regex.I)),
+                    reverse=True,
+                )
+            if releases_mod.sort.anime_uncensored_prefer == "true":
+                media_obj.Releases.sort(
+                    key=lambda r: bool(regex.search(r"(?i)\buncensored\b", r.title)),
+                    reverse=True,
+                )
+
         job_registry.update_job(job_id, "complete", releases=media_obj.Releases)
     except Exception as e:
         _log_frontend(f"scrape job {job_id} failed: {str(e)}")

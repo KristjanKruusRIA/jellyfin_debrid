@@ -51,6 +51,9 @@ def _import_frontend(
         def deviation(self):
             return "(.*)"
 
+        def isanime(self):
+            return False
+
     if tmdb_module is None:
         tmdb_module = _module(
             "content.services.tmdb",
@@ -96,6 +99,18 @@ def _import_frontend(
     monkeypatch.setitem(sys.modules, "content.services.tvdb", tvdb_module)
     monkeypatch.setitem(sys.modules, "scraper", scraper_module)
     monkeypatch.setitem(sys.modules, "debrid", debrid_module)
+
+    # Stub releases module so anime filter block in _run_scrape_job is a no-op
+    _sort_stub = SimpleNamespace(
+        anime_dub_filter="false",
+        anime_dub_pattern="",
+        anime_hardsub_exclude="false",
+        anime_hardsub_pattern="",
+        anime_preferred_groups="",
+        anime_uncensored_prefer="false",
+    )
+    releases_stub = _module("releases", sort=_sort_stub)
+    monkeypatch.setitem(sys.modules, "releases", releases_stub)
 
     module_name = f"frontend_test_{uuid.uuid4().hex}"
     spec = importlib.util.spec_from_file_location(module_name, str(frontend_path))
