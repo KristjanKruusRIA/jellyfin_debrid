@@ -539,6 +539,53 @@ class show(classes.media):
             self.Seasons += [season_media]
 
 
+def _find_pending_media_id(element):
+    """Search Seerr requests for a pending entry matching element's TMDB/IMDB ID.
+
+    Returns the Seerr media.id to use with the /available endpoint, or None.
+    """
+    if not base_url or not api_key:
+        return None
+    try:
+        response = get(base_url + "/api/v1/request?take=10000")
+        if not response or not hasattr(response, "results"):
+            return None
+
+        # Collect identifiers from the element's EID
+        tmdb_id = None
+        imdb_id = None
+        eid = getattr(element, "EID", None) or getattr(element, "grandparentEID", None)
+        if eid is not None:
+            if isinstance(eid, dict):
+                tmdb_id = str(eid.get("tmdb", "") or "")
+                imdb_id = str(eid.get("imdb", "") or "")
+            else:
+                # Iterable ExternalIDs — extract raw values
+                tmdb_id = str(
+                    getattr(eid, "get", lambda k, d=None: d)("tmdb", "") or ""
+                )
+                imdb_id = str(
+                    getattr(eid, "get", lambda k, d=None: d)("imdb", "") or ""
+                )
+
+        for req in response.results:
+            media = getattr(req, "media", None)
+            if media is None:
+                continue
+            req_tmdb = str(getattr(media, "tmdbId", "") or "")
+            req_imdb = str(getattr(media, "imdbId", "") or "")
+            if (tmdb_id and req_tmdb and tmdb_id == req_tmdb) or (
+                imdb_id and req_imdb and imdb_id == req_imdb
+            ):
+                return media.id
+    except Exception as e:
+        ui_print(
+            f"[seerr] error looking up pending request: {e}",
+            debug=ui_settings.debug,
+        )
+    return None
+
+
 class seerr_requests(classes.watchlist):
     def __init__(self):
         global last_requests
@@ -793,12 +840,16 @@ class library:
 
         def __new__(cls, element):
             try:
-                if not hasattr(element, "request_id"):
+                media_id = getattr(element, "request_id", None)
+                if media_id is None:
+                    media_id = _find_pending_media_id(element)
+                if media_id is None:
                     return
-                ui_print("[overserr] marking request as available")
-                url = (
-                    base_url + "/api/v1/media/" + str(element.request_id) + "/available"
-                )
+                ui_print("[seerr] marking request as available")
+                url = base_url + "/api/v1/media/" + str(media_id) + "/available"
                 post(url, '{"is4k":false}')
-            except Exception:
-                print("[overserr] error: couldnt mark requests as available")
+            except Exception as e:
+                ui_print(
+                    f"[seerr] error: couldn't mark request as available: {e}",
+                    debug=ui_settings.debug,
+                )
