@@ -163,6 +163,7 @@
     "Debrid Services": ["Real Debrid"],
     "Tracker specific Debrid Services": [],
     "Real Debrid API Key": "${REALDEBRID_API_KEY}",
+    "TorBox API Key": "${TORBOX_API_KEY}",
     "All Debrid API Key": "",
     "Premiumize API Key": "",
     "Debrid Link API Key": "",

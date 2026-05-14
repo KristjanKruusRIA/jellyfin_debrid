@@ -23,6 +23,7 @@ def _import_settings_with_stubs(monkeypatch):
         SimpleNamespace(api_key="", library=SimpleNamespace(url="")),
     )
     setattr(services_stub, "tmdb", SimpleNamespace(api_key=""))
+    setattr(services_stub, "tvdb", SimpleNamespace(api_key="", pin=""))
     setattr(content_stub, "services", services_stub)
     setattr(
         content_stub,
@@ -44,6 +45,15 @@ def _import_settings_with_stubs(monkeypatch):
                 api_key="",
                 session=SimpleNamespace(
                     get=lambda url: SimpleNamespace(status_code=200)
+                ),
+            ),
+            torbox=SimpleNamespace(
+                api_key="",
+                session=SimpleNamespace(
+                    get=lambda *args, **kwargs: SimpleNamespace(
+                        status_code=200,
+                        json=lambda: {"success": True},
+                    )
                 ),
             ),
         ),

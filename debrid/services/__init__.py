@@ -1,7 +1,7 @@
 import sys
 
 # import child modules
-from debrid.services import realdebrid
+from debrid.services import realdebrid, torbox
 
 # Define empty module placeholders for services that don't exist yet
 alldebrid = None  # type: ignore[assignment]
@@ -12,7 +12,7 @@ putio = None  # type: ignore[assignment]
 
 # define subclass method
 def __subclasses__():
-    return [realdebrid]  # Only return services that actually exist
+    return [realdebrid, torbox]  # Only return services that actually exist
 
 
 active = []

@@ -17,7 +17,7 @@ Seerr Requests → Scraper Services → Debrid Cache Check → Downloader → Fi
 | `ui/` | Interactive CLI, logging (`ui_print()`), settings UI | `ui_print.py`, `ui_settings.py` |
 | `content/` | Media classes (movie/show/season/episode), Seerr integration, TMDB manual hydration adapter | `classes.py`, `services/seerr.py`, `services/manual_media.py` |
 | `scraper/` | Pluggable scraper services (AIOStreams, Comet) | `services/__init__.py`, `services/aiostreams.py`, `services/comet.py` |
-| `debrid/` | Debrid provider integrations (RealDebrid) | `services/__init__.py`, `services/realdebrid.py` |
+| `debrid/` | Debrid provider integrations (RealDebrid, TorBox) | `services/__init__.py`, `services/realdebrid.py`, `services/torbox.py` |
 | `releases/` | Release model, quality/version selection, scoring/sorting rules | `__init__.py` |
 | `downloader/` | HTTP download with progress, Windows filename sanitization, file organization | `__init__.py` |
 | `settings/` | Configuration management, settings registry, `setting` class | `__init__.py` |
@@ -74,6 +74,7 @@ Versions in `settings.json` define structured quality criteria. `releases.sort` 
 | Frontend (Flask manual search) | `http://localhost:7654/` | None | `POST /api/scrapes` → 202 running, `GET /api/scrapes/<job_id>` → 200/404, `POST /api/scrapes/<job_id>/downloads` → 200 started / structured 4xx/5xx errors |
 | Seerr | `{base_url}/api/v1/` | `X-Api-Key` header | 1=Pending, 2=Approved, 3=Declined, 4=Processing, 5=Available |
 | RealDebrid | `api.real-debrid.com/rest/1.0/` | `Bearer` token | 202=already done, 403=permission denied/premium, 401=bad key |
+| TorBox | `https://api.torbox.app/v1/api/` | `Bearer` token (+`token` query for `requestdl`) | 200=success, 400=invalid/missing option, 403=auth error, 500=server error |
 | AIOStreams | `{base_url}/stremio/{uuid}/{b64config}/` | Embedded in URL | Stremio addon format |
 | Comet | `{base_url}/{b64config}/` | Embedded in URL | Stremio addon format |
 
@@ -124,6 +125,11 @@ Pre-commit hooks configured in `.pre-commit-config.yaml` (black, isort, ruff, my
 1. Create `debrid/services/newprovider.py` with `check(element)` and `download(element)` methods
 2. Register in `debrid/services/__init__.py`
 3. Add API key setting to `settings/settings_list`
+
+### TorBox Integration Notes
+1. Use strict cached-first checks via `GET /v1/api/torrents/checkcached` for torrent hashes.
+2. Use `POST /v1/api/torrents/createtorrent` with `add_only_if_cached=true` to avoid uncached queueing.
+3. Resolve file links with `GET /v1/api/torrents/requestdl` (requires `token` query parameter).
 
 ### Download Flow
 1. Scraper returns `releases.release` objects with `download` URLs and `type` (magnet/http)

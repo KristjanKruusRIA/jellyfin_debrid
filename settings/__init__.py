@@ -369,6 +369,38 @@ class setting:
                             "Looks like the api key does not work. Please enter a valid api key."
                         )
                         print()
+                elif self.name == "TorBox API Key":
+                    url = "https://api.torbox.app/v1/api/user/me"
+                    response = debrid.services.torbox.session.get(
+                        url,
+                        headers={
+                            "authorization": "Bearer " + console_input,
+                            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+                        },
+                    )
+                    if response.status_code == 200:
+                        try:
+                            payload = response.json()
+                            if bool(payload.get("success", False)):
+                                working = True
+                            else:
+                                print()
+                                print(
+                                    "Looks like the api key does not work. Please enter a valid api key."
+                                )
+                                print()
+                        except Exception:
+                            print()
+                            print(
+                                "Looks like the api key does not work. Please enter a valid api key."
+                            )
+                            print()
+                    else:
+                        print()
+                        print(
+                            "Looks like the api key does not work. Please enter a valid api key."
+                        )
+                        print()
                 else:
                     working = True
 
@@ -677,6 +709,13 @@ settings_list = [
                 "Real Debrid API Key",
                 "Please enter your Real Debrid API Key: ",
                 debrid.services.realdebrid,
+                "api_key",
+                hidden=True,
+            ),
+            setting(
+                "TorBox API Key",
+                "Please enter your TorBox API Key: ",
+                debrid.services.torbox,
                 "api_key",
                 hidden=True,
             ),
